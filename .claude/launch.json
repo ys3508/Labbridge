@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "labbridge-dev",
+      "runtimeExecutable": "/Users/sissi/.local/node-v22.23.1-darwin-arm64/bin/node",
+      "runtimeArgs": ["node_modules/next/dist/bin/next", "dev", "-p", "3100"],
+      "port": 3100
+    }
+  ]
+}

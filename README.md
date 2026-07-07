@@ -36,14 +36,14 @@ LabBridge is built at the intersection of all three. Not a search engine. Not a 
 | **Knowledge gaps** | What's *actually* missing — not everything you don't know |
 | **Learning sequence** | What to learn first, and why, in order |
 | **Curated resources** | Papers, datasets, tools — grounded in real literature, not guesses |
-| **Background-aware explanations** | The gap between your field and this one, not a generic primer |
+| **Background-aware starting point** | Where you already are on the path, so you start from what you bring — not a generic zero |
 | **First contribution plan** | A real, scoped task you could finish in week one |
 
 ## Why It's Different
 
 Most AI tools help you **understand information**. LabBridge helps you **become productive on a real team**.
 
-The differentiator isn't the explanations — it's that every explanation is anchored to *your specific background* and *this specific first task*. That combination is hard to fake and hard to copy with a generic chatbot.
+The differentiator isn't the explanations — it's that every step is anchored to *your specific background* and *this specific first task*. That combination is hard to fake and hard to copy with a generic chatbot.
 
 ## Who It's For
 

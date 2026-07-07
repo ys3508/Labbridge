@@ -30,11 +30,11 @@ The analysis has **two distinct jobs** — keep them separate, because they carr
 - Store both the extracted keywords *and* the raw text; the mapping of keywords → skill-graph nodes happens later, at matching time.
 - **Show the extracted skills back to the user as editable chips.** A wrong read becomes a two-second fix instead of a silent error in their plan.
 
-**Job 2 — Bridge the background + translate hard concepts (the differentiator, and the riskiest part).**
-- If the user comes from a very different background, provide a good orienting intro so they can understand the domain better.
-- For hard concepts, **translate into the user's own field's language** — a concrete analogy in terms they already know (e.g. "a GWAS is like running a diff across millions of files").
-- Guardrails: the **decision** to make an analogy, and **which concept** needs one, stays on the *system's* side — driven by the node's difficulty and the size of the gap between the user's field and this one. Ground the factual half of every analogy in the real material, same discipline as citations. A wrong analogy is confidently misleading, so **this is the part to test hardest.**
-- Timing: Job 2 mostly *delivers* inside the plan/onboarding (that's where concepts appear). At input time we just *capture the background* well enough to power it. Input captures; plan translates.
+**Job 2 — Capture the background well enough to place the entry point (the differentiator).**
+- **Analogies are cut in v1.** The earlier idea — auto-translate hard concepts into the user's own field ("a GWAS is like running a diff across millions of files") — was too much: a generated analogy is confidently misleading when wrong, and it's the riskiest thing to trust in front of a newcomer. Dropped rather than half-guarded.
+- What stays is the grounded half: use the background to **place the user's entry point** on the skill graph — where they already are, so the plan starts from what they bring instead of a generic zero. That's background-aware *placement*, not background-aware *explanation-generation*.
+- The differentiator was never the analogy anyway: it's that the whole plan is anchored to *this* person's background and *this* first task (see README). Placement carries that; generated analogies were a liability on top.
+- Timing: at input time we just *capture the background*. The matching engine (`labbridge-matching-engine-spec`, Part B) turns it into an entry point. Input captures; the engine places.
 
 ### Fallback — "No resume handy? Fill this in instead"
 
@@ -72,4 +72,4 @@ The matching step later maps `extractedSkills` + `skillsHave` + `field` onto ski
 
 - **Live-analysis cost & latency:** it calls the model on paste. Debounce, cache the last analysis, and only re-run on a meaningful change — don't fire on every keystroke.
 - **Always show extracted results, always editable.** The user seeing and correcting Job 1's output is what keeps a misread from silently poisoning the plan.
-- **Job 2 is the one to stress-test.** Analogies are the magic and the liability; validate them against real material before trusting them in front of a newcomer.
+- **Analogies are cut (v1).** Job 2 no longer generates cross-field analogies — that liability is removed, not merely guarded. Job 2 now only captures background for entry-point placement (matching-engine Part B).
