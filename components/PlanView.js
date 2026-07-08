@@ -13,8 +13,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [plan, setPlan] = useState(null);
   const [error, setError] = useState(null);
   const [showPayload, setShowPayload] = useState(false);
-  const [resolved, setResolved] = useState({}); // "i-j" -> { title, url, source, year }
-  const [groundingDone, setGroundingDone] = useState(false);
+  const [topicResources, setTopicResources] = useState({}); // topicIndex -> [{title,url,source,kind,why}]
+  const [resourcesDone, setResourcesDone] = useState(false);
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
 
@@ -35,67 +35,39 @@ export default function PlanView({ form, isBeginner, onBack }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // 2) Hard-ground resources: catalog -> web -> one retry. Only VERIFIED items
-  //    survive; everything else becomes an honest gap (never shown as a guess).
+  // 2) Retrieval-first resources: retrieve a verified candidate pool per topic,
+  //    then let the model SELECT from it. The model never authors a shown
+  //    resource — only real, verified items are chosen and explained.
   useEffect(() => {
     if (!plan) return;
     let alive = true;
     (async () => {
-      const flat = [];
-      plan.learningSequence.forEach((s, i) =>
-        (s.resources || []).forEach((r, j) => flat.push({ key: `${i}-${j}`, topic: s.topic, title: r.title, kind: r.kind }))
-      );
-      if (!flat.length) {
-        if (alive) setGroundingDone(true);
+      const topics = plan.learningSequence.map((s, i) => ({ index: i, topic: s.topic, why: s.why }));
+      if (!topics.length) {
+        if (alive) setResourcesDone(true);
         return;
       }
-      const res = {};
-
-      // stage 1 — catalogs (books/papers)
-      const g1 = await post("/api/ground", { resources: flat.map((f) => ({ title: f.title, kind: f.kind })) });
-      const web = [];
-      const retry = [];
-      (g1?.results || []).forEach((r, k) => {
-        const f = flat[k];
-        if (r.status === "verified") {
-          res[f.key] = { title: r.verifiedTitle || f.title, url: r.url, source: r.source, year: r.year };
-        } else if (r.status === "uncheckable") {
-          web.push(f);
-        } else {
-          retry.push(f); // unverified or retracted → try a replacement
-        }
+      // Part B — retrieve + verify candidate pools
+      const cand = await post("/api/candidates", { topics: topics.map((t) => ({ index: t.index, topic: t.topic })) });
+      const pools = {};
+      (cand?.candidates || []).forEach((c) => (pools[c.index] = c.pool || []));
+      if (!alive) return;
+      // Part C — select from the verified pools (grounded "why")
+      const sel = await post("/api/select", {
+        topics: topics.map((t) => ({ index: t.index, topic: t.topic, why: t.why, pool: pools[t.index] || [] })),
+        learner: {
+          field: payload.background.field,
+          skills: payload.background.skills,
+          depth: payload.goals.depth,
+          purpose: payload.goals.purpose,
+        },
       });
-      if (alive) setResolved({ ...res });
-
-      // stage 2 — web search (courses/docs)
-      if (web.length) {
-        const gw = await post("/api/ground-web", { items: web.map((w) => ({ title: w.title, kind: w.kind })) });
-        const found = new Set();
-        (gw?.results || []).forEach((rr) => {
-          const f = web[rr.index];
-          if (f && rr.url) {
-            res[f.key] = { title: f.title, url: rr.url, source: "Web" };
-            found.add(rr.index);
-          }
-        });
-        web.forEach((f, idx) => {
-          if (!found.has(idx)) retry.push(f);
-        });
-        if (alive) setResolved({ ...res });
+      const byIndex = {};
+      (sel?.selections || []).forEach((s) => (byIndex[s.index] = s.resources || []));
+      if (alive) {
+        setTopicResources(byIndex);
+        setResourcesDone(true);
       }
-
-      // stage 3 — one LLM retry for the still-unresolved
-      if (retry.length) {
-        const gr = await post("/api/reground", {
-          items: retry.map((f) => ({ key: f.key, topic: f.topic, kind: f.kind, tried: [f.title] })),
-        });
-        (gr?.results || []).forEach((rr) => {
-          if (rr.key && rr.item) res[rr.key] = rr.item;
-        });
-        if (alive) setResolved({ ...res });
-      }
-
-      if (alive) setGroundingDone(true);
     })();
     return () => {
       alive = false;
@@ -193,21 +165,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
               </span>
               <div className="font-medium text-ink">{s.topic}</div>
               <div className="mt-0.5 text-sm text-ink-soft">{s.why}</div>
-              <NodeResources
-                resources={s.resources}
-                nodeIndex={i}
-                resolved={resolved}
-                done={groundingDone}
-              />
+              <NodeResources resources={topicResources[i]} done={resourcesDone} />
             </li>
           ))}
         </ol>
       </Card>
 
       <Note>
-        <strong>Every resource shown is verified real</strong> — resolved against Open Library, OpenAlex, or an
-        official web page, and each links to the source. Steps with no vetted resource yet are flagged honestly rather
-        than filled with a guess.
+        <strong>Resources are retrieved and verified before they're picked</strong> — candidate books, papers, and
+        courses are resolved against Open Library, OpenAlex, or an official web page, and the plan selects from only
+        what's real. Every link opens the real source; a step with no vetted match is flagged honestly rather than
+        filled with a guess.
       </Note>
 
       <Card title="Your first contribution" accent>
@@ -260,15 +228,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
   );
 }
 
-function NodeResources({ resources, nodeIndex, resolved, done }) {
-  if (!resources?.length) return null;
+function NodeResources({ resources, done }) {
   if (!done) {
-    return <p className="mt-2 text-xs text-ink-faint">verifying resources…</p>;
+    return <p className="mt-2 text-xs text-ink-faint">finding vetted resources…</p>;
   }
-  const items = resources
-    .map((r, j) => ({ r, g: resolved[`${nodeIndex}-${j}`] }))
-    .filter((x) => x.g);
-  if (!items.length) {
+  if (!resources?.length) {
     return (
       <p className="mt-2 text-xs italic text-ink-faint">
         No vetted resource found for this step yet — flagged for review.
@@ -276,24 +240,26 @@ function NodeResources({ resources, nodeIndex, resolved, done }) {
     );
   }
   return (
-    <ul className="mt-2 space-y-1.5">
-      {items.map(({ r, g }, k) => (
-        <li key={k} className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
-          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
-            {r.kind}
-          </span>
-          <a
-            href={g.url}
-            target="_blank"
-            rel="noreferrer"
-            className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
-          >
-            {g.title}
-          </a>
-          <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-            ✓ {g.source}
-            {g.year ? ` ${g.year}` : ""}
-          </span>
+    <ul className="mt-2 space-y-2">
+      {resources.map((r, k) => (
+        <li key={k} className="text-sm">
+          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
+              {r.kind || "resource"}
+            </span>
+            <a
+              href={r.url}
+              target="_blank"
+              rel="noreferrer"
+              className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
+            >
+              {r.title}
+            </a>
+            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+              ✓ {r.source}
+            </span>
+          </div>
+          {r.why && <div className="mt-0.5 text-xs text-ink-soft">{r.why}</div>}
         </li>
       ))}
     </ul>

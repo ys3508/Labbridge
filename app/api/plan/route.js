@@ -16,7 +16,7 @@ Produce:
 - summary: 2-3 sentences orienting them — where they're starting, where they're headed, and the shape of the path.
 - transferableStrengths: what they ALREADY bring that applies to the target. Anchor each to their actual background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest.
-- learningSequence: an ORDERED path. Each item: a topic, why it comes here (respect prerequisites — foundational topics before advanced ones), and 1-3 suggested resources. Length follows their depth goal: "landscape" = short/orienting, "functional" = to working competence, "deep" = thorough. Purpose tunes emphasis (interview = breadth/talking points; starting a role = just-in-time depth toward the first task; career move = durable foundations; curious = fast low-commitment taste).
+- learningSequence: an ORDERED path. Each item: a topic and why it comes here (respect prerequisites — foundational topics before advanced ones). Do NOT list resources — give only the topic and why; real resources are retrieved and selected in a later step. Length follows their depth goal: "landscape" = short/orienting, "functional" = to working competence, "deep" = thorough. Purpose tunes emphasis (interview = breadth/talking points; starting a role = just-in-time depth toward the first task; career move = durable foundations; curious = fast low-commitment taste).
 - firstTask: a real, scoped task they could plausibly finish in week one, reachable using only what the learning sequence covers. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 
@@ -24,9 +24,7 @@ TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted
 
 VOICE & HONESTY: Write in the person's own vocabulary where you can — translate unfamiliar target-field concepts into terms from their background. When you are not sure a step or resource truly applies to THIS person, say so plainly (e.g. "if you already know X, skip this") rather than asserting it. Flag uncertainty; never smooth over a gap with confident filler.
 
-DIVISION OF LABOR: You select, sequence, and explain — you are not a citation database. Only recommend resources you are genuinely confident are real and canonical. The system verifies every resource against real catalogs and drops fakes, so a few certain resources beat many plausible-but-uncertain ones — never pad a step to look complete.
-
-RESOURCE HONESTY (critical): prefer widely-known, real resources — canonical textbooks, official documentation, well-established courses or landmark papers. Describe them by title and kind. Do NOT fabricate precise citations, DOIs, or URLs, and do not invent obscure papers. When unsure, suggest a well-known general resource rather than a made-up specific one. The product marks these as unverified, so keep them plausible and real, not precise-but-fake.`;
+DIVISION OF LABOR: You produce the plan's structure and prose — the topics, the ordering, the strengths/gaps, and the first task. You do NOT choose learning resources here; that happens in a separate step over a verified, retrieved candidate pool. So never name a specific book, paper, course, or URL in your output — refer to what to learn, not which resource to read.`;
 
 const strengthItem = {
   type: "object",
@@ -50,17 +48,8 @@ const SCHEMA = {
         properties: {
           topic: { type: "string" },
           why: { type: "string" },
-          resources: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              properties: { title: { type: "string" }, kind: { type: "string" } },
-              required: ["title", "kind"],
-            },
-          },
         },
-        required: ["topic", "why", "resources"],
+        required: ["topic", "why"],
       },
     },
     firstTask: {
