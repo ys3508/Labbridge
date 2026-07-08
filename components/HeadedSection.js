@@ -1,8 +1,21 @@
 "use client";
 
 import { Section, Chip, Hint } from "./ui";
-import { ARTIFACT_TYPES, ARTIFACT_TYPE_LABEL, ROLE_POOL, ROLE_ALIASES, poolMatches } from "@/lib/constants";
+import {
+  ARTIFACT_TYPES,
+  ARTIFACT_TYPE_LABEL,
+  ROLE_POOL,
+  ROLE_ALIASES,
+  FIELD_POOL,
+  FIELD_ALIASES,
+  poolMatches,
+} from "@/lib/constants";
 import { detectSource } from "@/lib/stubs";
+
+// The target box accepts a broad FIELD or a specific ROLE — match against both,
+// so someone who only knows "I'm headed into data science" can answer too.
+const TARGET_POOL = Array.from(new Set([...FIELD_POOL, ...ROLE_POOL]));
+const TARGET_ALIASES = { ...FIELD_ALIASES, ...ROLE_ALIASES };
 
 let nextId = 100;
 
@@ -67,7 +80,7 @@ export default function HeadedSection({ value, onChange, onClassify, onPatchArti
 
   // Role type-ahead: matches on prefix / initials / substring, hidden once the
   // value is already exactly the single remaining match (i.e. it's been picked).
-  const roleRaw = poolMatches(ROLE_POOL, value.role, { aliases: ROLE_ALIASES });
+  const roleRaw = poolMatches(TARGET_POOL, value.role, { aliases: TARGET_ALIASES });
   const roleMatches =
     roleRaw.length === 1 && roleRaw[0].toLowerCase() === (value.role || "").trim().toLowerCase()
       ? []
@@ -79,15 +92,16 @@ export default function HeadedSection({ value, onChange, onClassify, onPatchArti
       title="Where you're headed"
       subtitle="Hand us the raw material — a job post, a repo, a company page, or just a sentence. We'll read it; you don't have to label it."
     >
-      {/* Optional role — with type-ahead over a broad role pool */}
+      {/* Target field OR role — broad is fine, specific is better */}
       <label className="mb-1.5 block text-sm font-medium text-ink">
-        Target role <span className="font-normal text-ink-faint">— optional, but the fastest signal if you know it</span>
+        Target field or role{" "}
+        <span className="font-normal text-ink-faint">— broad or specific, whatever you know</span>
       </label>
       <div className="relative">
         <input
           value={value.role}
           onChange={(e) => set({ role: e.target.value })}
-          placeholder="e.g. Computational Biologist — or type initials (SWE, PM, RN)"
+          placeholder="e.g. Data Science — or a specific role like Data Scientist"
           className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
         />
         {roleMatches.length > 0 && (
@@ -112,7 +126,11 @@ export default function HeadedSection({ value, onChange, onClassify, onPatchArti
 
       {/* Unified artifact list */}
       <div className="mt-6">
-        <label className="mb-1.5 block text-sm font-medium text-ink">Add material</label>
+        <label className="block text-sm font-medium text-ink">Show us what you're aiming at</label>
+        <p className="mb-2 mt-0.5 text-xs text-ink-soft">
+          Paste a job post, a project or repo you'd love to work on, a company or lab, or just a sentence about what
+          you want to do. This is where your plan gets specific — the more you add, the sharper it is. Worth a paste.
+        </p>
         <div className="space-y-3">
           {value.artifacts.map((a, i) => (
             <div

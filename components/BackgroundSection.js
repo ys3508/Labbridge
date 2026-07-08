@@ -150,17 +150,20 @@ export default function BackgroundSection({ value, onChange }) {
         </div>
       )}
 
-      {/* Fallback via progressive disclosure */}
+      {/* Additive manual entry (works with OR without a resume) */}
       <button
         type="button"
         onClick={() => setShowFallback((s) => !s)}
         className="mt-5 text-sm font-medium text-brand-600 hover:text-brand-700"
       >
-        {showFallback ? "− Hide" : "+ No resume handy? Fill this in instead"}
+        {showFallback ? "− Hide" : "+ Add more by hand — field, skills, anything the resume missed"}
       </button>
 
       {showFallback && (
         <div className="mt-4 space-y-6 fade-up">
+          <p className="text-xs text-ink-soft">
+            Use this whether or not you pasted a resume — add anything you want us to know that isn't captured above.
+          </p>
           {/* Field of study/work */}
           <div>
             <label className="mb-1.5 block text-sm font-medium text-ink">
