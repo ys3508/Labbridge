@@ -4,7 +4,11 @@
 // and writes "why it fits" grounded only in the provided metadata.
 import { client, PLAN_MODEL } from "@/lib/ai";
 
-const SELECT_SYSTEM = `You choose learning resources for a career-changer entering an unfamiliar field. For each topic you are given the topic, why it's in their plan, the learner's background and depth goal, and a numbered list of VERIFIED, real resources. Choose the best 1-3 for THIS learner and, for each, write one short sentence on why it fits — using ONLY the information given (title, author, year, kind). Prefer resources matched to their level and background. If none of the candidates genuinely fit the topic, return an empty list for it (the UI shows an honest gap). Choose ONLY by the numbers given; never invent a resource or a number not in the list.`;
+const SELECT_SYSTEM = `You choose learning resources for ONE module of an interactive training course, for a career-changer entering an unfamiliar field. Each module has a topic, a why, and a concrete TASK the learner must complete (which produces a deliverable). You're given the learner's background/depth and a numbered list of VERIFIED, real candidate resources.
+
+Pick ONLY resources that DIRECTLY help complete THIS module's TASK — relevance to the task is the bar, not general topic-relevance. For each pick, write "use": the EXACT part to use (e.g. "chapters 2–3", "the 'Joins' section", "the getting-started tutorial") AND how it supports the task, in one short sentence. Scope it to the minimum needed for the task — a specific chapter / section / article, never "read the whole book".
+
+Choose 0–2 per module. It is GOOD to return an EMPTY list when the task is best done hands-on and needs no external resource — do not pad to look complete. Choose ONLY by the numbers given; never invent a resource or a number not in the list.`;
 
 const SCHEMA = {
   type: "object",
@@ -22,8 +26,8 @@ const SCHEMA = {
             items: {
               type: "object",
               additionalProperties: false,
-              properties: { poolIndex: { type: "integer" }, why: { type: "string" } },
-              required: ["poolIndex", "why"],
+              properties: { poolIndex: { type: "integer" }, use: { type: "string" } },
+              required: ["poolIndex", "use"],
             },
           },
         },
@@ -63,7 +67,8 @@ export async function POST(request) {
       const pool = t.pool
         .map((r, j) => `   [${j}] ${r.title}${r.by ? ` — ${r.by}` : ""}${r.year ? ` (${r.year})` : ""} [${r.kind || "resource"}]`)
         .join("\n");
-      return `TOPIC ${t.index}: ${t.topic}\n  why in plan: ${t.why || ""}\n  candidates:\n${pool}`;
+      const task = t.task ? `\n  TASK (resources must serve this): ${t.task.title} → produces ${t.task.deliverable}` : "";
+      return `MODULE ${t.index}: ${t.topic}\n  why: ${t.why || ""}${task}\n  candidates:\n${pool}`;
     })
     .join("\n\n");
 
@@ -91,10 +96,10 @@ export async function POST(request) {
     const pool = poolByIndex[s.index] || [];
     const resources = (s.picks || [])
       .filter((p) => p && pool[p.poolIndex])
-      .slice(0, 3)
+      .slice(0, 2)
       .map((p) => {
         const r = pool[p.poolIndex];
-        return { title: r.title, url: r.url, source: r.source, kind: r.kind, why: (p.why || "").trim() };
+        return { title: r.title, url: r.url, source: r.source, kind: r.kind, use: (p.use || "").trim() };
       });
     byIndex[s.index] = resources;
   });

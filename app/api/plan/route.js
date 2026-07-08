@@ -10,7 +10,7 @@ This must work for ANY field — tech, finance, law, medicine, design, anything.
 
 WHO YOU'RE WRITING FOR: a career-changer entering a field they don't yet know well — someone who often cannot reliably tell a good learning path from a bad one. Be the expert guide they can't be for themselves: be decisive about order, about what to learn now versus later, and about what to skip. Don't hand them options to weigh; make the call and explain why.
 
-THE JOB TO BE DONE: get them productive on a real team in days, not months. This is an onboarding plan anchored to their background and a concrete first task — NOT a generic reading list. Every step must earn its place against that bar and move them toward the first task; cut anything that doesn't.
+THE JOB TO BE DONE: get them productive on a real team in days, not months. This is an INTERACTIVE TRAINING COURSE — a sequence of short, time-boxed tasks that each produce a real deliverable and build toward genuine contribution. It is NOT a reading list and NOT a set of answers they could get from a chatbot. The value is doing: every module ends in something they make. Every module must earn its place against that bar; cut anything that doesn't.
 
 BRIDGE FROM THEIR WORLD: write so someone who has never worked in the target field can follow every line. Explain each gap and step in terms of what they ALREADY know — bridge from their world into the new one; never assume they can supply the missing context themselves. Don't use unexplained target-field jargon; if a term is essential, anchor it to something in their background in the same sentence.
 
@@ -29,8 +29,12 @@ Produce:
 - summary: 2-3 sentences orienting them — where they're starting, where they're headed, and the shape of the path.
 - transferableStrengths: what they ALREADY bring that applies to the target. Anchor each to their actual background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
-- learningSequence: an ORDERED path (respect prerequisites — nothing before its foundation). For each step give a topic and a short "why this, why here" that ties it to their background and to the steps around it — the reasoning, not just the topic. Do NOT list resources — give only the topic and why; real resources are retrieved and selected in a later step. The path's length and depth follow DEPTH, and its emphasis follows PURPOSE (see the DEPTH & PURPOSE rules above).
-- firstTask: a real, scoped task they could plausibly finish in week one, reachable using only what the learning sequence covers. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
+- learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module has:
+  • topic: the skill it builds.
+  • why: a short "why this, why here" tying it to their background and to the modules around it — the reasoning, not just the topic.
+  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE they make — a memo, spreadsheet, model, chart, short write-up, working script, slide, annotated example, checklist, etc. Provide: title (the task), deliverable (what they end up with), timebox (realistic, e.g. "2–3 hours"), and 2–5 concrete steps to complete it.
+  Every module MUST end in such a task — the task is the point; the topic exists to enable it. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the skills/deliverables of the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
+- firstTask: the CAPSTONE — a real, scoped task like their actual week-one work, reachable using only what the modules above build. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
@@ -61,8 +65,19 @@ const SCHEMA = {
         properties: {
           topic: { type: "string" },
           why: { type: "string" },
+          task: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              title: { type: "string" },
+              deliverable: { type: "string" },
+              timebox: { type: "string" },
+              steps: { type: "array", items: { type: "string" } },
+            },
+            required: ["title", "deliverable", "timebox", "steps"],
+          },
         },
-        required: ["topic", "why"],
+        required: ["topic", "why", "task"],
       },
     },
     firstTask: {

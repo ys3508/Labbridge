@@ -19,6 +19,28 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [augmenting, setAugmenting] = useState(false);
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
+  const [done, setDone] = useState(() => new Set()); // completed module indices
+
+  // Progress persists locally so checkpoints survive a refresh (the continuity
+  // a one-shot chatbot can't give). Cross-session/account memory is a later step.
+  useEffect(() => {
+    if (!plan) return;
+    try {
+      const raw = localStorage.getItem(planKey(plan.learningSequence));
+      if (raw) setDone(new Set(JSON.parse(raw)));
+    } catch {}
+  }, [plan]);
+
+  const toggleDone = (i) => {
+    setDone((prev) => {
+      const next = new Set(prev);
+      next.has(i) ? next.delete(i) : next.add(i);
+      try {
+        localStorage.setItem(planKey(plan.learningSequence), JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  };
 
   const payload = buildPayload(form, isBeginner);
 
@@ -44,7 +66,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
     if (!plan) return;
     let alive = true;
     (async () => {
-      const topics = plan.learningSequence.map((s, i) => ({ index: i, topic: s.topic, why: s.why }));
+      const topics = plan.learningSequence.map((s, i) => ({ index: i, topic: s.topic, why: s.why, task: s.task }));
       if (!topics.length) {
         if (alive) setResourcesDone(true);
         return;
@@ -56,7 +78,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
       if (!alive) return;
       // Part C — select from the verified pools (grounded "why")
       const sel = await post("/api/select", {
-        topics: topics.map((t) => ({ index: t.index, topic: t.topic, why: t.why, pool: pools[t.index] || [] })),
+        topics: topics.map((t) => ({ index: t.index, topic: t.topic, why: t.why, task: t.task, pool: pools[t.index] || [] })),
         learner: {
           field: payload.background.field,
           skills: payload.background.skills,
@@ -180,30 +202,34 @@ export default function PlanView({ form, isBeginner, onBack }) {
         <PointList items={plan.knowledgeGaps} />
       </Card>
 
-      <Card title="Your learning path" subtitle="In order — each step builds on the last.">
-        <ol className="space-y-4">
-          {plan.learningSequence.map((s, i) => (
-            <li key={i} className="relative pl-8">
-              <span className="absolute left-0 top-0 flex h-6 w-6 items-center justify-center rounded-full bg-brand-500 text-xs font-semibold text-white">
-                {i + 1}
-              </span>
-              <div className="font-medium text-ink">{s.topic}</div>
-              <div className="mt-0.5 text-sm text-ink-soft">{s.why}</div>
-              <NodeResources resources={topicResources[i]} done={resourcesDone} />
-            </li>
+      <Card
+        title="Your course"
+        subtitle="Work through the modules in order — each ends in a task you complete. Check them off as you go; your progress is saved on this device."
+      >
+        <ProgressBar done={done.size} total={plan.learningSequence.length} />
+        <ol className="mt-4 space-y-3">
+          {plan.learningSequence.map((step, i) => (
+            <Module
+              key={i}
+              i={i}
+              step={step}
+              resources={topicResources[i]}
+              resourcesDone={resourcesDone}
+              isDone={done.has(i)}
+              onToggle={() => toggleDone(i)}
+            />
           ))}
         </ol>
       </Card>
 
       {augmenting && (
-        <p className="text-xs text-ink-faint">Adding official docs &amp; courses to each step…</p>
+        <p className="text-xs text-ink-faint">Adding official docs &amp; courses to the thin modules…</p>
       )}
 
       <Note>
-        <strong>Resources are retrieved and verified before they're picked</strong> — candidate books, papers, and
-        courses are resolved against Open Library, OpenAlex, or an official web page, and the plan selects from only
-        what's real. Every link opens the real source; a step with no vetted match is flagged honestly rather than
-        filled with a guess.
+        <strong>Resources are scoped to each task, not a reading list</strong> — every one is a real, verified source
+        (Open Library, OpenAlex, or an official page), narrowed to the exact part you need for that task. A module with
+        no listed resource is meant to be done hands-on.
       </Note>
 
       <Card title="Your first contribution" accent>
@@ -258,39 +284,117 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
 function NodeResources({ resources, done }) {
   if (!done) {
-    return <p className="mt-2 text-xs text-ink-faint">finding vetted resources…</p>;
+    return <p className="mt-2 text-xs text-ink-faint">finding resources for this task…</p>;
   }
   if (!resources?.length) {
     return (
       <p className="mt-2 text-xs italic text-ink-faint">
-        No vetted resource found for this step yet — flagged for review.
+        Hands-on module — no reading needed; learn it by doing the task.
       </p>
     );
   }
   return (
-    <ul className="mt-2 space-y-2">
-      {resources.map((r, k) => (
-        <li key={k} className="text-sm">
-          <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-            <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
-              {r.kind || "resource"}
-            </span>
-            <a
-              href={r.url}
-              target="_blank"
-              rel="noreferrer"
-              className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
-            >
-              {r.title}
-            </a>
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
-              ✓ {r.source}
-            </span>
-          </div>
-          {r.why && <div className="mt-0.5 text-xs text-ink-soft">{r.why}</div>}
-        </li>
-      ))}
-    </ul>
+    <div className="mt-2">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">For this task</p>
+      <ul className="mt-1 space-y-2">
+        {resources.map((r, k) => (
+          <li key={k} className="text-sm">
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
+                {r.kind || "resource"}
+              </span>
+              <a
+                href={r.url}
+                target="_blank"
+                rel="noreferrer"
+                className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
+              >
+                {r.title}
+              </a>
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                ✓ {r.source}
+              </span>
+            </div>
+            {(r.use || r.why) && <div className="mt-0.5 text-xs text-ink-soft">{r.use || r.why}</div>}
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+// Stable per-plan key so checkpoint progress survives a refresh.
+function planKey(seq) {
+  const s = (seq || []).map((x) => x.topic).join("|");
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+  return "lb_progress_" + (h >>> 0).toString(36);
+}
+
+function ProgressBar({ done, total }) {
+  const pct = total ? Math.round((done / total) * 100) : 0;
+  return (
+    <div>
+      <div className="flex items-center justify-between text-xs text-ink-soft">
+        <span>
+          {done} of {total} modules complete
+        </span>
+        <span>{pct}%</span>
+      </div>
+      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+        <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+      </div>
+    </div>
+  );
+}
+
+function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
+  const t = step.task || {};
+  return (
+    <li
+      className={`rounded-xl border p-4 transition ${
+        isDone ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white"
+      }`}
+    >
+      <div className="flex items-start gap-3">
+        <button
+          type="button"
+          onClick={onToggle}
+          aria-label={isDone ? "Mark not done" : "Mark done"}
+          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
+            isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint hover:border-brand-400"
+          }`}
+        >
+          {isDone ? "✓" : i + 1}
+        </button>
+        <div className="min-w-0 flex-1">
+          <div className={`font-medium ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>{step.topic}</div>
+          <div className="mt-0.5 text-sm text-ink-soft">{step.why}</div>
+          {t.title && (
+            <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your task</span>
+                {t.timebox && <span className="text-[10px] text-ink-faint">⏱ {t.timebox}</span>}
+              </div>
+              <div className="mt-1 text-sm font-medium text-ink">{t.title}</div>
+              {t.deliverable && (
+                <div className="mt-0.5 text-xs text-ink-soft">
+                  <span className="font-medium">Deliverable:</span> {t.deliverable}
+                </div>
+              )}
+              {t.steps?.length > 0 && (
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink">
+                  {t.steps.map((s, k) => (
+                    <li key={k}>{s}</li>
+                  ))}
+                </ol>
+              )}
+            </div>
+          )}
+          <NodeResources resources={resources} done={resourcesDone} />
+        </div>
+      </div>
+    </li>
   );
 }
 
