@@ -8,6 +8,10 @@ const SYSTEM = `You are the onboarding-plan generator for LabBridge. You take a 
 
 This must work for ANY field — tech, finance, law, medicine, design, anything.
 
+WHO YOU'RE WRITING FOR: a career-changer entering a field they don't yet know well — someone who often cannot reliably tell a good learning path from a bad one. Be the expert guide they can't be for themselves: be decisive about order, about what to learn now versus later, and about what to skip. Don't hand them options to weigh; make the call and explain why.
+
+THE JOB TO BE DONE: get them productive on a real team in days, not months. This is an onboarding plan anchored to their background and a concrete first task — NOT a generic reading list. Every step must earn its place against that bar and move them toward the first task; cut anything that doesn't.
+
 Produce:
 - summary: 2-3 sentences orienting them — where they're starting, where they're headed, and the shape of the path.
 - transferableStrengths: what they ALREADY bring that applies to the target. Anchor each to their actual background; don't invent. If the background is empty, say they're starting fresh and keep this short.
@@ -17,6 +21,10 @@ Produce:
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
+
+VOICE & HONESTY: Write in the person's own vocabulary where you can — translate unfamiliar target-field concepts into terms from their background. When you are not sure a step or resource truly applies to THIS person, say so plainly (e.g. "if you already know X, skip this") rather than asserting it. Flag uncertainty; never smooth over a gap with confident filler.
+
+DIVISION OF LABOR: You select, sequence, and explain — you are not a citation database. Only recommend resources you are genuinely confident are real and canonical. The system verifies every resource against real catalogs and drops fakes, so a few certain resources beat many plausible-but-uncertain ones — never pad a step to look complete.
 
 RESOURCE HONESTY (critical): prefer widely-known, real resources — canonical textbooks, official documentation, well-established courses or landmark papers. Describe them by title and kind. Do NOT fabricate precise citations, DOIs, or URLs, and do not invent obscure papers. When unsure, suggest a well-known general resource rather than a made-up specific one. The product marks these as unverified, so keep them plausible and real, not precise-but-fake.`;
 
@@ -77,6 +85,18 @@ const SCHEMA = {
   ],
 };
 
+const DEPTH_MEANING = {
+  landscape: "understand the landscape — orientation, not mastery (stop one rung up)",
+  functional: "get hands-on and functional — reach working competence",
+  deep: "go deep and specialize — climb to the top of the relevant chains",
+};
+const PURPOSE_MEANING = {
+  starting_role: "starting a role soon — favor the first real task and just-in-time depth",
+  interview: "prepping for an interview — favor breadth and likely-to-be-asked concepts",
+  career_move: "exploring a career move — favor durable foundations",
+  curious: "just curious — favor a fast, low-commitment taste",
+};
+
 function buildPrompt(p) {
   const b = p.background || {};
   const t = p.target || {};
@@ -88,6 +108,10 @@ function buildPrompt(p) {
   if (b.isBeginner) lines.push("They left background blank — treat as a beginner starting fresh.");
   if (b.field?.length) lines.push(`Field(s): ${b.field.join(", ")}`);
   if (b.skills?.length) lines.push(`Skills they have: ${b.skills.join(", ")}`);
+  if (b.skillEvidence?.length) {
+    lines.push("Where those skills come from (their own words — anchor strengths to these):");
+    b.skillEvidence.forEach((s) => lines.push(`- ${s.skill}: "${s.evidence}"`));
+  }
   if (b.resume?.trim()) lines.push(`Resume/bio:\n${b.resume.slice(0, 6000)}`);
 
   lines.push("\n## TARGET (where they're headed)");
@@ -116,8 +140,8 @@ function buildPrompt(p) {
   }
 
   lines.push("\n## GOALS");
-  lines.push(`Depth: ${g.depth || "functional"}`);
-  lines.push(`Purpose: ${g.purpose || "not specified"}`);
+  lines.push(`Depth: ${DEPTH_MEANING[g.depth] || g.depth || "functional"}`);
+  lines.push(`Purpose: ${PURPOSE_MEANING[g.purpose] || g.purpose || "not specified"}`);
 
   lines.push("\n## TIMELINE");
   if (tl.mode === "deadline") lines.push(`Has a deadline${tl.deadline ? `: ${tl.deadline}` : ""}.`);

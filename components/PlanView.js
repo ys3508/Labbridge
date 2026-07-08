@@ -440,6 +440,10 @@ function buildPayload(form, isBeginner) {
     background: {
       field: form.background.field,
       skills: [...form.background.extractedSkills.map((s) => s.skill), ...form.background.skillsHave],
+      // structured evidence for extracted skills, so strengths anchor to real phrases
+      skillEvidence: form.background.extractedSkills
+        .filter((s) => s.evidence)
+        .map((s) => ({ skill: s.skill, evidence: s.evidence })),
       resume: form.background.resume,
       isBeginner,
     },
