@@ -4,20 +4,27 @@ import { client, PLAN_MODEL } from "@/lib/ai";
 // AI synthesis, no grounded skill graph yet). Resources are model-suggested and
 // therefore UNVERIFIED — the UI labels them as such until real retrieval lands.
 
-const SYSTEM = `You are the onboarding-plan generator for LabBridge. You take a person's background, target, goals, and timeline and produce a personalized plan that turns "I'm new here" into "I can contribute."
+const SYSTEM = `You are designing an ENTERPRISE ONBOARDING PLAN for LabBridge — how a career-changer becomes a productive team member in a role and field they don't yet know well. This is CAREER TRANSITION + ENTERPRISE ONBOARDING, not a study syllabus, not a reading list, and not a set of answers a chatbot could give. You are designing how a new hire ramps into real work.
 
-This must work for ANY field — tech, finance, law, medicine, design, anything.
+This must work for ANY field — tech, finance, law, medicine, design, science, anything.
 
-WHO YOU'RE WRITING FOR: a career-changer entering a field they don't yet know well — someone who often cannot reliably tell a good learning path from a bad one. Be the expert guide they can't be for themselves: be decisive about order, about what to learn now versus later, and about what to skip. Don't hand them options to weigh; make the call and explain why.
+WHO YOU'RE WRITING FOR: someone who cannot yet tell a good path from a bad one. Be the expert guide they can't be for themselves — decisive about order, about now-versus-later, and about what to skip. Make the call and explain it; don't hand them options to weigh.
 
-THE JOB TO BE DONE: get them productive on a real team in days, not months. This is an INTERACTIVE TRAINING COURSE — a sequence of short, time-boxed tasks that each produce a real deliverable and build toward genuine contribution. It is NOT a reading list and NOT a set of answers they could get from a chatbot. The value is doing: every module ends in something they make. Every module must earn its place against that bar; cut anything that doesn't.
+THE SPINE — your output must:
+1. TRANSFERABLE SKILLS — name what they already bring AND what that lets them SKIP ("you already do X, so skip Y"). The value is eliminating redundant learning, not praise.
+2. JOB-CRITICAL GAPS ONLY — what actually stands between them and doing the role, not everything they don't know.
+3. MAP EACH GAP TO REAL WORK — tie every gap to an actual job responsibility (from the target/job posting when provided). A gap that maps to no real responsibility doesn't belong.
+4. MANAGER-ASSIGNED TASKS — turn each gap into a realistic on-the-job assignment that begins with a STAKEHOLDER REQUEST, with GIVEN inputs (named files, datasets, tickets) as a new hire actually receives them — never "go find/simulate your own data."
+5. DELIVERABLE + SUCCESS CRITERIA — each task produces a concrete deliverable with a checkable "done when…".
+6. STAGED READINESS ARC — the plan PROGRESSES from observing to owning, not a flat list of lessons. The FINAL readiness project is staged OBSERVE → ASSIST → OWN. Those stages are FIXED; their TIMING is DERIVED from the horizon (see HORIZON).
+7. INDEPENDENT CONTRIBUTION — end with the readiness project where they OWN a real piece of the work, reachable using ONLY what the plan covered. It lands at the END of the derived horizon.
 
 BRIDGE FROM THEIR WORLD: write so someone who has never worked in the target field can follow every line. Explain each gap and step in terms of what they ALREADY know — bridge from their world into the new one; never assume they can supply the missing context themselves. Don't use unexplained target-field jargon; if a term is essential, anchor it to something in their background in the same sentence.
 
-DEPTH & PURPOSE (these reshape the plan, not just its length):
+DEPTH & PURPOSE (these reshape the plan's SCOPE, not just its length):
 Depth — how far up each prerequisite chain to climb:
 - landscape → orientation only; stop one rung up. Fewer, shallower steps.
-- functional → working competence; enough to contribute. Moderate depth.
+- functional → working competence; enough to contribute. 3-4 TIGHT modules cut to what they touch FIRST — NOT a comprehensive course.
 - deep → specialize; climb to the top of the relevant chains.
 Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
 - starting_role → prioritize the first real task and just-in-time depth; front-load what they'll actually touch in week one.
@@ -25,23 +32,40 @@ Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
 - career_move → favor durable foundations that outlast one role.
 - curious → a short, low-commitment taste; keep it light and inviting.
 
-Produce:
-- summary: 2-3 sentences orienting them — where they're starting, where they're headed, and the shape of the path.
-- transferableStrengths: what they ALREADY bring that applies to the target. Anchor each to their actual background; don't invent. If the background is empty, say they're starting fresh and keep this short.
+PRODUCE THESE FIELDS (they realize the spine above):
+- hook: 2-3 sentences that LEAD WITH VALUE — how close they already are (what they bring covers the hard part) and what this path delivers to close the rest. This is the first thing they read; make it land. E.g. "You're most of the way there — your epidemiology training already covers the hard part of RWE. Here's the ~20% that gets you productive, and the path to close it." Not a neutral orientation; a reason to keep reading.
+- transferableStrengths: what they ALREADY bring — and, crucially, what that lets them SKIP. Frame each as an onboarding DECISION, not praise: "you already do X, so skip/skim Y in this plan." The value of onboarding is eliminating redundant learning, so name the thing to skip explicitly. Anchor each to their real background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
 - learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module has:
   • topic: the skill it builds.
   • why: a short "why this, why here" tying it to their background and to the modules around it — the reasoning, not just the topic.
-  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE. Provide: title, deliverable (what they end up with), timebox (realistic — the task must genuinely fit it), 2–5 concrete steps, and doneWhen (a checkable "you'll know it's right when…" — a clear definition of done, not a vibe).
+  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE. Provide: title, deliverable (what they end up with), timebox (realistic — the task must genuinely fit it), 2–5 concrete steps, doneWhen (a checkable "you'll know it's right when…" — a clear definition of done, not a vibe), and stakeholders (see below).
+  • stakeholders: who in the ORGANIZATION consumes this output and what each needs from it — one short line, e.g. "Medical Affairs: does it answer the clinical question? · Regulatory: is the method defensible?". Adapt the set to the target field (a PM's tasks are consumed by eng/design/leadership; an analyst's by the teams who act on the numbers). This situates the work inside a company, not a classroom.
   TASK QUALITY BAR (this is what makes it a course, not homework):
-  - REALISTIC, not schoolwork. The task should mirror the ACTUAL work of the target role — the kind of artifact someone in that seat really produces and would show a teammate — not a generic textbook exercise. When the target's real responsibilities are provided, build tasks directly on them. Prefer "produce the thing the job produces" over "practice the concept."
+  - REALISTIC — a work ASSIGNMENT, not schoolwork. Frame the task as a real on-the-job request that begins with a STAKEHOLDER ask (e.g. 'Your medical team says: "we need evidence on the long-term effectiveness of Drug A"') and ends in the artifact a new hire would actually hand their team — not a topic to study. When the target's real responsibilities are provided, build tasks directly on them. Prefer "produce the thing the job produces" over "practice the concept."
+  - GIVE them their inputs. On a real job you are HANDED your inputs — a dataset, a file, a ticket, a draft. Name a realistic given input ("You're given claims_extract.csv", "A ticket asks you to…") rather than telling them to go find, obtain, or simulate their own practice material. "Source your own dataset" is a schoolwork tell; kill it.
   - ONE COHERENT PROJECT. Wherever the domain allows, make the tasks a single running project that grows across the course — each module extends the PREVIOUS module's deliverable (clean the dataset you loaded → model it → present it), so the work accumulates toward the capstone instead of being disconnected exercises. When a task builds on an earlier one, say so in its first step ("Using the model you built in module 3, …").
+  - PREREQUISITES BUILT FIRST. Every skill a task needs must be built by an EARLIER module. If a task needs a foundation not yet covered (e.g. the data model before building a cohort), add a short module for it first — don't assume it. And don't BUNDLE distinct skills into one task: split creating vs. validating vs. interpreting into separate modules so each is actually taught, not assumed (e.g. build the score → check balance → interpret the estimate = three modules, not one).
   - ANCHORED. Frame the task in terms of what they already know where you can.
   Every module MUST end in such a task — the task is the point; the topic exists to enable it. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
-- firstTask: the CAPSTONE — the natural culmination of the running project, a real task like their actual week-one work, reachable using only what the modules above build (and, ideally, assembling their earlier deliverables). If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
-- timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
+- firstTask: the INDEPENDENT-CONTRIBUTION readiness project — NOT a week-one deliverable. It is the staged arc where they go from watching to owning, and it comes AFTER the modules (so it MAY assemble their earlier module deliverables — this is expected, not a bug). Give:
+  • title — name it as a readiness project / independent contribution, not "first task".
+  • why — one line on why owning this proves they're ramped.
+  • horizon — the DERIVED time window as a short human phrase (see HORIZON below), e.g. "~90 days", "your 3-week runway", "by <the deadline they gave>".
+  • horizonAssumed — true ONLY if you fell back to a goal-based default because the user gave no timeline; false if it came from their deadline or pace.
+  • phases — the staged arc as 3 items, each { stage, timing, goal }. stage ∈ "Observe" | "Assist" | "Own" (Own culminates in the independent contribution). timing = the DERIVED label for that phase (e.g. "Weeks 1-2", "Days 1-30", "by <deadline>") — sized to the horizon, NOT hard-coded to 30/60/90. goal = what they do in that phase (Observe = understand the workflow / reproduce an existing analysis; Assist = modify an existing one; Own = own a small piece end-to-end). If they gave a real ticket, fold it into the Own phase.
+- timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size. Reference a concrete date ONLY if one is in TIMELINE (see date rule below).
+
+HORIZON (derive it; never assume a fixed length):
+- DEADLINE given → the horizon IS that deadline. Compress or stretch the observe→assist→own phases to fit — a 3-week runway is a 3-week arc, not 90 days. Use TODAY'S DATE (given in the input) to size the phase labels.
+- else WEEKLY PACE given → horizon ≈ total plan effort ÷ that pace; size the phases from it.
+- else (open / self-paced) → a GOAL-BASED default, never a constant: curious/landscape → a short taste (days to ~2 weeks), NOT a long commitment arc; functional/starting a role → ~30-60-90 days; deep/career move → longer. Set horizonAssumed=true and say in the horizon phrase that it's an assumption they can change.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
+
+ROLE FIDELITY (critical): Refer to the target role EXACTLY as given (the "Target role" or the job-posting role). NEVER rename it to a broader or adjacent category — do not call a "Real World Evidence Analyst" a "Data Scientist," or a "Product Marketing Manager" a "Marketer." The role the user gave is the role; re-categorizing it makes them think you misunderstood them.
+
+DATE FIDELITY (critical): NEVER state or invent a concrete date or deadline unless one is explicitly given in TIMELINE. If no date was provided, speak only in relative terms (weeks, months, "your first 90 days") — do not name a month or year.
 
 VOICE & HONESTY: Write in the person's own vocabulary where you can — translate unfamiliar target-field concepts into terms from their background. When you are not sure a step or resource truly applies to THIS person, say so plainly (e.g. "if you already know X, skip this") rather than asserting it. Flag uncertainty; never smooth over a gap with confident filler.
 
@@ -58,7 +82,7 @@ const SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    summary: { type: "string" },
+    hook: { type: "string" },
     transferableStrengths: { type: "array", items: strengthItem },
     knowledgeGaps: { type: "array", items: strengthItem },
     learningSequence: {
@@ -78,8 +102,9 @@ const SCHEMA = {
               timebox: { type: "string" },
               steps: { type: "array", items: { type: "string" } },
               doneWhen: { type: "string" },
+              stakeholders: { type: "string" },
             },
-            required: ["title", "deliverable", "timebox", "steps", "doneWhen"],
+            required: ["title", "deliverable", "timebox", "steps", "doneWhen", "stakeholders"],
           },
         },
         required: ["topic", "why", "task"],
@@ -91,14 +116,28 @@ const SCHEMA = {
       properties: {
         title: { type: "string" },
         why: { type: "string" },
-        steps: { type: "array", items: { type: "string" } },
+        horizon: { type: "string" },
+        horizonAssumed: { type: "boolean" },
+        phases: {
+          type: "array",
+          items: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              stage: { type: "string" },
+              timing: { type: "string" },
+              goal: { type: "string" },
+            },
+            required: ["stage", "timing", "goal"],
+          },
+        },
       },
-      required: ["title", "why", "steps"],
+      required: ["title", "why", "horizon", "horizonAssumed", "phases"],
     },
     timelineNote: { type: "string" },
   },
   required: [
-    "summary",
+    "hook",
     "transferableStrengths",
     "knowledgeGaps",
     "learningSequence",
@@ -167,9 +206,10 @@ function buildPrompt(p) {
   lines.push(`Purpose: ${PURPOSE_MEANING[g.purpose] || g.purpose || "not specified"}`);
 
   lines.push("\n## TIMELINE");
-  if (tl.mode === "deadline") lines.push(`Has a deadline${tl.deadline ? `: ${tl.deadline}` : ""}.`);
-  else if (tl.mode === "pace") lines.push(`Self-paced at ~${tl.weeklyHrs || "?"} hrs/week.`);
-  else lines.push("No fixed deadline — self-paced.");
+  lines.push(`Today's date: ${new Date().toISOString().slice(0, 10)} (use this to size a deadline horizon).`);
+  if (tl.mode === "deadline") lines.push(`Has a deadline${tl.deadline ? `: ${tl.deadline}` : ""}. Derive the horizon FROM this deadline.`);
+  else if (tl.mode === "pace") lines.push(`Self-paced at ~${tl.weeklyHrs || "?"} hrs/week. Derive the horizon from plan effort ÷ this pace.`);
+  else lines.push("No fixed deadline — self-paced. Use a GOAL-BASED default horizon and mark it assumed.");
 
   lines.push("\nGenerate the onboarding plan.");
   return lines.join("\n");

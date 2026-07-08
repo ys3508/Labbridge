@@ -98,9 +98,10 @@ function backgroundText(bg) {
 }
 
 function timeWindow(tl) {
-  if (tl?.mode === "deadline") return tl.deadline ? `first week, toward a deadline of ${tl.deadline}` : "the first week";
-  if (tl?.mode === "pace") return `the first week, at ~${tl.weeklyHrs || "a few"} hours/week`;
-  return "the first week (self-paced)";
+  // The earliest readiness phase is ~the first 30 days on the job.
+  if (tl?.mode === "deadline") return tl.deadline ? `the first ~30 days, toward a deadline of ${tl.deadline}` : "the first ~30 days";
+  if (tl?.mode === "pace") return `the first ~30 days, at ~${tl.weeklyHrs || "a few"} hours/week`;
+  return "the first ~30 days (self-paced)";
 }
 
 export async function POST(request) {
@@ -121,10 +122,16 @@ export async function POST(request) {
     ...(background.skills || []),
     ...plan.learningSequence.map((s) => s.topic),
   ].join(", ");
-  const firstTaskText = `Title: ${plan.firstTask?.title || ""}\nWhy: ${plan.firstTask?.why || ""}\nSteps:\n- ${(plan.firstTask?.steps || []).join("\n- ")}`;
+  const phases = plan.firstTask?.phases || [];
+  const firstPhase = phases[0];
+  const phaseText = phases.map((p) => `${p.stage} (${p.timing}): ${p.goal}`).join("\n- ");
+  // The readiness project is a staged observe→assist→own arc; the NEAR-TERM check
+  // is the earliest phase (what they must reach first), not the "Own" culmination.
+  const firstTaskText = `Title: ${plan.firstTask?.title || ""}\nWhy: ${plan.firstTask?.why || ""}\nStaged phases:\n- ${phaseText}\n\nThe check below concerns only the EARLIEST phase${firstPhase ? ` ("${firstPhase.stage} (${firstPhase.timing}): ${firstPhase.goal}")` : ""} — later phases are expected to build on the modules and each other.`;
 
   const overteachPrompt = `INPUT A — Learner background (their own words + skills):\n${backgroundText(background)}\n\nINPUT B — Proposed plan (ordered topics the plan will TEACH):\n${planNodes}\n\nReport over-teaching only, per your rules.`;
-  const firstTaskPrompt = `INPUT A — First task, exactly as written to the learner:\n${firstTaskText}\n\nINPUT B — Skills available before the task (what they already had + what the plan covers):\n${coveredSkills}\n\nINPUT C — Time budget: ${timeWindow(timeline)}\n\nRun the three checks per your rules.`;
+  const earliestWindow = firstPhase?.timing ? `the earliest phase's window ("${firstPhase.timing}")` : timeWindow(timeline);
+  const firstTaskPrompt = `INPUT A — First task, exactly as written to the learner:\n${firstTaskText}\n\nINPUT B — Skills available before the task (what they already had + what the plan covers):\n${coveredSkills}\n\nINPUT C — Time budget: ${earliestWindow}\n\nRun the three checks per your rules.`;
 
   try {
     const [overteaching, firstTask] = await Promise.all([

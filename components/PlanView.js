@@ -161,8 +161,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const purposeLabel = PURPOSE_OPTIONS.find((p) => p.key === form.goals.purpose)?.label;
   const jf = payload.target.jobFields;
   const roleRaw = (form.headed.role || "").trim();
-  const roleName = (roleRaw && !looksLikeUrl(roleRaw) ? roleRaw : null) || jf?.role || null;
+  const roleBox = roleRaw && !looksLikeUrl(roleRaw) ? roleRaw : null;
+  // The header must match what the plan is actually built toward. TARGET GROUNDING
+  // prioritizes a read job posting, so a real extracted posting-role wins over a
+  // free-text box that may disagree with it; the box is the fallback.
+  const roleName = jf?.role || roleBox || null;
   const company = jf?.company || null;
+  // "from" side of the subline: their own background, verbatim (never re-categorized).
+  const fromLabel =
+    (payload.background.field || []).join(", ") ||
+    (payload.background.sector || []).join(", ") ||
+    "";
 
   return (
     <div className="fade-up space-y-6">
@@ -171,7 +180,12 @@ export default function PlanView({ form, isBeginner, onBack }) {
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
           {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
         </h1>
-        <p className="mt-2 text-ink-soft">{plan.summary}</p>
+        {roleName && fromLabel && (
+          <p className="mt-1 text-sm text-ink-faint">
+            {fromLabel} → {roleName}
+          </p>
+        )}
+        <p className="mt-3 text-lg leading-relaxed text-ink-soft">{plan.hook}</p>
         {(depthLabel || purposeLabel) && (
           <div className="mt-3 flex flex-wrap gap-2 text-xs">
             {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
@@ -194,17 +208,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
         </Note>
       )}
 
-      <Card title="What you already bring" accent>
-        <PointList items={plan.transferableStrengths} />
-      </Card>
-
-      <Card title="What's actually missing">
-        <PointList items={plan.knowledgeGaps} />
-      </Card>
-
+      {/* VALUE FIRST — the course is the center of gravity, featured right after the hook. */}
       <Card
-        title="Your course"
-        subtitle="Work through the modules in order — each ends in a task you complete. Check them off as you go; your progress is saved on this device."
+        title="Your onboarding course"
+        subtitle="Work through the modules in order — each is a real assignment you complete, not a lesson to read. Check them off as you go; your progress is saved on this device."
       >
         <ProgressBar done={done.size} total={plan.learningSequence.length} />
         <ol className="mt-4 space-y-3">
@@ -220,43 +227,50 @@ export default function PlanView({ form, isBeginner, onBack }) {
             />
           ))}
         </ol>
+        {augmenting && (
+          <p className="mt-3 text-xs text-ink-faint">Adding official docs &amp; courses to the thin modules…</p>
+        )}
+        <p className="mt-4 text-xs text-ink-faint">
+          Resources under each task are real, verified sources (Open Library, OpenAlex, or an official page), scoped to
+          the exact part you need. A task with none is meant to be done hands-on.
+        </p>
       </Card>
 
-      {augmenting && (
-        <p className="text-xs text-ink-faint">Adding official docs &amp; courses to the thin modules…</p>
-      )}
-
-      <Note>
-        <strong>Resources are scoped to each task, not a reading list</strong> — every one is a real, verified source
-        (Open Library, OpenAlex, or an official page), narrowed to the exact part you need for that task. A module with
-        no listed resource is meant to be done hands-on.
-      </Note>
-
-      <Card title="Your first contribution" accent>
-        <div className="font-medium text-ink">{plan.firstTask.title}</div>
-        <p className="mt-1 text-sm text-ink-soft">{plan.firstTask.why}</p>
-        {plan.firstTask.steps?.length > 0 && (
-          <ul className="mt-3 space-y-1.5">
-            {plan.firstTask.steps.map((step, i) => (
-              <li key={i} className="flex items-baseline gap-2 text-sm text-ink">
-                <span className="mt-1.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-brand-400" />
-                {step}
-              </li>
-            ))}
-          </ul>
-        )}
-        {!form.headed.realTask?.trim() && (
-          <p className="mt-3 text-xs text-ink-faint">
-            Illustrative — a representative first task. With a real ticket from your team, this becomes your actual one.
-          </p>
-        )}
-      </Card>
+      {/* The capstone — the culmination of the course, on a DERIVED horizon. */}
+      <ReadinessProject firstTask={plan.firstTask} hasRealTask={!!form.headed.realTask?.trim()} />
 
       {plan.timelineNote && (
         <p className="text-sm text-ink-soft">
           <span className="font-medium text-ink">Pace:</span> {plan.timelineNote}
         </p>
       )}
+
+      {/* VERIFICATION, DEFERRED — the reasoning and self-check are available, not front-and-center. */}
+      <Collapse
+        summary={`The reasoning — built on ${plan.transferableStrengths?.length || 0} transferable strength${
+          plan.transferableStrengths?.length === 1 ? "" : "s"
+        }, targeting ${plan.knowledgeGaps?.length || 0} job-critical gap${
+          plan.knowledgeGaps?.length === 1 ? "" : "s"
+        }`}
+        hint="why it picked these"
+      >
+        <div className="space-y-4">
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+              What you already bring — and can skip
+            </h3>
+            <div className="mt-2">
+              <PointList items={plan.transferableStrengths} />
+            </div>
+          </div>
+          <div>
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What's actually missing</h3>
+            <div className="mt-2">
+              <PointList items={plan.knowledgeGaps} />
+            </div>
+          </div>
+        </div>
+      </Collapse>
 
       <CheckReview check={check} checking={checking} />
 
@@ -397,6 +411,14 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                   </span>
                 </div>
               )}
+              {t.stakeholders && (
+                <div className="mt-2 flex items-baseline gap-1.5 text-xs text-ink-soft">
+                  <span>👥</span>
+                  <span>
+                    <span className="font-medium">Who consumes this:</span> {t.stakeholders}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <NodeResources resources={resources} done={resourcesDone} />
@@ -407,15 +429,11 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
 }
 
 function CheckReview({ check, checking }) {
+  // A quiet strip while the async check runs — never alarm the learner up front.
   if (!check) {
-    return (
-      <section className="rounded-2xl border border-slate-200 bg-white p-6">
-        <h2 className="text-sm font-semibold text-ink">Plan self-check</h2>
-        <p className="mt-2 text-sm text-ink-faint">
-          {checking ? "Reviewing for over-teaching and first-task gaps…" : "—"}
-        </p>
-      </section>
-    );
+    return checking ? (
+      <p className="px-1 text-xs text-ink-faint">Running a background self-check on the plan…</p>
+    ) : null;
   }
   const ot = check.overteaching || {};
   const ft = check.firstTask || {};
@@ -425,65 +443,138 @@ function CheckReview({ check, checking }) {
   const vague = ft.vague_points || [];
   const ftReview = ft.needs_review || [];
   const scope = (ft.scope_concern || "").trim();
-  const clean = !known.length && !otReview.length && !missing.length && !vague.length && !ftReview.length && !scope;
+
+  // Only GENUINE failures drive the visible signal; soft "maybe" flags live inside.
+  const failures = missing.length + (scope ? 1 : 0) + vague.length;
+  const soft = known.length + otReview.length + ftReview.length;
+  if (!failures && !soft) {
+    return <p className="px-1 text-xs text-emerald-700">✓ Plan self-check passed — no blocking gaps found.</p>;
+  }
+  const summary = failures
+    ? `⚠ Plan self-check — ${failures} point${failures === 1 ? "" : "s"} worth a look before you start`
+    : "Plan self-check — a few optional notes";
 
   return (
-    <section className="rounded-2xl border border-slate-200 bg-white p-6">
-      <h2 className="text-sm font-semibold text-ink">Plan self-check</h2>
-      <p className="mt-0.5 text-xs text-ink-soft">
-        An automated review compared the plan against your background and itself — it points, you decide.
-      </p>
-      {clean ? (
-        <p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
-          ✓ No over-teaching or missing prerequisites found.
-        </p>
-      ) : (
-        <div className="mt-3 space-y-3 text-sm">
-          {known.length > 0 && (
-            <Finding tone="amber" title="You may already know these — consider trimming:">
-              {known.map((k, i) => (
-                <li key={i}>
-                  <strong>{cleanTopic(k.node)}</strong> — <span className="text-ink-soft">{k.evidence}</span>
-                </li>
-              ))}
-            </Finding>
-          )}
-          {missing.length > 0 && (
-            <Finding tone="amber" title="The first task may need skills the plan didn't cover:">
-              {missing.map((m, i) => (
-                <li key={i}>
-                  <strong>{m.skill}</strong> — for “{m.task_part}”
-                </li>
-              ))}
-            </Finding>
-          )}
-          {scope && (
-            <Finding tone="amber" title="Scope concern:">
-              <li>{scope}</li>
-            </Finding>
-          )}
-          {vague.length > 0 && (
-            <Finding tone="slate" title="First task could be more concrete:">
-              {vague.map((v, i) => (
-                <li key={i}>{v}</li>
-              ))}
-            </Finding>
-          )}
-          {(otReview.length > 0 || ftReview.length > 0) && (
-            <Finding tone="slate" title="Worth a human glance:">
-              {otReview.map((r, i) => (
-                <li key={`o${i}`}>
-                  <strong>{cleanTopic(r.node)}</strong> — {r.reason}
-                </li>
-              ))}
-              {ftReview.map((r, i) => (
-                <li key={`f${i}`}>{r}</li>
-              ))}
-            </Finding>
-          )}
-        </div>
-      )}
+    <Collapse summary={summary} hint="details" defaultOpen={false}>
+      <div className="space-y-3 text-sm">
+        {missing.length > 0 && (
+          <Finding tone="amber" title="The readiness project may need skills the plan didn't cover:">
+            {missing.map((m, i) => (
+              <li key={i}>
+                <strong>{m.skill}</strong> — for “{m.task_part}”
+              </li>
+            ))}
+          </Finding>
+        )}
+        {scope && (
+          <Finding tone="amber" title="Scope concern:">
+            <li>{scope}</li>
+          </Finding>
+        )}
+        {vague.length > 0 && (
+          <Finding tone="slate" title="Could be more concrete:">
+            {vague.map((v, i) => (
+              <li key={i}>{v}</li>
+            ))}
+          </Finding>
+        )}
+        {known.length > 0 && (
+          <Finding tone="slate" title="You may already know these — consider trimming:">
+            {known.map((k, i) => (
+              <li key={i}>
+                <strong>{cleanTopic(k.node)}</strong> — <span className="text-ink-soft">{k.evidence}</span>
+              </li>
+            ))}
+          </Finding>
+        )}
+        {(otReview.length > 0 || ftReview.length > 0) && (
+          <Finding tone="slate" title="Worth a human glance:">
+            {otReview.map((r, i) => (
+              <li key={`o${i}`}>
+                <strong>{cleanTopic(r.node)}</strong> — {r.reason}
+              </li>
+            ))}
+            {ftReview.map((r, i) => (
+              <li key={`f${i}`}>{r}</li>
+            ))}
+          </Finding>
+        )}
+      </div>
+    </Collapse>
+  );
+}
+
+// A lightweight, default-collapsed drawer — used for verification surfaces
+// (the reasoning, the self-check) so the plan leads with value, not audit.
+function Collapse({ summary, hint, children, defaultOpen = false }) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center justify-between gap-3 px-6 py-4 text-left hover:bg-slate-50"
+      >
+        <span className="text-sm font-medium text-ink">{summary}</span>
+        <span className="flex shrink-0 items-center gap-2 text-xs text-ink-faint">
+          {hint && !open && <span className="hidden sm:inline">{hint}</span>}
+          <span className={`inline-block transition-transform ${open ? "rotate-180" : ""}`}>▾</span>
+        </span>
+      </button>
+      {open && <div className="border-t border-slate-100 px-6 py-5">{children}</div>}
     </section>
+  );
+}
+
+// The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
+function ReadinessProject({ firstTask, hasRealTask }) {
+  const ft = firstTask || {};
+  const phases = ft.phases || [];
+  return (
+    <Card title="Your independent contribution" accent>
+      <p className="text-xs text-ink-soft">
+        Readiness is staged — you go from watching the work to owning a piece of it. This is where the modules add up.
+      </p>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
+        <span className="font-medium text-ink">{ft.title}</span>
+        {ft.horizon && (
+          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+            {ft.horizon}
+          </span>
+        )}
+      </div>
+      {ft.why && <p className="mt-1 text-sm text-ink-soft">{ft.why}</p>}
+      {phases.length > 0 && (
+        <ol className="mt-3 space-y-2">
+          {phases.map((p, i) => (
+            <li
+              key={i}
+              className="flex flex-col gap-0.5 rounded-lg bg-slate-50 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
+            >
+              <span className="flex shrink-0 items-baseline gap-1.5">
+                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-200">
+                  {p.stage}
+                </span>
+                {p.timing && <span className="text-[11px] text-ink-faint">{p.timing}</span>}
+              </span>
+              <span className="text-sm text-ink">{p.goal}</span>
+            </li>
+          ))}
+        </ol>
+      )}
+      {ft.horizonAssumed && (
+        <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          We set this horizon as a default since you didn't give a timeline — go back and add a deadline or weekly pace
+          to fit it to your real runway.
+        </p>
+      )}
+      {!hasRealTask && (
+        <p className="mt-3 text-xs text-ink-faint">
+          Illustrative — a representative arc. With a real ticket from your team, the “Own” phase becomes your actual
+          one.
+        </p>
+      )}
+    </Card>
   );
 }
 

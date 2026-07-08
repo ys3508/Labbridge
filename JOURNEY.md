@@ -62,6 +62,26 @@ This was the turning point. The real product isn't a better set of links — it'
 **Q: "Tune the task quality further."**
 Raised the bar from homework to real work: the tasks now form **one coherent project** (load → clean → analyze → dashboard, each building on the last), mirror the **actual artifacts of the target role**, and each carries a **checkable "done when."**
 
+## Phase 8 — Making the course feel like a job, not a class
+
+**Q: "Here's a review of a real generated plan (MPH epidemiologist → pharma RWE analyst) — fix it."**
+A detailed, prioritized critique. Worked through it:
+- **The header lied.** It said "Toward Data Scientist" while the whole body was about RWE. Two fixes: the header now prefers a *read job posting's* role over a free-text box that disagrees with it, and the generator is now forbidden to re-categorize the stated role in prose (an "RWE Analyst" never becomes a "Data Scientist"). Same gate applied to dates — no inventing "August 2026" unless the user gave a deadline.
+- **Strengths should subtract, not praise.** "You already know X" became "you already know X, *so skip Y*" — the value of onboarding is eliminating redundant learning.
+- **Modules became assignments, not lessons.** Each task now starts from a stakeholder request ("your medical team asks…"), *hands* you named inputs ("you're given claims_extract.csv") instead of telling you to go find data, and names **who consumes the output** (Medical/Regulatory/Business).
+- **The capstone became a 30-60-90.** The old "first contribution" was a graduation project mislabeled as week-one work — and it referenced module outputs that didn't exist yet. Now it's a staged **90-day readiness project** (reproduce → modify → own), which comes *after* the modules, so the logic is coherent.
+- **Resources justify themselves.** Each pick now states the gap it closes, the exact part to read, and what to skip — a decision, not a bibliography.
+
+## Phase 9 — The reframe: from "AI learning-path" to "enterprise onboarding"
+
+**Q: "Here's a spec to reposition the whole thing as career-transition + enterprise onboarding, and re-architect the layout to lead with value."**
+The organizing frame the Phase-8 fixes were reaching toward. Two coupled changes:
+- **A new prompt spine.** The generator now designs "how a new hire becomes productive," on an explicit 7-step backbone: transferable skills (→ what to *skip*) → job-critical gaps only → map each gap to a real responsibility → manager-assigned tasks with given inputs → deliverable + success criteria → a staged **observe → assist → own** arc → an independent contribution at the end.
+- **The horizon is now DERIVED, not hard-coded.** The old "30-60-90" was a lie when someone had a 3-week runway. Now: a deadline *is* the horizon (phases compress to fit), a weekly pace derives one, and only an open-ended plan falls back to a goal-based default — shown as a correctable assumption, never silently asserted.
+- **Layout inverted to lead with value.** The page used to open with two long assessment lists and bury the course. Now: a value-first **hook** → the **course, featured** as the center of gravity → the **independent-contribution** capstone → and the assessment + self-check **collapsed** below as verification drawers ("expand to see the reasoning"). The self-check is now failures-only and quiet by default, not a wall of "cannot confirm" hedges.
+
+The principle: *lead with value, defer verification.* The course earns the spotlight because Phase 8 made each module a real assignment worth featuring.
+
 ---
 
 ## Where it stands
