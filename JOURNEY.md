@@ -1,0 +1,77 @@
+# LabBridge — Working Diary
+
+A running log of how this project got built: the questions raised, what was wrong, and how we fixed it. Read top to bottom as a story, or skim the bold lines.
+
+## How we worked
+
+A simple loop, repeated: **build a slice → test it like a real user → notice what's off → say it plainly → diagnose → fix → verify → commit.** Almost every good decision here started as a blunt observation ("this is awful," "I don't like that label," "why doesn't it warn me earlier?"). The product got sharp because the questions were honest, not because the first build was right.
+
+---
+
+## Phase 1 — Getting on the map
+
+**Q: "How do I connect this to GitHub?"**
+Set up git from scratch — SSH key, first commit, pushed to `ys3508/Labbridge`. Wrote a README from the product proposal so the repo explains itself.
+
+## Phase 2 — Reading the specs, then building the input page
+
+Read the design specs (background, where-you're-headed, goals, timeline) and asked the real question: *does the AI have enough to generate a plan?* Flagged the gaps early (where does the skill graph come from? is the first task real or illustrative?). Then built the 4-section input page + review screen in Next.js — with a **stubbed AI** so the interaction could be tested before spending on real calls. (Had to install Node locally first — the machine had none.)
+
+## Phase 3 — Making it actually understand people
+
+**Q: "I entered a finance background and the keywords are completely wrong."**
+The stub was a hand-written keyword list, biased toward life sciences — useless for finance/law/anything else. Swapped it for a **real Claude call** (server-side, key protected). Now it extracts from *any* field. Broadened the whole product past its life-science framing.
+
+**Q: "The field box only knows a few things; typing 'data' shows one option."**
+Added a comprehensive field pool, then a **type-ahead for the target role too**, plus **initials matching** ("cs" → Computer Science, "swe" → Software Engineer, "pm" → Product Manager).
+
+## Phase 4 — From an input form to a real plan
+
+**Q: "If I deploy this, can it actually generate onboarding materials?"**
+Honest answer: no — it only captured input. Two paths offered; picked **Option A (a quick AI-generated plan)** to see materials end-to-end, then **Option B (a grounded engine)** built in slices:
+- **Grounding** — every resource verified real against Open Library / OpenAlex, or an honest gap.
+- **Checkers** — an automated pass that flags over-teaching and unreachable first tasks.
+- **Web grounding** — courses/docs resolved to real official links.
+- **Hard grounding** — "verify-and-drop": never show an unverified resource; retry once for a real alternative.
+
+## Phase 5 — Reading job links honestly
+
+**Q: "I pasted a LinkedIn link, it failed to read it, but it only told me on the final page."**
+Two bugs. (1) Links weren't actually read — fixed with a server-side fetch that reads real postings and **honestly fails to a paste box** when a site blocks it (LinkedIn always will). (2) The failure surfaced too late — moved the warning to the **review step, before generating**, and made the button say "Build from background only." Also stopped the header ever showing a raw URL.
+
+## Phase 6 — Sharpening how we ask the model
+
+**Q: "Show me the exact prompt you send — don't clean it up."**
+Pasted it verbatim and reviewed it against a sharp checklist (who is this written for? what's the job to be done? does it invent things?). The biggest miss: it never told the model it's writing for a **career-changer who can't yet judge a good path**. Added that, plus per-gap "bridges from your world," and made depth/purpose reshape the plan. Then flipped resources to **retrieval-first**: retrieve and verify a real candidate pool, and the model only *selects and explains* — it can't invent.
+
+**Practical asides that shaped the build:**
+- **"Which version am I testing — local or Vercel?"** → Clarified: test on `localhost`; the money is the API calls, not the hosting; keep a public URL private + set a spend cap.
+- **"When I paste a resume I have to click out before anything happens."** → Made analysis fire instantly on paste; surfaced **Field and Sector** as their own categories.
+- **"I don't like 'Add material' — people will skip it. And 'No resume handy?' makes people skip the manual fields."** → Reframed labels so they invite input instead of causing skips ("Show us what you're aiming at"; "Add more by hand — even if you pasted a resume"). Made the target box accept a broad field *or* a specific role.
+
+## Phase 7 — The big pivot: reading list → interactive course
+
+**Q: "I tested it and the onboarding plan is awful. It's a reading list. My instinct was a personalized, interactive training course."**
+This was the turning point. The real product isn't a better set of links — it's **continuity**: tasks, checkpoints, progress. Rebuilt the generator so:
+- **Every module ends in a concrete, time-boxed task** that produces a deliverable (a script, a memo, a model), not "read about X."
+- **Resources are scoped to that task** — the exact chapter/section needed, or nothing if it's hands-on.
+- **The UI is a course** — module cards with the task, a "Done when" check, per-module checkboxes, and a **progress bar that saves on your device**.
+
+**Q: "Tune the task quality further."**
+Raised the bar from homework to real work: the tasks now form **one coherent project** (load → clean → analyze → dashboard, each building on the last), mirror the **actual artifacts of the target role**, and each carries a **checkable "done when."**
+
+---
+
+## Where it stands
+
+Input (real extraction, honest job-link reading) → a **task-driven course** whose resources are real and scoped, whose plan is self-checked, and whose progress you can track. It degrades to honesty, never to fiction.
+
+## What's still ahead
+
+- **Cross-session memory** — so the course *remembers* completed work and deliverables across visits (needs accounts + a backend). This is what makes it sticky.
+- **The skill graph** — make prerequisite *ordering* code-verified, not model-judged.
+- **Deploy** — ship a shareable link (rotate the key, set a spend cap first).
+
+## The one-line takeaway
+
+The product got good because it got tested honestly and the problems got named plainly. Keep doing that.
