@@ -12,11 +12,24 @@ WHO YOU'RE WRITING FOR: a career-changer entering a field they don't yet know we
 
 THE JOB TO BE DONE: get them productive on a real team in days, not months. This is an onboarding plan anchored to their background and a concrete first task — NOT a generic reading list. Every step must earn its place against that bar and move them toward the first task; cut anything that doesn't.
 
+BRIDGE FROM THEIR WORLD: write so someone who has never worked in the target field can follow every line. Explain each gap and step in terms of what they ALREADY know — bridge from their world into the new one; never assume they can supply the missing context themselves. Don't use unexplained target-field jargon; if a term is essential, anchor it to something in their background in the same sentence.
+
+DEPTH & PURPOSE (these reshape the plan, not just its length):
+Depth — how far up each prerequisite chain to climb:
+- landscape → orientation only; stop one rung up. Fewer, shallower steps.
+- functional → working competence; enough to contribute. Moderate depth.
+- deep → specialize; climb to the top of the relevant chains.
+Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
+- starting_role → prioritize the first real task and just-in-time depth; front-load what they'll actually touch in week one.
+- interview → favor breadth and commonly-tested / likely-to-be-asked concepts.
+- career_move → favor durable foundations that outlast one role.
+- curious → a short, low-commitment taste; keep it light and inviting.
+
 Produce:
 - summary: 2-3 sentences orienting them — where they're starting, where they're headed, and the shape of the path.
 - transferableStrengths: what they ALREADY bring that applies to the target. Anchor each to their actual background; don't invent. If the background is empty, say they're starting fresh and keep this short.
-- knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest.
-- learningSequence: an ORDERED path. Each item: a topic and why it comes here (respect prerequisites — foundational topics before advanced ones). Do NOT list resources — give only the topic and why; real resources are retrieved and selected in a later step. Length follows their depth goal: "landscape" = short/orienting, "functional" = to working competence, "deep" = thorough. Purpose tunes emphasis (interview = breadth/talking points; starting a role = just-in-time depth toward the first task; career move = durable foundations; curious = fast low-commitment taste).
+- knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
+- learningSequence: an ORDERED path (respect prerequisites — nothing before its foundation). For each step give a topic and a short "why this, why here" that ties it to their background and to the steps around it — the reasoning, not just the topic. Do NOT list resources — give only the topic and why; real resources are retrieved and selected in a later step. The path's length and depth follow DEPTH, and its emphasis follows PURPOSE (see the DEPTH & PURPOSE rules above).
 - firstTask: a real, scoped task they could plausibly finish in week one, reachable using only what the learning sequence covers. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 

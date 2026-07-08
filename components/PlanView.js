@@ -15,6 +15,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [showPayload, setShowPayload] = useState(false);
   const [topicResources, setTopicResources] = useState({}); // topicIndex -> [{title,url,source,kind,why}]
   const [resourcesDone, setResourcesDone] = useState(false);
+  const [augmenting, setAugmenting] = useState(false);
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
 
@@ -67,6 +68,27 @@ export default function PlanView({ form, isBeginner, onBack }) {
       if (alive) {
         setTopicResources(byIndex);
         setResourcesDone(true);
+      }
+
+      // Phase 2 — fill THIN steps (fewer than 2 catalog resources) with a
+      // web-verified official doc/course. Gated + non-blocking: web search is
+      // slow and costly, so it only fires for steps the catalog under-served,
+      // and only after the books already render.
+      if (!alive) return;
+      const thin = topics.filter((t) => (byIndex[t.index] || []).length < 2).slice(0, 4);
+      if (thin.length) {
+        setAugmenting(true);
+        const aug = await post("/api/augment-web", { topics: thin.map((t) => ({ index: t.index, topic: t.topic })) });
+        if (alive && aug?.augments?.length) {
+          setTopicResources((prev) => {
+            const next = { ...prev };
+            aug.augments.forEach((a) => {
+              if (a.resource) next[a.index] = [...(next[a.index] || []), a.resource].slice(0, 4);
+            });
+            return next;
+          });
+        }
+        if (alive) setAugmenting(false);
       }
     })();
     return () => {
@@ -170,6 +192,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
           ))}
         </ol>
       </Card>
+
+      {augmenting && (
+        <p className="text-xs text-ink-faint">Adding official docs &amp; courses to each step…</p>
+      )}
 
       <Note>
         <strong>Resources are retrieved and verified before they're picked</strong> — candidate books, papers, and
