@@ -2,6 +2,8 @@
 
 A running log of how this project got built: the questions raised, what was wrong, and how we fixed it. Read top to bottom as a story, or skim the bold lines.
 
+*Living document — updated as the work continues.*
+
 ## How we worked
 
 A simple loop, repeated: **build a slice → test it like a real user → notice what's off → say it plainly → diagnose → fix → verify → commit.** Almost every good decision here started as a blunt observation ("this is awful," "I don't like that label," "why doesn't it warn me earlier?"). The product got sharp because the questions were honest, not because the first build was right.
@@ -71,6 +73,30 @@ Input (real extraction, honest job-link reading) → a **task-driven course** wh
 - **Cross-session memory** — so the course *remembers* completed work and deliverables across visits (needs accounts + a backend). This is what makes it sticky.
 - **The skill graph** — make prerequisite *ordering* code-verified, not model-judged.
 - **Deploy** — ship a shareable link (rotate the key, set a spend cap first).
+
+## Architecture at a glance
+
+The flow, once you click **Build my plan**:
+
+```
+input  → /api/plan         structure only: strengths, gaps, task-modules, capstone
+       → /api/candidates   propose canonical titles → verify against catalogs
+       → /api/select       pick task-relevant resources, scoped to the exact section
+       → /api/augment-web   thin modules only: one official doc/course via web search
+       → /api/check         over-teaching + first-task-viability supervisors
+```
+
+**API routes** (all server-side; the API key never reaches the browser):
+`analyze` (resume → skills+evidence, field, sector) · `classify` (artifact type) · `read-link` (fetch/parse a job URL or honestly fail; extract fields) · `focus` (review-screen phrase) · `plan` (course structure) · `candidates` / `select` / `augment-web` (retrieval-first resources) · `check` (plan self-check).
+
+**Key files:**
+- `app/page.js` — input flow + form state
+- `components/` — `BackgroundSection`, `HeadedSection`, `GoalsSection`, `TimelineSection`, `ReviewScreen`, `PlanView`
+- `lib/ai.js` — Anthropic client + model constants (`MODEL` = Haiku for cheap calls, `PLAN_MODEL` = Opus for plan/select)
+- `lib/verify.js` — resource verification (Open Library, OpenAlex, web search)
+- `lib/constants.js` — pools, options, and the `WEB_AUGMENT` toggle
+
+**Knobs:** `WEB_AUGMENT = false` (in `lib/constants.js`) for fast/cheap runs · swap `MODEL`/`PLAN_MODEL` to trade cost vs. quality · `ANTHROPIC_API_KEY` lives in `.env.local` (gitignored).
 
 ## The one-line takeaway
 
