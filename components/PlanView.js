@@ -10,6 +10,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [showPayload, setShowPayload] = useState(false);
   const [ground, setGround] = useState({}); // "i-j" -> verification result
   const [grounding, setGrounding] = useState(false);
+  const [check, setCheck] = useState(null);
+  const [checking, setChecking] = useState(false);
 
   const payload = buildPayload(form, isBeginner);
 
@@ -63,6 +65,28 @@ export default function PlanView({ form, isBeginner, onBack }) {
     return () => {
       alive = false;
     };
+  }, [plan]);
+
+  // Run the plan checkers (over-teaching + first-task viability) in parallel.
+  useEffect(() => {
+    if (!plan) return;
+    let alive = true;
+    setChecking(true);
+    fetch("/api/check", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ plan, background: payload.background, timeline: payload.timeline }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (alive && !d.error) setCheck(d);
+      })
+      .catch(() => {})
+      .finally(() => alive && setChecking(false));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [plan]);
 
   if (error) {
@@ -179,6 +203,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
         </p>
       )}
 
+      <CheckReview check={check} checking={checking} />
+
       <div className="flex items-center justify-between border-t border-slate-200 pt-6">
         <button onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
           ← Back to edit
@@ -210,6 +236,104 @@ function Card({ title, subtitle, accent, children }) {
       {subtitle && <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>}
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function CheckReview({ check, checking }) {
+  if (!check) {
+    return (
+      <section className="rounded-2xl border border-slate-200 bg-white p-6">
+        <h2 className="text-sm font-semibold text-ink">Plan self-check</h2>
+        <p className="mt-2 text-sm text-ink-faint">
+          {checking ? "Reviewing for over-teaching and first-task gaps…" : "—"}
+        </p>
+      </section>
+    );
+  }
+  const ot = check.overteaching || {};
+  const ft = check.firstTask || {};
+  const known = ot.already_known || [];
+  const otReview = ot.needs_review || [];
+  const missing = ft.missing_prerequisites || [];
+  const vague = ft.vague_points || [];
+  const ftReview = ft.needs_review || [];
+  const scope = (ft.scope_concern || "").trim();
+  const clean =
+    !known.length && !otReview.length && !missing.length && !vague.length && !ftReview.length && !scope;
+
+  return (
+    <section className="rounded-2xl border border-slate-200 bg-white p-6">
+      <h2 className="text-sm font-semibold text-ink">Plan self-check</h2>
+      <p className="mt-0.5 text-xs text-ink-soft">
+        An automated review compared the plan against your background and itself — it points, you decide.
+      </p>
+      {clean ? (
+        <p className="mt-3 rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800">
+          ✓ No over-teaching or missing prerequisites found.
+        </p>
+      ) : (
+        <div className="mt-3 space-y-3 text-sm">
+          {known.length > 0 && (
+            <Finding tone="amber" title="You may already know these — consider trimming:">
+              {known.map((k, i) => (
+                <li key={i}>
+                  <strong>{cleanTopic(k.node)}</strong> — <span className="text-ink-soft">{k.evidence}</span>
+                </li>
+              ))}
+            </Finding>
+          )}
+          {missing.length > 0 && (
+            <Finding tone="amber" title="The first task may need skills the plan didn't cover:">
+              {missing.map((m, i) => (
+                <li key={i}>
+                  <strong>{m.skill}</strong> — for “{m.task_part}”
+                </li>
+              ))}
+            </Finding>
+          )}
+          {scope && (
+            <Finding tone="amber" title="Scope concern:">
+              <li>{scope}</li>
+            </Finding>
+          )}
+          {vague.length > 0 && (
+            <Finding tone="slate" title="First task could be more concrete:">
+              {vague.map((v, i) => (
+                <li key={i}>{v}</li>
+              ))}
+            </Finding>
+          )}
+          {(otReview.length > 0 || ftReview.length > 0) && (
+            <Finding tone="slate" title="Worth a human glance:">
+              {otReview.map((r, i) => (
+                <li key={`o${i}`}>
+                  <strong>{cleanTopic(r.node)}</strong> — {r.reason}
+                </li>
+              ))}
+              {ftReview.map((r, i) => (
+                <li key={`f${i}`}>{r}</li>
+              ))}
+            </Finding>
+          )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function cleanTopic(s) {
+  // checker echoes "Topic — why"; show just the topic
+  return (s || "").split(" — ")[0];
+}
+
+function Finding({ tone, title, children }) {
+  const bg = tone === "amber" ? "bg-amber-50" : "bg-slate-50";
+  const tc = tone === "amber" ? "text-amber-800" : "text-ink-soft";
+  return (
+    <div className={`rounded-xl ${bg} px-4 py-3`}>
+      <div className={`font-medium ${tc}`}>{title}</div>
+      <ul className="mt-1.5 list-disc space-y-1 pl-5 text-ink">{children}</ul>
+    </div>
   );
 }
 
