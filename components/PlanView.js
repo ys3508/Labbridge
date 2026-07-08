@@ -389,6 +389,14 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                   ))}
                 </ol>
               )}
+              {t.doneWhen && (
+                <div className="mt-2 flex items-baseline gap-1.5 text-xs text-emerald-700">
+                  <span>✓</span>
+                  <span>
+                    <span className="font-medium">Done when:</span> {t.doneWhen}
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <NodeResources resources={resources} done={resourcesDone} />

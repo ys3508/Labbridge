@@ -32,9 +32,13 @@ Produce:
 - learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module has:
   • topic: the skill it builds.
   • why: a short "why this, why here" tying it to their background and to the modules around it — the reasoning, not just the topic.
-  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE they make — a memo, spreadsheet, model, chart, short write-up, working script, slide, annotated example, checklist, etc. Provide: title (the task), deliverable (what they end up with), timebox (realistic, e.g. "2–3 hours"), and 2–5 concrete steps to complete it.
-  Every module MUST end in such a task — the task is the point; the topic exists to enable it. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the skills/deliverables of the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
-- firstTask: the CAPSTONE — a real, scoped task like their actual week-one work, reachable using only what the modules above build. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
+  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE. Provide: title, deliverable (what they end up with), timebox (realistic — the task must genuinely fit it), 2–5 concrete steps, and doneWhen (a checkable "you'll know it's right when…" — a clear definition of done, not a vibe).
+  TASK QUALITY BAR (this is what makes it a course, not homework):
+  - REALISTIC, not schoolwork. The task should mirror the ACTUAL work of the target role — the kind of artifact someone in that seat really produces and would show a teammate — not a generic textbook exercise. When the target's real responsibilities are provided, build tasks directly on them. Prefer "produce the thing the job produces" over "practice the concept."
+  - ONE COHERENT PROJECT. Wherever the domain allows, make the tasks a single running project that grows across the course — each module extends the PREVIOUS module's deliverable (clean the dataset you loaded → model it → present it), so the work accumulates toward the capstone instead of being disconnected exercises. When a task builds on an earlier one, say so in its first step ("Using the model you built in module 3, …").
+  - ANCHORED. Frame the task in terms of what they already know where you can.
+  Every module MUST end in such a task — the task is the point; the topic exists to enable it. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
+- firstTask: the CAPSTONE — the natural culmination of the running project, a real task like their actual week-one work, reachable using only what the modules above build (and, ideally, assembling their earlier deliverables). If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
@@ -73,8 +77,9 @@ const SCHEMA = {
               deliverable: { type: "string" },
               timebox: { type: "string" },
               steps: { type: "array", items: { type: "string" } },
+              doneWhen: { type: "string" },
             },
-            required: ["title", "deliverable", "timebox", "steps"],
+            required: ["title", "deliverable", "timebox", "steps", "doneWhen"],
           },
         },
         required: ["topic", "why", "task"],
