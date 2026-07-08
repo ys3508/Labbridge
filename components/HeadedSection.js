@@ -3,11 +3,11 @@
 import { useState } from "react";
 import { Section, Chip, Hint } from "./ui";
 import { ARTIFACT_TYPES, ARTIFACT_TYPE_LABEL } from "@/lib/constants";
-import { classifyArtifact, detectSource } from "@/lib/stubs";
+import { detectSource } from "@/lib/stubs";
 
 let nextId = 100;
 
-export default function HeadedSection({ value, onChange }) {
+export default function HeadedSection({ value, onChange, onClassify }) {
   const set = (patch) => onChange({ ...value, ...patch });
 
   const updateArtifact = (id, patch) =>
@@ -24,16 +24,25 @@ export default function HeadedSection({ value, onChange }) {
   const removeArtifact = (id) =>
     set({ artifacts: value.artifacts.filter((a) => a.id !== id) });
 
-  // Re-classify when the user finishes editing an item's text. Read the live
-  // value off the event (not a render-closure snapshot) so a fast paste-then-blur
-  // still classifies against what's actually in the box.
-  const onArtifactBlur = (id, text) => {
+  // When the user finishes editing an item: set link/text immediately (cheap,
+  // deterministic), then ask the AI to classify its type. onClassify applies the
+  // result via a guarded functional update — it won't override a manual pick.
+  const onArtifactBlur = async (id, text) => {
     if (!text.trim()) return;
+    updateArtifact(id, { source: detectSource(text) });
     const current = value.artifacts.find((a) => a.id === id);
-    updateArtifact(id, {
-      source: detectSource(text),
-      type: current?.touched ? current.type : classifyArtifact(text),
-    });
+    if (current?.touched) return; // user chose a type by hand — leave it
+    try {
+      const res = await fetch("/api/classify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text }),
+      });
+      const data = await res.json();
+      if (data?.type) onClassify(id, data.type);
+    } catch {
+      // classification is best-effort; the neutral default stands
+    }
   };
 
   return (

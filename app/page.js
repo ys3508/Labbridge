@@ -52,6 +52,19 @@ export default function Page() {
       goals: { ...f.goals, depth: f.goals.depth === "deep" ? "functional" : "landscape" },
     }));
 
+  // Apply an async AI classification result — functional + guarded so it can't
+  // clobber concurrent edits or override a type the user set by hand.
+  const classifyResult = (id, type) =>
+    setForm((f) => ({
+      ...f,
+      headed: {
+        ...f.headed,
+        artifacts: f.headed.artifacts.map((a) =>
+          a.id === id && !a.touched ? { ...a, type } : a
+        ),
+      },
+    }));
+
   const hideTimeline = form.goals.purpose === "curious";
 
   if (stage === "review") {
@@ -80,7 +93,7 @@ export default function Page() {
       <Hero />
       <div className="mt-8 space-y-5">
         <BackgroundSection value={form.background} onChange={setPart("background")} />
-        <HeadedSection value={form.headed} onChange={setPart("headed")} />
+        <HeadedSection value={form.headed} onChange={setPart("headed")} onClassify={classifyResult} />
         <GoalsSection
           value={form.goals}
           onChange={setPart("goals")}
@@ -137,7 +150,7 @@ function Hero() {
       </h1>
       <p className="mt-3 text-ink-soft">
         Tell us where you're starting and where you're headed. We interpret; you correct. Whatever your
-        background — engineer, MPH grad, clinician — this is for you.
+        background — engineer, analyst, clinician, designer — this is for you.
       </p>
     </header>
   );

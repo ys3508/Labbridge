@@ -1,11 +1,38 @@
 "use client";
 
+import { useEffect, useState } from "react";
 import { Note } from "./ui";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS } from "@/lib/constants";
 import { readMaterials } from "@/lib/stubs";
 
 export default function ReviewScreen({ form, isBeginner, onBack, onConfirm }) {
   const summary = readMaterials(form.headed.artifacts, form.headed.role, form.headed.instructions);
+
+  // The type -> role lines stay deterministic (above); the "focused mostly on"
+  // phrase comes from the AI. null = still loading, "" = none, string = value.
+  const [focus, setFocus] = useState(null);
+  useEffect(() => {
+    if (summary.empty) {
+      setFocus("");
+      return;
+    }
+    let alive = true;
+    const artifacts = form.headed.artifacts
+      .filter((a) => (a.text || "").trim())
+      .map((a) => ({ type: a.type, text: a.text }));
+    fetch("/api/focus", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ role: form.headed.role, instructions: form.headed.instructions, artifacts }),
+    })
+      .then((r) => r.json())
+      .then((d) => alive && setFocus(d.focus || ""))
+      .catch(() => alive && setFocus(""));
+    return () => {
+      alive = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   const depthLabel = DEPTH_OPTIONS.find((d) => d.key === form.goals.depth)?.label;
   const purposeLabel = PURPOSE_OPTIONS.find((p) => p.key === form.goals.purpose)?.label;
 
@@ -42,11 +69,13 @@ export default function ReviewScreen({ form, isBeginner, onBack, onConfirm }) {
                   </li>
                 ))}
               </ul>
-              {summary.focus && (
+              {focus === null ? (
+                <p className="mt-3 text-sm text-ink-faint">Reading your materials…</p>
+              ) : focus ? (
                 <p className="mt-3 text-sm text-ink-soft">
-                  Focused mostly on <strong className="text-ink">{summary.focus}</strong>.
+                  Focused mostly on <strong className="text-ink">{focus}</strong>.
                 </p>
-              )}
+              ) : null}
               {summary.instructions && (
                 <p className="mt-2 text-sm text-ink-soft">
                   Steering note we'll honor: <em>"{summary.instructions}"</em>

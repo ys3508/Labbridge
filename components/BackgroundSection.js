@@ -3,19 +3,20 @@
 import { useEffect, useRef, useState } from "react";
 import { Section, Chip, Hint, Note } from "./ui";
 import { FIELD_SUGGESTIONS, SKILL_SUGGESTIONS } from "@/lib/constants";
-import { analyzeResume } from "@/lib/stubs";
 
 export default function BackgroundSection({ value, onChange }) {
   const [analyzing, setAnalyzing] = useState(false);
+  const [error, setError] = useState(null);
   const [showFallback, setShowFallback] = useState(false);
   const [fieldDraft, setFieldDraft] = useState("");
   const [skillDraft, setSkillDraft] = useState("");
   const debounceRef = useRef(null);
   const lastAnalyzed = useRef("");
+  const reqIdRef = useRef(0);
 
   const set = (patch) => onChange({ ...value, ...patch });
 
-  // Live resume analysis — debounced ~800ms, cached on identical text.
+  // Live resume analysis — debounced ~800ms, real AI extraction via /api/analyze.
   useEffect(() => {
     const text = value.resume || "";
     if (text.trim() === lastAnalyzed.current) return;
@@ -23,19 +24,40 @@ export default function BackgroundSection({ value, onChange }) {
 
     if (text.trim().length < 12) {
       setAnalyzing(false);
+      setError(null);
       if (value.extractedSkills.length) set({ extractedSkills: [] });
       lastAnalyzed.current = text.trim();
       return;
     }
 
     setAnalyzing(true);
-    debounceRef.current = setTimeout(() => {
-      const { skills, field } = analyzeResume(text);
-      lastAnalyzed.current = text.trim();
-      setAnalyzing(false);
-      const patch = { extractedSkills: skills };
-      if (field && !value.field.includes(field)) patch.field = [...value.field, field];
-      set(patch);
+    setError(null);
+    const myReq = ++reqIdRef.current;
+    debounceRef.current = setTimeout(async () => {
+      try {
+        const res = await fetch("/api/analyze", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        const data = await res.json();
+        if (myReq !== reqIdRef.current) return; // superseded by a newer keystroke
+        setAnalyzing(false);
+        if (!res.ok || data.error) {
+          setError(data.error || "Analysis failed.");
+          return;
+        }
+        lastAnalyzed.current = text.trim();
+        const patch = { extractedSkills: data.skills || [] };
+        if (data.field && !value.field.includes(data.field)) {
+          patch.field = [...value.field, data.field];
+        }
+        set(patch);
+      } catch {
+        if (myReq !== reqIdRef.current) return;
+        setAnalyzing(false);
+        setError("Couldn't reach the analyzer — fill in your background manually below.");
+      }
     }, 800);
 
     return () => debounceRef.current && clearTimeout(debounceRef.current);
@@ -87,6 +109,12 @@ export default function BackgroundSection({ value, onChange }) {
         placeholder="Paste anything — a resume, a bio, a few lines about what you've done. We'll pull out skills as you type."
         className="w-full resize-y rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-ink placeholder:text-ink-faint focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
       />
+
+      {error && (
+        <div className="mt-3 fade-up">
+          <Note tone="warn">{error}</Note>
+        </div>
+      )}
 
       {value.extractedSkills.length > 0 && (
         <div className="mt-3 fade-up">
