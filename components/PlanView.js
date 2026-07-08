@@ -8,6 +8,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [plan, setPlan] = useState(null);
   const [error, setError] = useState(null);
   const [showPayload, setShowPayload] = useState(false);
+  const [ground, setGround] = useState({}); // "i-j" -> verification result
+  const [grounding, setGrounding] = useState(false);
 
   const payload = buildPayload(form, isBeginner);
 
@@ -31,6 +33,37 @@ export default function PlanView({ form, isBeginner, onBack }) {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Once the plan is in, verify its resources against real catalogs.
+  useEffect(() => {
+    if (!plan) return;
+    const flat = [];
+    plan.learningSequence.forEach((s, i) =>
+      (s.resources || []).forEach((r, j) => flat.push({ key: `${i}-${j}`, title: r.title, kind: r.kind }))
+    );
+    if (!flat.length) return;
+    let alive = true;
+    setGrounding(true);
+    fetch("/api/ground", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ resources: flat.map((f) => ({ title: f.title, kind: f.kind })) }),
+    })
+      .then((r) => r.json())
+      .then((d) => {
+        if (!alive) return;
+        const map = {};
+        (d.results || []).forEach((res, k) => {
+          if (flat[k]) map[flat[k].key] = res;
+        });
+        setGround(map);
+      })
+      .catch(() => {})
+      .finally(() => alive && setGrounding(false));
+    return () => {
+      alive = false;
+    };
+  }, [plan]);
 
   if (error) {
     return (
@@ -99,14 +132,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
               <div className="font-medium text-ink">{s.topic}</div>
               <div className="mt-0.5 text-sm text-ink-soft">{s.why}</div>
               {s.resources?.length > 0 && (
-                <ul className="mt-2 space-y-1">
+                <ul className="mt-2 space-y-1.5">
                   {s.resources.map((r, j) => (
-                    <li key={j} className="flex items-baseline gap-2 text-sm">
-                      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
-                        {r.kind}
-                      </span>
-                      <span className="text-ink">{r.title}</span>
-                    </li>
+                    <Resource key={j} r={r} g={ground[`${i}-${j}`]} grounding={grounding} />
                   ))}
                 </ul>
               )}
@@ -115,11 +143,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
         </ol>
       </Card>
 
-      {/* Resource disclaimer */}
-      <Note tone="warn">
-        <strong>Resources are unverified.</strong> These are AI-suggested starting points and may include imperfect or
-        out-of-date references. Grounding them in real, retrieved literature is the next build — treat them as a draft
-        reading list, not verified citations.
+      {/* Resource grounding legend */}
+      <Note>
+        <strong>Resources are checked against public catalogs</strong> — books via Open Library, papers via OpenAlex.
+        A <span className="font-medium text-emerald-700">✓ verified</span> tag links to a real record;{" "}
+        <span className="font-medium text-amber-700">unverified</span> means we couldn't find it; and courses or docs
+        aren't in these catalogs, so they're marked to double-check. Deeper grounding (retraction checks, more sources)
+        is still in progress.
       </Note>
 
       {/* First task */}
@@ -180,6 +210,46 @@ function Card({ title, subtitle, accent, children }) {
       {subtitle && <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>}
       <div className="mt-3">{children}</div>
     </section>
+  );
+}
+
+function Resource({ r, g, grounding }) {
+  const status = g?.status;
+  const linked = status === "verified" || status === "retracted";
+  return (
+    <li className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
+      <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
+        {r.kind}
+      </span>
+      {linked ? (
+        <a
+          href={g.url}
+          target="_blank"
+          rel="noreferrer"
+          className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
+        >
+          {r.title}
+        </a>
+      ) : (
+        <span className="text-ink">{r.title}</span>
+      )}
+      {!g && grounding && <span className="text-[10px] text-ink-faint">checking…</span>}
+      {status === "verified" && (
+        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+          ✓ verified · {g.source}
+          {g.year ? ` ${g.year}` : ""}
+        </span>
+      )}
+      {status === "retracted" && (
+        <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">⚠ retracted</span>
+      )}
+      {status === "uncheckable" && (
+        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-ink-faint">double-check</span>
+      )}
+      {status === "unverified" && (
+        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">unverified</span>
+      )}
+    </li>
   );
 }
 
