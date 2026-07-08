@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Note } from "./ui";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
+import { looksLikeUrl } from "@/lib/stubs";
 
 const post = (url, body) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -137,7 +138,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const depthLabel = DEPTH_OPTIONS.find((d) => d.key === form.goals.depth)?.label;
   const purposeLabel = PURPOSE_OPTIONS.find((p) => p.key === form.goals.purpose)?.label;
   const jf = payload.target.jobFields;
-  const roleName = (form.headed.role || "").trim() || jf?.role || null;
+  const roleRaw = (form.headed.role || "").trim();
+  const roleName = (roleRaw && !looksLikeUrl(roleRaw) ? roleRaw : null) || jf?.role || null;
   const company = jf?.company || null;
 
   return (
@@ -426,7 +428,9 @@ function buildPayload(form, isBeginner) {
   });
   const jobFields = arts.find((a) => a.jobFields && (a.jobFields.role || a.jobFields.company))?.jobFields || null;
   const unreadableLink = arts.some((a) => a.source === "link" && a.readStatus === "unreadable" && !a.posting);
-  const hasTarget = !!((form.headed.role || "").trim() || usable.length || (form.headed.realTask || "").trim());
+  // A raw URL in the role box is not a role — don't pass it as one or count it as a target.
+  const roleClean = looksLikeUrl(form.headed.role) ? "" : form.headed.role || "";
+  const hasTarget = !!(roleClean.trim() || usable.length || (form.headed.realTask || "").trim());
 
   return {
     background: {
@@ -440,7 +444,7 @@ function buildPayload(form, isBeginner) {
       isBeginner,
     },
     target: {
-      role: form.headed.role,
+      role: roleClean,
       artifacts: usable.map((a) => ({ type: a.type, text: (a.posting || a.text).slice(0, 8000) })),
       realTask: form.headed.realTask,
       instructions: form.headed.instructions,

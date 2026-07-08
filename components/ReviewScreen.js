@@ -3,10 +3,17 @@
 import { useEffect, useState } from "react";
 import { Note } from "./ui";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS } from "@/lib/constants";
-import { readMaterials } from "@/lib/stubs";
+import { readMaterials, looksLikeUrl } from "@/lib/stubs";
 
 export default function ReviewScreen({ form, isBeginner, onBack, onConfirm }) {
   const summary = readMaterials(form.headed.artifacts, form.headed.role, form.headed.instructions);
+
+  // Link problems the user must see BEFORE generating (not surprised by later).
+  const links = form.headed.artifacts.filter((a) => a.source === "link");
+  const unreadable = links.filter((a) => a.readStatus === "unreadable" && !a.posting);
+  const stillReading = links.some((a) => a.readStatus === "reading");
+  const roleIsUrl = looksLikeUrl(form.headed.role);
+  const linkProblem = unreadable.length > 0 || roleIsUrl;
 
   // The type -> role lines stay deterministic (above); the "focused mostly on"
   // phrase comes from the AI. null = still loading, "" = none, string = value.
@@ -45,6 +52,29 @@ export default function ReviewScreen({ form, isBeginner, onBack, onConfirm }) {
       <p className="mt-2 text-ink-soft">
         One glance. If it's right, keep going. If it's wrong, a tap or a sentence fixes it.
       </p>
+
+      {linkProblem && (
+        <div className="mt-5">
+          <Note tone="warn">
+            {roleIsUrl ? (
+              <>
+                <strong>That looks like a link in the “Target role” box.</strong> We can't read a link there. Go back,
+                put the job link in <strong>Add material</strong>, and if it can't be read, paste the job description
+                text. Otherwise this plan will ignore it.
+              </>
+            ) : (
+              <>
+                <strong>
+                  We couldn't read {unreadable.length === 1 ? "the job link you added" : "some links you added"}
+                </strong>{" "}
+                — many sites (LinkedIn, Indeed) block automated reading. As-is, this plan will be built from your
+                background only, <strong>not</strong> that posting. Go back and paste the job description text in
+                section 2 to target the real role and company — or continue with background only.
+              </>
+            )}
+          </Note>
+        </div>
+      )}
 
       <div className="mt-6 space-y-4">
         {/* Weighting summary */}
@@ -117,7 +147,7 @@ export default function ReviewScreen({ form, isBeginner, onBack, onConfirm }) {
           onClick={onConfirm}
           className="rounded-xl bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white shadow-sm hover:bg-brand-600"
         >
-          Looks right — build my plan
+          {linkProblem ? "Build from background only →" : "Looks right — build my plan"}
         </button>
       </div>
     </div>
