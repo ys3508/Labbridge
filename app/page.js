@@ -66,6 +66,16 @@ export default function Page() {
       },
     }));
 
+  // Generic race-safe artifact patch (used for link-reading results + paste fallback).
+  const patchArtifact = (id, patch) =>
+    setForm((f) => ({
+      ...f,
+      headed: {
+        ...f.headed,
+        artifacts: f.headed.artifacts.map((a) => (a.id === id ? { ...a, ...patch } : a)),
+      },
+    }));
+
   const hideTimeline = form.goals.purpose === "curious";
 
   if (stage === "review") {
@@ -94,7 +104,12 @@ export default function Page() {
       <Hero />
       <div className="mt-8 space-y-5">
         <BackgroundSection value={form.background} onChange={setPart("background")} />
-        <HeadedSection value={form.headed} onChange={setPart("headed")} onClassify={classifyResult} />
+        <HeadedSection
+          value={form.headed}
+          onChange={setPart("headed")}
+          onClassify={classifyResult}
+          onPatchArtifact={patchArtifact}
+        />
         <GoalsSection
           value={form.goals}
           onChange={setPart("goals")}

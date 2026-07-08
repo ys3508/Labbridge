@@ -6,8 +6,26 @@ import { detectSource } from "@/lib/stubs";
 
 let nextId = 100;
 
-export default function HeadedSection({ value, onChange, onClassify }) {
+export default function HeadedSection({ value, onChange, onClassify, onPatchArtifact }) {
   const set = (patch) => onChange({ ...value, ...patch });
+
+  // Read a link artifact for real (server-side). "Couldn't read it" is honest,
+  // not hidden — it opens a paste box rather than guessing from the URL.
+  const readLink = async (id, url) => {
+    onPatchArtifact(id, { readStatus: "reading", readUrl: url, reason: null });
+    try {
+      const res = await fetch("/api/read-link", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url }),
+      });
+      const data = await res.json();
+      if (data?.ok) onPatchArtifact(id, { readStatus: "ok", posting: data.text, jobFields: data.fields || null });
+      else onPatchArtifact(id, { readStatus: "unreadable", reason: data?.reason || "unknown" });
+    } catch {
+      onPatchArtifact(id, { readStatus: "unreadable", reason: "fetch_failed" });
+    }
+  };
 
   const updateArtifact = (id, patch) =>
     set({ artifacts: value.artifacts.map((a) => (a.id === id ? { ...a, ...patch } : a)) });
@@ -28,8 +46,11 @@ export default function HeadedSection({ value, onChange, onClassify }) {
   // result via a guarded functional update — it won't override a manual pick.
   const onArtifactBlur = async (id, text) => {
     if (!text.trim()) return;
-    updateArtifact(id, { source: detectSource(text) });
+    const src = detectSource(text);
+    updateArtifact(id, { source: src });
     const current = value.artifacts.find((a) => a.id === id);
+    // Read the link for real if it's a URL we haven't already read.
+    if (src === "link" && current?.readUrl !== text) readLink(id, text);
     if (current?.touched) return; // user chose a type by hand — leave it
     try {
       const res = await fetch("/api/classify", {
@@ -130,6 +151,38 @@ export default function HeadedSection({ value, onChange, onClassify }) {
                           {t.label}
                         </button>
                       ))}
+                    </div>
+                  )}
+
+                  {a.source === "link" && a.readStatus && (
+                    <div className="mt-2 text-xs fade-up">
+                      {a.readStatus === "reading" && <span className="text-ink-faint">🔗 reading link…</span>}
+                      {a.readStatus === "ok" && (
+                        <span className="rounded bg-emerald-50 px-1.5 py-0.5 font-medium text-emerald-700">
+                          ✓ read
+                          {a.jobFields?.role
+                            ? ` — ${a.jobFields.role}${a.jobFields.company ? ` at ${a.jobFields.company}` : ""}`
+                            : ""}
+                        </span>
+                      )}
+                      {a.readStatus === "unreadable" && (
+                        <div>
+                          <span className="rounded bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">
+                            Couldn't read this link
+                            {a.reason === "login_wall" ? " (the site blocks automated reading)" : ""}
+                          </span>
+                          <textarea
+                            defaultValue=""
+                            onBlur={(e) => {
+                              const v = e.target.value.trim();
+                              if (v) onPatchArtifact(a.id, { posting: v, readStatus: "ok" });
+                            }}
+                            rows={2}
+                            placeholder="Paste the job description text here and we'll use it."
+                            className="mt-2 w-full resize-y rounded-lg border border-amber-200 bg-white px-3 py-2 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
+                          />
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>

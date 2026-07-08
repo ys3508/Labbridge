@@ -142,13 +142,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   const depthLabel = DEPTH_OPTIONS.find((d) => d.key === form.goals.depth)?.label;
   const purposeLabel = PURPOSE_OPTIONS.find((p) => p.key === form.goals.purpose)?.label;
+  const jf = payload.target.jobFields;
+  const roleName = (form.headed.role || "").trim() || jf?.role || null;
+  const company = jf?.company || null;
 
   return (
     <div className="fade-up space-y-6">
       <header>
         <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding plan</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-          {form.headed.role ? `Toward ${form.headed.role}` : "Where you're headed"}
+          {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
         </h1>
         <p className="mt-2 text-ink-soft">{plan.summary}</p>
         {(depthLabel || purposeLabel) && (
@@ -162,6 +165,14 @@ export default function PlanView({ form, isBeginner, onBack }) {
       {isBeginner && (
         <Note>
           We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
+        </Note>
+      )}
+
+      {payload.target.unreadableLink && (
+        <Note tone="warn">
+          We couldn't read a job link you added — the site may block automated reading. This plan is built from your
+          background and any other materials, <strong>not</strong> that posting. Paste the job description text in
+          section 2 to target the exact role and company.
         </Note>
       )}
 
@@ -412,6 +423,19 @@ function PointList({ items }) {
 }
 
 function buildPayload(form, isBeginner) {
+  const arts = form.headed.artifacts;
+  // A link that couldn't be read (and wasn't pasted) told us NOTHING — it must
+  // not steer the plan. Everything else contributes its real content.
+  const usable = arts.filter((a) => {
+    const content = (a.posting || a.text || "").trim();
+    if (!content) return false;
+    if (a.source === "link" && a.readStatus === "unreadable" && !a.posting) return false;
+    return true;
+  });
+  const jobFields = arts.find((a) => a.jobFields && (a.jobFields.role || a.jobFields.company))?.jobFields || null;
+  const unreadableLink = arts.some((a) => a.source === "link" && a.readStatus === "unreadable" && !a.posting);
+  const hasTarget = !!((form.headed.role || "").trim() || usable.length || (form.headed.realTask || "").trim());
+
   return {
     background: {
       field: form.background.field,
@@ -421,11 +445,12 @@ function buildPayload(form, isBeginner) {
     },
     target: {
       role: form.headed.role,
-      artifacts: form.headed.artifacts
-        .filter((a) => (a.text || "").trim())
-        .map((a) => ({ type: a.type, text: a.text })),
+      artifacts: usable.map((a) => ({ type: a.type, text: (a.posting || a.text).slice(0, 8000) })),
       realTask: form.headed.realTask,
       instructions: form.headed.instructions,
+      jobFields,
+      unreadableLink,
+      hasTarget,
     },
     goals: { depth: form.goals.depth, purpose: form.goals.purpose },
     timeline: {

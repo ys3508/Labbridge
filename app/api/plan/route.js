@@ -16,6 +16,8 @@ Produce:
 - firstTask: a real, scoped task they could plausibly finish in week one, reachable using only what the learning sequence covers. If they supplied a real ticket, scope that; otherwise simulate a representative one. Give a title, why it's a good first task, and concrete steps.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size.
 
+TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
+
 RESOURCE HONESTY (critical): prefer widely-known, real resources — canonical textbooks, official documentation, well-established courses or landmark papers. Describe them by title and kind. Do NOT fabricate precise citations, DOIs, or URLs, and do not invent obscure papers. When unsure, suggest a well-known general resource rather than a made-up specific one. The product marks these as unverified, so keep them plausible and real, not precise-but-fake.`;
 
 const strengthItem = {
@@ -91,10 +93,27 @@ function buildPrompt(p) {
   lines.push("\n## TARGET (where they're headed)");
   if (t.role?.trim()) lines.push(`Target role: ${t.role}`);
   (t.artifacts || []).forEach((a, i) => {
-    if ((a?.text || "").trim()) lines.push(`Artifact ${i + 1} [${a.type}]: ${a.text.slice(0, 2000)}`);
+    if ((a?.text || "").trim()) lines.push(`Artifact ${i + 1} [${a.type}]: ${a.text.slice(0, 4000)}`);
   });
   if (t.realTask?.trim()) lines.push(`Real first task/ticket they provided: ${t.realTask.slice(0, 2000)}`);
   if (t.instructions?.trim()) lines.push(`Steering notes: ${t.instructions.slice(0, 1000)}`);
+
+  if (t.jobFields) {
+    const jf = t.jobFields;
+    const jl = [];
+    if (jf.company) jl.push(`Company: ${jf.company}`);
+    if (jf.role) jl.push(`Role: ${jf.role}`);
+    if (jf.sector) jl.push(`Sector: ${jf.sector}`);
+    if (jf.seniority) jl.push(`Seniority: ${jf.seniority}`);
+    if (jf.responsibilities?.length) jl.push(`Responsibilities: ${jf.responsibilities.join("; ")}`);
+    if (jf.requiredSkills?.length) jl.push(`Required skills: ${jf.requiredSkills.join("; ")}`);
+    if (jl.length) lines.push("\n## READ JOB POSTING — real extracted fields (name these specifically):\n" + jl.join("\n"));
+  }
+  if (!t.hasTarget) {
+    lines.push(
+      "\n## NOTE: No readable job posting or target was provided. Build from BACKGROUND ONLY — stay generic about the destination and explicitly invite the user to add a job description to target a specific role/company. Do NOT invent a company, role, sector, or responsibility."
+    );
+  }
 
   lines.push("\n## GOALS");
   lines.push(`Depth: ${g.depth || "functional"}`);
