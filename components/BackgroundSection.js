@@ -33,6 +33,10 @@ export default function BackgroundSection({ value, onChange }) {
     setAnalyzing(true);
     setError(null);
     const myReq = ++reqIdRef.current;
+    // A big jump in length is a paste (not typing) — analyze almost immediately
+    // so the keywords appear on their own, no need to click out of the box.
+    const delta = Math.abs(text.trim().length - lastAnalyzed.current.length);
+    const delay = delta > 40 ? 200 : 800;
     debounceRef.current = setTimeout(async () => {
       try {
         const res = await fetch("/api/analyze", {
@@ -52,13 +56,16 @@ export default function BackgroundSection({ value, onChange }) {
         if (data.field && !value.field.includes(data.field)) {
           patch.field = [...value.field, data.field];
         }
+        if (data.sector && !(value.sector || []).includes(data.sector)) {
+          patch.sector = [...(value.sector || []), data.sector];
+        }
         set(patch);
       } catch {
         if (myReq !== reqIdRef.current) return;
         setAnalyzing(false);
         setError("Couldn't reach the analyzer — fill in your background manually below.");
       }
-    }, 800);
+    }, delay);
 
     return () => debounceRef.current && clearTimeout(debounceRef.current);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -116,17 +123,29 @@ export default function BackgroundSection({ value, onChange }) {
       )}
 
       {value.extractedSkills.length > 0 && (
-        <div className="mt-3 fade-up">
+        <div className="mt-3 space-y-3 fade-up">
           <p className="text-xs font-medium uppercase tracking-wide text-ink-faint">
             What we picked up — edit freely
           </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {value.extractedSkills.map((s) => (
-              <Chip key={s.skill} tone="active" active onRemove={() => removeExtracted(s.skill)}>
-                {s.skill}
-              </Chip>
-            ))}
-          </div>
+          {value.field.length > 0 && (
+            <ChipGroup
+              label="Field"
+              items={value.field}
+              onRemove={(f) => set({ field: value.field.filter((x) => x !== f) })}
+            />
+          )}
+          {(value.sector || []).length > 0 && (
+            <ChipGroup
+              label="Sector"
+              items={value.sector}
+              onRemove={(s) => set({ sector: value.sector.filter((x) => x !== s) })}
+            />
+          )}
+          <ChipGroup
+            label="Skills"
+            items={value.extractedSkills.map((s) => s.skill)}
+            onRemove={removeExtracted}
+          />
           <Hint>A wrong read is a two-second fix — remove anything that isn't you.</Hint>
         </div>
       )}
@@ -221,5 +240,20 @@ export default function BackgroundSection({ value, onChange }) {
         </div>
       )}
     </Section>
+  );
+}
+
+function ChipGroup({ label, items, onRemove }) {
+  return (
+    <div>
+      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
+      <div className="mt-1.5 flex flex-wrap gap-2">
+        {items.map((it) => (
+          <Chip key={it} tone="active" active onRemove={() => onRemove(it)}>
+            {it}
+          </Chip>
+        ))}
+      </div>
+    </div>
   );
 }

@@ -10,9 +10,10 @@ Rules:
 - Extract ONLY skills genuinely evidenced in the text. Never invent a skill the text doesn't support. This is the most important rule — a wrong extraction poisons the plan.
 - Each skill is a short, plain-language, TRANSFERABLE strength (2-4 words): e.g. "financial modeling", "data analysis", "team leadership", "regulatory compliance", "clinical care", "contract negotiation", "user research". Prefer the transferable capability over a specific tool ("data analysis", not just "Excel").
 - For each skill, give a short evidence phrase quoted or closely paraphrased from the text showing where it came from.
-- Identify the person's primary field in 1-3 words (e.g. "Finance", "Corporate Law", "Software Engineering", "Public Health"). Empty string if genuinely unclear.
+- Identify the person's primary FIELD / discipline in 1-3 words (e.g. "Finance", "Corporate Law", "Software Engineering", "Public Health"). Empty string if genuinely unclear.
+- Also identify their SECTOR / industry in 1-3 words if evident (e.g. "Investment Banking", "Healthcare", "Higher Education", "Consumer Goods", "Government") — the industry they worked in, distinct from the field/discipline. Empty string if unclear.
 - Aim for 4-10 skills for a substantial resume; fewer if the text is thin. Deduplicate.
-- If the text is too short or contains no real professional signal, return empty field and an empty skills array.`;
+- If the text is too short or contains no real professional signal, return empty field, empty sector, and an empty skills array.`;
 
 const SCHEMA = {
   type: "object",
@@ -20,7 +21,11 @@ const SCHEMA = {
   properties: {
     field: {
       type: "string",
-      description: "Primary field in 1-3 words, or empty string if unclear.",
+      description: "Primary field / discipline in 1-3 words, or empty string if unclear.",
+    },
+    sector: {
+      type: "string",
+      description: "Industry / sector in 1-3 words, or empty string if unclear.",
     },
     skills: {
       type: "array",
@@ -36,7 +41,7 @@ const SCHEMA = {
       },
     },
   },
-  required: ["field", "skills"],
+  required: ["field", "sector", "skills"],
 };
 
 export async function POST(request) {
@@ -49,7 +54,7 @@ export async function POST(request) {
   }
 
   if (text.trim().length < 12) {
-    return Response.json({ field: "", skills: [] });
+    return Response.json({ field: "", sector: "", skills: [] });
   }
 
   if (!process.env.ANTHROPIC_API_KEY) {
@@ -78,7 +83,7 @@ export async function POST(request) {
     });
 
     const block = message.content.find((b) => b.type === "text");
-    if (!block) return Response.json({ field: "", skills: [] });
+    if (!block) return Response.json({ field: "", sector: "", skills: [] });
 
     const parsed = JSON.parse(block.text);
     // Normalize + de-dupe defensively.
@@ -87,7 +92,7 @@ export async function POST(request) {
       .filter((s) => s && s.skill && !seen.has(s.skill.toLowerCase()) && seen.add(s.skill.toLowerCase()))
       .map((s) => ({ skill: String(s.skill), evidence: String(s.evidence || "") }));
 
-    return Response.json({ field: String(parsed.field || ""), skills });
+    return Response.json({ field: String(parsed.field || ""), sector: String(parsed.sector || ""), skills });
   } catch (err) {
     const status = err?.status;
     if (status === 401) {

@@ -109,6 +109,7 @@ function buildPrompt(p) {
   lines.push("## BACKGROUND (where they're starting)");
   if (b.isBeginner) lines.push("They left background blank — treat as a beginner starting fresh.");
   if (b.field?.length) lines.push(`Field(s): ${b.field.join(", ")}`);
+  if (b.sector?.length) lines.push(`Sector(s) they come from: ${b.sector.join(", ")}`);
   if (b.skills?.length) lines.push(`Skills they have: ${b.skills.join(", ")}`);
   if (b.skillEvidence?.length) {
     lines.push("Where those skills come from (their own words — anchor strengths to these):");

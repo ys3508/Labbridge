@@ -11,7 +11,7 @@ import { Note } from "@/components/ui";
 import { inferGoals, detectDeadline } from "@/lib/stubs";
 
 const INITIAL = {
-  background: { resume: "", extractedSkills: [], field: [], skillsHave: [] },
+  background: { resume: "", extractedSkills: [], field: [], sector: [], skillsHave: [] },
   headed: {
     role: "",
     artifacts: [{ id: 1, text: "", source: "text", type: "description", touched: false }],

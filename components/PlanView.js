@@ -435,6 +435,7 @@ function buildPayload(form, isBeginner) {
   return {
     background: {
       field: form.background.field,
+      sector: form.background.sector || [],
       skills: [...form.background.extractedSkills.map((s) => s.skill), ...form.background.skillsHave],
       // structured evidence for extracted skills, so strengths anchor to real phrases
       skillEvidence: form.background.extractedSkills
