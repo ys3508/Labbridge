@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Note } from "./ui";
-import { DEPTH_OPTIONS, PURPOSE_OPTIONS } from "@/lib/constants";
+import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 
 const post = (url, body) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -76,7 +76,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
       // and only after the books already render.
       if (!alive) return;
       const thin = topics.filter((t) => (byIndex[t.index] || []).length < 2).slice(0, 4);
-      if (thin.length) {
+      if (WEB_AUGMENT && thin.length) {
         setAugmenting(true);
         const aug = await post("/api/augment-web", { topics: thin.map((t) => ({ index: t.index, topic: t.topic })) });
         if (alive && aug?.augments?.length) {
