@@ -10,6 +10,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [showPayload, setShowPayload] = useState(false);
   const [ground, setGround] = useState({}); // "i-j" -> verification result
   const [grounding, setGrounding] = useState(false);
+  const [webGrounding, setWebGrounding] = useState(false);
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
 
@@ -59,6 +60,36 @@ export default function PlanView({ form, isBeginner, onBack }) {
           if (flat[k]) map[flat[k].key] = res;
         });
         setGround(map);
+
+        // Web-ground the items catalogs can't cover (courses, docs).
+        const web = [];
+        (d.results || []).forEach((res, k) => {
+          if (res?.status === "uncheckable" && flat[k]) {
+            web.push({ key: flat[k].key, title: flat[k].title, kind: flat[k].kind });
+          }
+        });
+        if (!web.length) return;
+        setWebGrounding(true);
+        fetch("/api/ground-web", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ items: web.map((w) => ({ title: w.title, kind: w.kind })) }),
+        })
+          .then((r) => r.json())
+          .then((wd) => {
+            if (!alive) return;
+            setGround((prev) => {
+              const next = { ...prev };
+              (wd.results || []).forEach((rr) => {
+                if (rr.url && web[rr.index]) {
+                  next[web[rr.index].key] = { status: "web_verified", url: rr.url, source: "Web" };
+                }
+              });
+              return next;
+            });
+          })
+          .catch(() => {})
+          .finally(() => alive && setWebGrounding(false));
       })
       .catch(() => {})
       .finally(() => alive && setGrounding(false));
@@ -158,7 +189,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
               {s.resources?.length > 0 && (
                 <ul className="mt-2 space-y-1.5">
                   {s.resources.map((r, j) => (
-                    <Resource key={j} r={r} g={ground[`${i}-${j}`]} grounding={grounding} />
+                    <Resource
+                      key={j}
+                      r={r}
+                      g={ground[`${i}-${j}`]}
+                      grounding={grounding}
+                      webGrounding={webGrounding}
+                    />
                   ))}
                 </ul>
               )}
@@ -169,11 +206,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
       {/* Resource grounding legend */}
       <Note>
-        <strong>Resources are checked against public catalogs</strong> — books via Open Library, papers via OpenAlex.
-        A <span className="font-medium text-emerald-700">✓ verified</span> tag links to a real record;{" "}
-        <span className="font-medium text-amber-700">unverified</span> means we couldn't find it; and courses or docs
-        aren't in these catalogs, so they're marked to double-check. Deeper grounding (retraction checks, more sources)
-        is still in progress.
+        <strong>Resources are grounded in real sources</strong> — books via Open Library, papers via OpenAlex, and
+        courses/docs via web search. A{" "}
+        <span className="font-medium text-emerald-700">✓ verified / official link</span> opens the real source;{" "}
+        <span className="font-medium text-amber-700">unverified</span> means we couldn't confirm it — treat those with
+        caution.
       </Note>
 
       {/* First task */}
@@ -337,9 +374,9 @@ function Finding({ tone, title, children }) {
   );
 }
 
-function Resource({ r, g, grounding }) {
+function Resource({ r, g, grounding, webGrounding }) {
   const status = g?.status;
-  const linked = status === "verified" || status === "retracted";
+  const linked = status === "verified" || status === "retracted" || status === "web_verified";
   return (
     <li className="flex flex-wrap items-baseline gap-x-2 gap-y-1 text-sm">
       <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
@@ -364,12 +401,20 @@ function Resource({ r, g, grounding }) {
           {g.year ? ` ${g.year}` : ""}
         </span>
       )}
+      {status === "web_verified" && (
+        <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+          ✓ official link
+        </span>
+      )}
       {status === "retracted" && (
         <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">⚠ retracted</span>
       )}
-      {status === "uncheckable" && (
-        <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-ink-faint">double-check</span>
-      )}
+      {status === "uncheckable" &&
+        (webGrounding ? (
+          <span className="text-[10px] text-ink-faint">finding link…</span>
+        ) : (
+          <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] text-ink-faint">double-check</span>
+        ))}
       {status === "unverified" && (
         <span className="rounded bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-700">unverified</span>
       )}
