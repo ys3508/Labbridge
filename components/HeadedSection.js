@@ -1,8 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import { Section, Chip, Hint } from "./ui";
-import { ARTIFACT_TYPES, ARTIFACT_TYPE_LABEL } from "@/lib/constants";
+import { ARTIFACT_TYPES, ARTIFACT_TYPE_LABEL, ROLE_POOL, ROLE_ALIASES, poolMatches } from "@/lib/constants";
 import { detectSource } from "@/lib/stubs";
 
 let nextId = 100;
@@ -45,22 +44,50 @@ export default function HeadedSection({ value, onChange, onClassify }) {
     }
   };
 
+  // Role type-ahead: matches on prefix / initials / substring, hidden once the
+  // value is already exactly the single remaining match (i.e. it's been picked).
+  const roleRaw = poolMatches(ROLE_POOL, value.role, { aliases: ROLE_ALIASES });
+  const roleMatches =
+    roleRaw.length === 1 && roleRaw[0].toLowerCase() === (value.role || "").trim().toLowerCase()
+      ? []
+      : roleRaw;
+
   return (
     <Section
       number={2}
       title="Where you're headed"
       subtitle="Hand us the raw material — a job post, a repo, a company page, or just a sentence. We'll read it; you don't have to label it."
     >
-      {/* Optional role */}
+      {/* Optional role — with type-ahead over a broad role pool */}
       <label className="mb-1.5 block text-sm font-medium text-ink">
         Target role <span className="font-normal text-ink-faint">— optional, but the fastest signal if you know it</span>
       </label>
-      <input
-        value={value.role}
-        onChange={(e) => set({ role: e.target.value })}
-        placeholder="e.g. Computational Biologist"
-        className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
-      />
+      <div className="relative">
+        <input
+          value={value.role}
+          onChange={(e) => set({ role: e.target.value })}
+          placeholder="e.g. Computational Biologist — or type initials (SWE, PM, RN)"
+          className="w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm focus:border-brand-400 focus:outline-none focus:ring-1 focus:ring-brand-300"
+        />
+        {roleMatches.length > 0 && (
+          <div className="absolute z-10 mt-1 w-full overflow-hidden rounded-xl border border-slate-200 bg-white shadow-lg">
+            {roleMatches.map((r) => (
+              <button
+                key={r}
+                type="button"
+                onMouseDown={(e) => {
+                  e.preventDefault();
+                  set({ role: r });
+                  setRoleFocus(false);
+                }}
+                className="block w-full px-4 py-2 text-left text-sm hover:bg-brand-50"
+              >
+                {r}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Unified artifact list */}
       <div className="mt-6">

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Section, Chip, Hint, Note } from "./ui";
-import { FIELD_SUGGESTIONS, FIELD_POOL, SKILL_SUGGESTIONS } from "@/lib/constants";
+import { FIELD_SUGGESTIONS, FIELD_POOL, FIELD_ALIASES, SKILL_SUGGESTIONS, poolMatches } from "@/lib/constants";
 
 export default function BackgroundSection({ value, onChange }) {
   const [analyzing, setAnalyzing] = useState(false);
@@ -83,15 +83,10 @@ export default function BackgroundSection({ value, onChange }) {
     setSkillDraft("");
   };
 
-  const q = fieldDraft.trim().toLowerCase();
-  const fieldMatches = q
-    ? FIELD_POOL.filter((f) => f.toLowerCase().includes(q) && !value.field.includes(f))
-        .sort(
-          (a, b) =>
-            (a.toLowerCase().startsWith(q) ? 0 : 1) - (b.toLowerCase().startsWith(q) ? 0 : 1)
-        )
-        .slice(0, 8)
-    : [];
+  const fieldMatches = poolMatches(FIELD_POOL, fieldDraft, {
+    exclude: value.field,
+    aliases: FIELD_ALIASES,
+  });
 
   return (
     <Section
