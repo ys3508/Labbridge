@@ -51,7 +51,7 @@ is what keeps well-meaning edits from becoming merge conflicts.
 
 ### Codex — start here (low collision, high value)
 
-- [ ] **Static module-quality checker** (`lib/moduleCheck.js`, pure JS, no AI).
+- [x] **Static module-quality checker** (`lib/moduleCheck.js`, pure JS, no AI).
       Per module, flag: `concept.explanation` < ~500 chars; `workedExample.setup`
       < ~120 chars; `task.givenInputs.length < 1`; `task.managerRequest` missing a
       stakeholder-like phrase; `selfCheck.criteria.length < 3`; `task.steps.length
@@ -64,7 +64,9 @@ is what keeps well-meaning edits from becoming merge conflicts.
       `golden-growth-equity-input.json`, `golden-beginner-input.json`) — the exact
       `payload` shape `/api/plan` receives (see `buildPayload` in
       `components/PlanView.js`). Used to re-test header/role/deadline fidelity,
-      module richness, no fake resources, no "go find a dataset".
+      module richness, no fake resources, no "go find a dataset". RWE fixture is
+      started in `fixtures/golden-rwe-input.json`; growth-equity and beginner
+      fixtures still need adding.
 - [ ] **Grounding hardening** — occasional catalog title-match lands on an
       adjacent record; tighten `overlap()` / verification in `lib/verify.js`.
 

@@ -1,0 +1,76 @@
+{
+  "background": {
+    "field": ["Public Health", "Epidemiology"],
+    "sector": ["County health department"],
+    "skills": [
+      "study design",
+      "bias/confounding",
+      "cohort definitions",
+      "descriptive statistics",
+      "stakeholder memos",
+      "Excel",
+      "R",
+      "basic SQL"
+    ],
+    "skillEvidence": [
+      {
+        "skill": "cohort definitions",
+        "evidence": "comfortable with study design basics, bias/confounding, cohort definitions"
+      },
+      {
+        "skill": "stakeholder memos",
+        "evidence": "wrote short reports for program managers"
+      },
+      {
+        "skill": "messy health data",
+        "evidence": "combined clinic appointment data with census tract demographics"
+      }
+    ],
+    "resume": "I have 3 years of experience in public health and epidemiology. I worked on a county health department analytics team where I cleaned survey and registry data, summarized trends, and wrote short reports for program managers.\n\nI am comfortable with study design basics, bias/confounding, cohort definitions, descriptive statistics, and explaining findings to non-technical stakeholders. I have used Excel, R, and basic SQL, but I have not worked inside a pharmaceutical company or with insurance claims data.\n\nOne project I led was a vaccination access analysis. I combined clinic appointment data with census tract demographics, identified areas with low access, and wrote a memo recommending outreach priorities. I am good at turning messy health data into a practical recommendation, but I do not know the pharma/RWE workflow, coding systems, or how evidence is used by medical affairs or regulatory teams.",
+    "isBeginner": false
+  },
+  "target": {
+    "role": "Real World Evidence Analyst",
+    "artifacts": [
+      {
+        "type": "job_posting",
+        "text": "Role: Real World Evidence Analyst\nCompany: Meridian Therapeutics\nSector: Biopharma / Medical Affairs\n\nAbout the role:\nMeridian Therapeutics is hiring a Real World Evidence Analyst to support observational research projects using claims data, electronic health records, and registry datasets. The analyst will help define patient cohorts, translate clinical questions into analyzable variables, produce descriptive analyses, and prepare evidence summaries for medical affairs, HEOR, and cross-functional teams.\n\nResponsibilities:\n- Support development of real-world evidence studies using claims, EHR, and registry data\n- Translate clinical questions into cohort definitions, index dates, inclusion/exclusion criteria, outcomes, and covariates\n- Work with diagnosis, procedure, medication, and lab codes to identify patient populations and events\n- Run descriptive analyses and summarize patient characteristics, treatment patterns, and outcomes\n- Document assumptions, limitations, and data-quality concerns clearly\n- Create concise evidence summaries for medical affairs, HEOR, and internal stakeholders\n- Collaborate with epidemiologists, clinicians, data engineers, and medical affairs partners\n\nRequired skills:\n- Familiarity with epidemiology or observational research\n- Experience working with health data\n- Basic SQL or statistical programming experience\n- Ability to communicate findings to scientific and business stakeholders\n- Attention to bias, confounding, missingness, and data limitations\n\nPreferred:\n- Experience with insurance claims data, EHR data, ICD/CPT/NDC codes, or pharma RWE studies\n- Familiarity with HEOR, medical affairs, or regulatory evidence generation"
+      }
+    ],
+    "realTask": "The medical affairs team wants a first-pass evidence summary for Type 2 diabetes patients starting Drug A. I am given a claims extract with enrollment records, diagnosis claims, procedure claims, and pharmacy claims. The team wants to know whether the data can support a basic cohort definition and what limitations should be flagged before deeper outcomes analysis.",
+    "instructions": "Make this practical and job-like. I do not need a generic epidemiology course. Focus on what I need to understand to contribute as a new RWE analyst in a pharma team. Explain claims data and coding systems from the perspective of someone who already understands public health data and cohort studies.",
+    "jobFields": {
+      "company": "Meridian Therapeutics",
+      "role": "Real World Evidence Analyst",
+      "sector": "Biopharma / Medical Affairs",
+      "seniority": "",
+      "responsibilities": [
+        "Support development of real-world evidence studies using claims, EHR, and registry data",
+        "Translate clinical questions into cohort definitions, index dates, inclusion/exclusion criteria, outcomes, and covariates",
+        "Work with diagnosis, procedure, medication, and lab codes to identify patient populations and events",
+        "Run descriptive analyses and summarize patient characteristics, treatment patterns, and outcomes",
+        "Document assumptions, limitations, and data-quality concerns clearly",
+        "Create concise evidence summaries for medical affairs, HEOR, and internal stakeholders",
+        "Collaborate with epidemiologists, clinicians, data engineers, and medical affairs partners"
+      ],
+      "requiredSkills": [
+        "Familiarity with epidemiology or observational research",
+        "Experience working with health data",
+        "Basic SQL or statistical programming experience",
+        "Ability to communicate findings to scientific and business stakeholders",
+        "Attention to bias, confounding, missingness, and data limitations"
+      ]
+    },
+    "unreadableLink": false,
+    "hasTarget": true
+  },
+  "goals": {
+    "depth": "functional",
+    "purpose": "starting_role"
+  },
+  "timeline": {
+    "mode": "deadline",
+    "deadline": "2026-08-07",
+    "weeklyHrs": ""
+  }
+}
