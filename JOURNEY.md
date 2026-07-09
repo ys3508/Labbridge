@@ -97,6 +97,14 @@ The plan's weak spot: a module was `topic → task → link`, so the actual lear
 
 Still ahead in this shift (not yet built): a static module-quality checker (banned phrases, min lengths) and golden regression fixtures.
 
+## Phase 11 — A second agent joins
+
+**Q: "I want to let Codex work with you together."**
+Set up the repo for two AI agents working in parallel without colliding:
+- **`AGENTS.md`** — Codex's instruction file (the way Claude reads context), capturing the stack, the Claude-API conventions that bite (models, `output_config` structured output, no `effort` on Haiku, `max_tokens` sizing), the retrieval-first pipeline, the non-negotiable product rules (grounding, facts-vs-fluency, fidelity), and the "keep JOURNEY updated" habit.
+- **`TASKS.md`** — a lane split so we don't edit the same files: Claude keeps the high-churn prompt/render/checkers; Codex starts on mostly-new files (the static module-quality checker, golden fixtures, grounding hardening).
+- **Branch discipline** — each agent on its own branch, `main` integration-only, rebase before push, worktrees for true parallelism.
+
 ---
 
 ## Where it stands

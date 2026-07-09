@@ -1,0 +1,71 @@
+# TASKS.md — who's doing what
+
+A lightweight board so Claude and Codex don't step on each other. Update this in
+the same PR/commit as you pick up or finish work. Full conventions in `AGENTS.md`.
+
+**Branches:** Codex → `codex/<feature>`, Claude → `claude/<feature>`. `main` is
+integration-only. Rebase on `main` before starting and before pushing.
+
+---
+
+## Lane split (default file ownership)
+
+To keep parallel edits collision-free, we split by area. The near-term Codex lane
+is deliberately **mostly new files**.
+
+| Area | Owner | Files |
+|---|---|---|
+| Plan generation (prompt + schema) | **Claude** | `app/api/plan/route.js` |
+| Course render / input UI | **Claude** | `components/PlanView.js`, `components/*Section.js`, `app/page.js` |
+| Plan checkers (AI supervisors) | **Claude** | `app/api/check/route.js` |
+| Static module-quality checker | **Codex** | `lib/moduleCheck.js` (new), `app/api/module-check/route.js` (new) |
+| Golden regression fixtures | **Codex** | `fixtures/*.json` (new) |
+| Grounding / retrieval hardening | **Codex** | `lib/verify.js`, `app/api/candidates|select|augment-web/route.js` |
+| Deploy / infra | **Codex** | Vercel config, env docs |
+
+If you need a file outside your lane, note it here first and coordinate.
+
+---
+
+## Open work
+
+### Codex — start here (low collision, high value)
+
+- [ ] **Static module-quality checker** (`lib/moduleCheck.js`, pure JS, no AI).
+      Per module, flag: `concept.explanation` < ~500 chars; `workedExample.setup`
+      < ~120 chars; `task.givenInputs.length < 1`; `task.managerRequest` missing a
+      stakeholder-like phrase; `selfCheck.criteria.length < 3`; `task.steps.length
+      < 3`; banned phrases anywhere ("find a dataset", "search online", "read
+      about", "learn about", "simulate your own"). Return **specific findings, not
+      a score**. Expose via `app/api/module-check/route.js` returning findings for
+      a posted plan. (Claude will wire an optional dev-only display into PlanView
+      once the shape is stable — leave the render to the Claude lane.)
+- [ ] **Golden fixtures** (`fixtures/golden-rwe-input.json`,
+      `golden-growth-equity-input.json`, `golden-beginner-input.json`) — the exact
+      `payload` shape `/api/plan` receives (see `buildPayload` in
+      `components/PlanView.js`). Used to re-test header/role/deadline fidelity,
+      module richness, no fake resources, no "go find a dataset".
+- [ ] **Grounding hardening** — occasional catalog title-match lands on an
+      adjacent record; tighten `overlap()` / verification in `lib/verify.js`.
+
+### Claude — in progress / owned
+
+- [x] Shift 1: modules are teaching containers (concept/worked-example/self-check).
+- [ ] Wire the static checker's findings into PlanView (dev-only), once Codex's
+      `module-check` route shape is stable.
+- [ ] Prompt tuning from golden-fixture results (horizon math on a real deadline;
+      "functional" → 3–4 tight modules).
+
+### Unassigned / later
+
+- [ ] Cross-session memory (accounts + backend) — the stickiness play.
+- [ ] Code-verified skill graph (prerequisite ordering, not model-judged).
+- [ ] Deploy (rotate the API key, set a spend cap first).
+
+---
+
+## Handoff notes
+
+- Generating a plan is a **paid Opus call** (~1–2 min). Prefer testing checker/
+  fixture work against **saved fixtures**, not fresh generations.
+- When you finish an item, check it off here and add a one-line `JOURNEY.md` entry.
