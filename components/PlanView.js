@@ -185,7 +185,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const activeModule = modules[activeIndex] || modules[0];
 
   return (
-    <div className="relative left-1/2 w-[calc(100vw-2rem)] max-w-5xl -translate-x-1/2 fade-up space-y-6">
+    <div className="w-full fade-up space-y-6">
       <header>
         <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding workspace</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
