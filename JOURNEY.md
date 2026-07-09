@@ -82,6 +82,8 @@ The organizing frame the Phase-8 fixes were reaching toward. Two coupled changes
 
 The principle: *lead with value, defer verification.* The course earns the spotlight because Phase 8 made each module a real assignment worth featuring.
 
+**Snag: "Plan generation failed."** The richer schema (hook + per-task stakeholders + staged arc) overflowed the 4096-token output cap, cutting the JSON off mid-string so it wouldn't parse. Raised the cap to 8192 and added a clear "plan too long" guard if it ever hits the ceiling again.
+
 ---
 
 ## Where it stands
