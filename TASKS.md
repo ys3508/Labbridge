@@ -74,8 +74,9 @@ is what keeps well-meaning edits from becoming merge conflicts.
 - [ ] PlanView workspace/session polish: Codex picked this up at Sissi's request on
       `codex/planview-density-polish` despite PlanView normally being Claude's
       lane. It now makes the result feel more like one-task-at-a-time project
-      work than an all-on-one-page course. Review for product-rule alignment
-      before merge.
+      work than an all-on-one-page course. Latest pass also touches
+      `app/api/plan/route.js` to align generation with the project-first learning
+      engine. Review for product-rule alignment before merge.
 - [ ] Wire the static checker's findings into PlanView (dev-only), once Codex's
       `module-check` route shape is stable.
 - [ ] Prompt tuning from golden-fixture results (horizon math on a real deadline;

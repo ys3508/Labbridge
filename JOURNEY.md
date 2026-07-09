@@ -135,6 +135,15 @@ The task screen now leads with doing:
 
 The product direction is now clearer: AI should behave like an onboarding manager watching the work, not a one-time course generator.
 
+**Third follow-up: "Make this a generic learning engine, not an RWE-specific course."**
+The branch now encodes the product architecture explicitly:
+- **Workspace layer first.** The plan view widens into a project workspace with a persistent sidebar, project files, deliverables, draft notes, task progress, and an AI mentor entry point.
+- **Learning layer second.** Explanations are no longer the default body of the page; they live behind a task-linked learning layer with pages for mental model, example, mentor, and extra help.
+- **Project-first generation.** The plan prompt now tells Claude to generate project tasks first, then only the concepts required for the current deliverable. Concepts are capped to Slack-message length (80–150 words) instead of mini essays.
+- **Generic engine framing.** The prompt describes the pipeline as role/project/company/background → tasks → skills → gaps → learning layer → deliverables, so it should work across domains rather than hard-coding RWE-like chapters.
+
+The principle: the user is not completing a course. They are completing the artifacts expected from a real first assignment, with adaptive learning and AI mentorship wrapped around the work.
+
 ---
 
 ## Where it stands

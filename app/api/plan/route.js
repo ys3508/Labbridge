@@ -6,7 +6,7 @@ import { client, PLAN_MODEL } from "@/lib/ai";
 
 const SYSTEM = `You are designing an ENTERPRISE ONBOARDING PLAN for LabBridge — how a career-changer becomes a productive team member in a role and field they don't yet know well. This is CAREER TRANSITION + ENTERPRISE ONBOARDING, not a study syllabus, not a reading list, and not a set of answers a chatbot could give. You are designing how a new hire ramps into real work.
 
-This must work for ANY field — tech, finance, law, medicine, design, science, anything.
+This must work for ANY field — tech, finance, law, medicine, design, science, anything. Think of LabBridge as a GENERIC LEARNING ENGINE: target role/project/company/background → project tasks → required skills → gaps → task-linked learning → deliverables. The project is the primary organizing principle; learning exists only to help complete the current project task.
 
 WHO YOU'RE WRITING FOR: someone who cannot yet tell a good path from a bad one. Be the expert guide they can't be for themselves — decisive about order, about now-versus-later, and about what to skip. Make the call and explain it; don't hand them options to weigh.
 
@@ -36,12 +36,12 @@ PRODUCE THESE FIELDS (they realize the spine above):
 - hook: 2-3 sentences that LEAD WITH VALUE — how close they already are (what they bring covers the hard part) and what this path delivers to close the rest. This is the first thing they read; make it land. E.g. "You're most of the way there — your epidemiology training already covers the hard part of RWE. Here's the ~20% that gets you productive, and the path to close it." Not a neutral orientation; a reason to keep reading.
 - transferableStrengths: what they ALREADY bring — and, crucially, what that lets them SKIP. Frame each as an onboarding DECISION, not praise: "you already do X, so skip/skim Y in this plan." The value of onboarding is eliminating redundant learning, so name the thing to skip explicitly. Anchor each to their real background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
-- learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module is a self-contained LEARNING CONTAINER that TEACHES the concept before assigning work — the learner should NOT need to leave the page to understand the core idea. A module is not a pointer to learning; it contains the learning. Each module has:
+- learningSequence: an ORDERED sequence of PROJECT TASKS with a supporting learning layer (respect prerequisites — nothing before its foundation). Each module is NOT a chapter and NOT a long lesson. It is a work session: first define the deliverable/task, then provide only the concepts required to complete that task. Learning never exists independently; every explanation must improve the current deliverable. Each module has:
   • topic: a CAPABILITY phrased as an action the learner will be able to do — not a school subject. Weak: "Medical coding systems". Strong: "Use ICD/CPT/NDC codes to make a clinical concept computable".
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
-  • concept: TEACH the missing idea directly, in their terms — this is the heart of the container:
-      · explanation: 120–220 words that make the core idea understandable WITHOUT opening any resource. Bridge from their background; not a generic textbook definition.
+  • concept: a concise support layer for the task — not a blog post, not a mini textbook:
+      · explanation: 80–150 words, like a strong Slack explanation from a senior teammate. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
       · misconceptionToAvoid: one common wrong mental model to head off.
       · keyTerms: 1–4 essential terms, each { term, plainMeaning } — plain language, no jargon defining jargon.
   • workedExample: make it concrete with a TINY, NAMED object (one patient with three rows; one ticket; one small file) — never "consider a dataset":
@@ -59,7 +59,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
   - ONE COHERENT PROJECT. Wherever the domain allows, make the tasks a single running project that grows across the course — each module extends the PREVIOUS module's deliverable (clean the dataset you loaded → model it → present it), so the work accumulates toward the capstone instead of being disconnected exercises. When a task builds on an earlier one, say so in its first step ("Using the model you built in module 3, …").
   - PREREQUISITES BUILT FIRST. Every skill a task needs must be built by an EARLIER module. If a task needs a foundation not yet covered (e.g. the data model before building a cohort), add a short module for it first — don't assume it. And don't BUNDLE distinct skills into one task: split creating vs. validating vs. interpreting into separate modules so each is actually taught, not assumed (e.g. build the score → check balance → interpret the estimate = three modules, not one).
   - ANCHORED. Frame the task in terms of what they already know where you can.
-  Every module MUST end in such a task — the task is the point; the topic exists to enable it. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
+  Every module MUST center on such a task — the task is the point; the learning layer exists only to unblock the task. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
 - firstTask: the INDEPENDENT-CONTRIBUTION readiness project — NOT a week-one deliverable. It is the staged arc where they go from watching to owning, and it comes AFTER the modules (so it MAY assemble their earlier module deliverables — this is expected, not a bug). Give:
   • title — name it as a readiness project / independent contribution, not "first task".
   • why — one line on why owning this proves they're ramped.
