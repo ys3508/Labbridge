@@ -230,13 +230,20 @@ export async function POST(request) {
   try {
     const message = await client.messages.create({
       model: PLAN_MODEL,
-      max_tokens: 4096,
+      // The enterprise-onboarding schema (hook + per-task stakeholders + staged
+      // readiness arc) is large; 4096 truncated the JSON mid-string. Give headroom.
+      max_tokens: 8192,
       system: SYSTEM,
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: buildPrompt(payload) }],
     });
     const block = message.content.find((b) => b.type === "text");
     if (!block) return Response.json({ error: "Empty response." }, { status: 500 });
+    // If the model still hit the cap, the JSON is incomplete — fail with a clear reason.
+    if (message.stop_reason === "max_tokens") {
+      console.error("plan route: response hit max_tokens; plan too large to fit.");
+      return Response.json({ error: "Plan was too long to finish. Try again, or narrow the scope." }, { status: 500 });
+    }
     return Response.json({ plan: JSON.parse(block.text) });
   } catch (err) {
     if (err?.status === 401) return Response.json({ error: "Invalid API key." }, { status: 401 });
