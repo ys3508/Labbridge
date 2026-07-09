@@ -143,6 +143,13 @@ The branch now encodes the product architecture explicitly:
 - **Project-first generation.** The plan prompt now tells Claude to generate project tasks first, then only the concepts required for the current deliverable. Concepts are capped to Slack-message length (80–150 words) instead of mini essays.
 - **Generic engine framing.** The prompt describes the pipeline as role/project/company/background → tasks → skills → gaps → learning layer → deliverables, so it should work across domains rather than hard-coding RWE-like chapters.
 
+**Fourth follow-up: "Make the learning layer progressive, not a long document."**
+The active task now behaves like a sequence of **Moments** rather than a scrollable lesson:
+- **One objective per screen.** A task moves through Mission → Question → Mental model → Visual → Example → Practice → AI coaching → Apply to project. Each Moment shows only what the learner needs at that point.
+- **The learner tries earlier.** The first decision appears before the explanation, then the concept, visual, and example unlock progressively.
+- **Project workspace stays persistent.** The sidebar still holds the project files and mentor entry point, while the main panel behaves like a guided onboarding flow instead of an article.
+- **Completion becomes artifact-driven.** The final Moment asks the user to add draft notes/deliverable work to the project, then marks the task complete.
+
 The principle: the user is not completing a course. They are completing the artifacts expected from a real first assignment, with adaptive learning and AI mentorship wrapped around the work.
 
 ---

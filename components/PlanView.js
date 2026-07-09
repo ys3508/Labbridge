@@ -603,11 +603,11 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, dr
   const sc = step.selfCheck || {};
   return (
     <section
-      className={`rounded-xl border p-5 transition ${
+      className={`overflow-hidden rounded-xl border transition ${
         isDone ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white"
       }`}
     >
-      <div className="flex items-start gap-3">
+      <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
         <button
           type="button"
           onClick={onToggle}
@@ -616,7 +616,7 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, dr
             isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint hover:border-brand-400"
           }`}
         >
-          {isDone ? "✓" : i + 1}
+            {isDone ? "✓" : i + 1}
         </button>
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
@@ -625,97 +625,385 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, dr
           <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
             {t.title || step.topic}
           </div>
-          <div className="mt-1 text-sm leading-relaxed text-ink-soft">{step.why}</div>
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">{shorten(step.why, 150)}</p>
+        </div>
+      </div>
+      <MomentFlow
+        moduleIndex={i}
+        step={step}
+        task={t}
+        concept={c}
+        example={ex}
+        selfCheck={sc}
+        resources={resources}
+        resourcesDone={resourcesDone}
+        isDone={isDone}
+        onComplete={onToggle}
+        draft={draft}
+        onDraftChange={onDraftChange}
+      />
+    </section>
+  );
+}
+
+function MomentFlow({
+  moduleIndex,
+  step,
+  task,
+  concept,
+  example,
+  selfCheck,
+  resources,
+  resourcesDone,
+  isDone,
+  onComplete,
+  draft,
+  onDraftChange,
+}) {
+  const [moment, setMoment] = useState(0);
+  const [choice, setChoice] = useState(null);
+  const moments = buildMoments({ step, task, concept, example, selfCheck, resources, resourcesDone, draft, onDraftChange, choice, setChoice, moduleIndex });
+  const current = moments[moment] || moments[0];
+  const pct = moments.length > 1 ? Math.round(((moment + 1) / moments.length) * 100) : 100;
+
+  useEffect(() => {
+    setMoment(0);
+    setChoice(null);
+  }, [moduleIndex]);
+
+  const goNext = () => {
+    if (moment < moments.length - 1) setMoment((m) => m + 1);
+    else if (!isDone) onComplete();
+  };
+
+  return (
+    <div className="bg-slate-50/60">
+      <div className="border-b border-slate-100 bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            Moment {moment + 1} of {moments.length}
+          </p>
+          <p className="text-xs text-ink-faint">{pct}% through this task</p>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+          {moments.map((m, idx) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => setMoment(idx)}
+              aria-label={`Open ${m.label}`}
+              className={`h-1.5 rounded-full transition ${
+                idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="px-5 py-5">
+        <div className="min-h-[360px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">{current.label}</p>
+          <h3 className="mt-1 text-xl font-semibold tracking-tight text-ink">{current.title}</h3>
+          {current.kicker && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{current.kicker}</p>}
+          <div className="mt-5">{current.body}</div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => setMoment((m) => Math.max(0, m - 1))}
+            disabled={moment === 0}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-ink-soft disabled:opacity-40"
+          >
+            Back
+          </button>
+          <span className="hidden text-xs text-ink-faint sm:inline">{current.objective}</span>
+          <button
+            type="button"
+            onClick={goNext}
+            className={`rounded-lg px-4 py-2 text-xs font-semibold ${
+              moment === moments.length - 1
+                ? "bg-emerald-600 text-white"
+                : "bg-brand-500 text-white hover:bg-brand-600"
+            }`}
+          >
+            {moment === moments.length - 1 ? (isDone ? "Task complete" : "Add to project") : "Next moment"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildMoments({
+  step,
+  task,
+  concept,
+  example,
+  selfCheck,
+  resources,
+  resourcesDone,
+  draft,
+  onDraftChange,
+  choice,
+  setChoice,
+  moduleIndex,
+}) {
+  const anchor = task.givenInputs?.[0] || "the file your manager handed you";
+  const options = [
+    { key: "given", label: anchor, correct: true },
+    { key: "outside", label: "A general outside article", correct: false },
+    { key: "summary", label: "The final executive summary", correct: false },
+  ];
+  const selected = options.find((o) => o.key === choice);
+  return [
+    {
+      key: "mission",
+      label: "Moment 1",
+      title: "Understand the problem.",
+      objective: "Know what work this task produces.",
+      kicker: "Start with the job, not the lesson.",
+      body: (
+        <div className="space-y-4">
+          {task.managerRequest && (
+            <blockquote className="border-l-2 border-brand-300 pl-4 text-base italic leading-relaxed text-ink">
+              “{task.managerRequest}”
+            </blockquote>
+          )}
+          <div className="rounded-lg bg-brand-50 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your output</p>
+            <p className="mt-1 text-sm font-medium leading-relaxed text-ink">
+              {task.deliverable || deliverableName(step, moduleIndex)}
+            </p>
+          </div>
+          {task.stakeholders && (
+            <p className="text-sm leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Who uses it:</span> {task.stakeholders}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "question",
+      label: "Moment 2",
+      title: "Make the first decision.",
+      objective: "Choose the right starting point.",
+      kicker: "Before LabBridge explains anything, try the analyst move.",
+      body: (
+        <div>
+          <p className="text-sm font-medium text-ink">What should anchor your first pass?</p>
+          <div className="mt-3 grid gap-2">
+            {options.map((o) => (
+              <button
+                key={o.key}
+                type="button"
+                onClick={() => setChoice(o.key)}
+                className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
+                  choice === o.key
+                    ? o.correct
+                      ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                      : "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
+                }`}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+          {selected && (
+            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${selected.correct ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
+              {selected.correct
+                ? "Correct. Start from the material you were handed. That keeps the work grounded."
+                : "Close, but begin with the material you were handed. Outside explanations help after you know the job."}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "mental",
+      label: "Moment 3",
+      title: "Learn the mental model.",
+      objective: "Hold the core idea in one compact frame.",
+      kicker: "One idea, short enough to use while working.",
+      body: (
+        <div className="space-y-4">
+          <p className="text-base leading-relaxed text-ink">{shorten(concept.explanation, 520)}</p>
           {step.bridgeFromBackground && (
-            <p className="mt-2 rounded-md bg-brand-50 px-3 py-2 text-sm italic leading-relaxed text-brand-700">
+            <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm italic leading-relaxed text-brand-700">
               ↪ {step.bridgeFromBackground}
             </p>
           )}
-          <QuickWin task={t} />
-
-          <div className="mt-4 space-y-3">
-            {/* TASK — the manager-assigned assignment. */}
-            {t.title && (
-              <ModulePanel label="Your assignment" tone="action">
-              <div className="flex flex-wrap items-center gap-2">
-                {t.timebox && <span className="text-[10px] text-ink-faint">⏱ {t.timebox}</span>}
-              </div>
-              {t.managerRequest && (
-                <p className="mt-1.5 border-l-2 border-brand-300 pl-3 text-sm italic leading-relaxed text-ink-soft">
-                  “{t.managerRequest}”
-                </p>
-              )}
-              <WorkspacePanel step={step} moduleIndex={i} draft={draft} onDraftChange={onDraftChange} />
-              {t.givenInputs?.length > 0 && (
-                <div className="mt-1 text-xs leading-relaxed text-ink-soft">
-                  <span className="font-medium">You're given:</span> {t.givenInputs.join(", ")}
-                </div>
-              )}
-              {t.deliverable && (
-                <div className="mt-0.5 text-xs leading-relaxed text-ink-soft">
-                  <span className="font-medium">Deliverable:</span> {t.deliverable}
-                </div>
-              )}
-              {t.steps?.length > 0 && (
-                <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink">
-                  {t.steps.map((s, k) => (
-                    <li key={k}>{s}</li>
-                  ))}
-                </ol>
-              )}
-              {t.doneWhen && (
-                <div className="mt-3 flex items-baseline gap-1.5 rounded-md bg-white/60 px-2 py-1.5 text-xs leading-relaxed text-emerald-700">
-                  <span>✓</span>
-                  <span>
-                    <span className="font-medium">Done when:</span> {t.doneWhen}
-                  </span>
-                </div>
-              )}
-              {t.stakeholders && (
-                <div className="mt-2 flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-soft">
-                  <span>👥</span>
-                  <span>
-                    <span className="font-medium">Who consumes this:</span> {t.stakeholders}
-                  </span>
-                </div>
-              )}
-              </ModulePanel>
-            )}
-
-            {/* SELF-CHECK — how they know the work is good enough. */}
-            {(sc.criteria?.length > 0 || sc.redFlags?.length > 0) && (
-              <ModulePanel label="Check your work" tone="soft">
-                <div className="grid gap-2 sm:grid-cols-2">
-                  {sc.criteria?.length > 0 && (
-                    <ul className="space-y-1">
-                  {sc.criteria.map((cr, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs leading-relaxed text-ink">
-                      <span className="text-emerald-600">✓</span>
-                      <span>{cr}</span>
-                    </li>
-                  ))}
-                    </ul>
-                  )}
-                  {sc.redFlags?.length > 0 && (
-                    <ul className="space-y-1">
-                  {sc.redFlags.map((rf, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-soft">
-                      <span className="text-rose-500">⚠</span>
-                      <span>{rf}</span>
-                    </li>
-                  ))}
-                    </ul>
-                  )}
-                </div>
-              </ModulePanel>
-            )}
-            {isDone && <DoneReward step={step} moduleIndex={i} />}
-
-            <LearningLayer concept={c} example={ex} resources={resources} resourcesDone={resourcesDone} task={t} />
-          </div>
         </div>
-      </div>
-    </section>
+      ),
+    },
+    {
+      key: "visual",
+      label: "Moment 4",
+      title: "See the work path.",
+      objective: "Connect inputs to the artifact.",
+      kicker: "A tiny map beats another paragraph.",
+      body: <WorkPath inputs={task.givenInputs} deliverable={task.deliverable || deliverableName(step, moduleIndex)} />,
+    },
+    {
+      key: "example",
+      label: "Moment 5",
+      title: "See how an analyst thinks.",
+      objective: "Watch one small example before practicing.",
+      kicker: example.setup ? shorten(example.setup, 160) : "Use a tiny example to avoid vague confidence.",
+      body: (
+        <div>
+          {example.walkThrough?.length > 0 ? (
+            <ol className="space-y-2">
+              {example.walkThrough.slice(0, 3).map((s, k) => (
+                <li key={k} className="flex gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+                    {k + 1}
+                  </span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          ) : (
+            <p className="text-sm leading-relaxed text-ink-soft">No worked example was generated for this task.</p>
+          )}
+          {example.takeaway && (
+            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Takeaway:</span> {shorten(example.takeaway, 180)}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "practice",
+      label: "Moment 6",
+      title: "Try it yourself.",
+      objective: "Do the first working move.",
+      kicker: "Small action, real project.",
+      body: (
+        <div>
+          <ol className="space-y-2">
+            {(task.steps || []).slice(0, 3).map((s, k) => (
+              <li key={k} className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink">
+                <span className="pt-0.5 text-brand-600">□</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+          {task.givenInputs?.length > 0 && (
+            <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Use:</span> {task.givenInputs.join(", ")}
+            </p>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "feedback",
+      label: "Moment 7",
+      title: "Get AI coaching.",
+      objective: "Check whether your answer is good enough.",
+      kicker: "LabBridge should respond like an onboarding manager.",
+      body: (
+        <div className="space-y-3">
+          <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-4 py-3">
+            <p className="text-sm font-medium text-ink">Paste a draft sentence, then ask:</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {["Check my answer", "Give me a hint", "Explain simpler"].map((label) => (
+                <button key={label} type="button" className="rounded-md bg-white px-3 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
+                  {label}
+                </button>
+              ))}
+            </div>
+          </div>
+          {(selfCheck.criteria?.length > 0 || selfCheck.redFlags?.length > 0) && (
+            <CoachChecklist criteria={selfCheck.criteria} redFlags={selfCheck.redFlags} />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "apply",
+      label: "Moment 8",
+      title: "Add it to your project.",
+      objective: "Turn the learning into an artifact.",
+      kicker: "This is the moment it becomes yours.",
+      body: (
+        <div className="space-y-3">
+          <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+          {task.doneWhen && (
+            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
+              <span className="font-medium">Done when:</span> {task.doneWhen}
+            </p>
+          )}
+          <NodeResources resources={resources} done={resourcesDone} />
+        </div>
+      ),
+    },
+  ];
+}
+
+function WorkPath({ inputs, deliverable }) {
+  const left = inputs?.length ? inputs.slice(0, 2).join(", ") : "Given materials";
+  return (
+    <div className="grid gap-3 sm:grid-cols-[1fr_auto_1fr_auto_1fr] sm:items-center">
+      <FlowBox label="Input" text={left} />
+      <FlowArrow />
+      <FlowBox label="Judgment" text="Decide what matters for this task." />
+      <FlowArrow />
+      <FlowBox label="Artifact" text={deliverable} strong />
+    </div>
+  );
+}
+
+function FlowBox({ label, text, strong = false }) {
+  return (
+    <div className={`min-w-0 rounded-xl border px-4 py-3 ${strong ? "border-brand-200 bg-brand-50" : "border-slate-200 bg-slate-50"}`}>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
+      <p className="mt-1 break-words text-sm font-medium leading-relaxed text-ink">{shorten(text, 120)}</p>
+    </div>
+  );
+}
+
+function FlowArrow() {
+  return <div className="hidden text-center text-ink-faint sm:block">→</div>;
+}
+
+function CoachChecklist({ criteria = [], redFlags = [] }) {
+  return (
+    <div className="grid gap-2 sm:grid-cols-2">
+      {criteria.length > 0 && (
+        <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Looks good when</p>
+          <ul className="mt-1.5 space-y-1">
+            {criteria.slice(0, 3).map((cr, k) => (
+              <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink">
+                <span className="text-emerald-600">✓</span>
+                <span>{cr}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+      {redFlags.length > 0 && (
+        <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-600">Watch for</p>
+          <ul className="mt-1.5 space-y-1">
+            {redFlags.slice(0, 3).map((rf, k) => (
+              <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                <span className="text-rose-500">△</span>
+                <span>{rf}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
   );
 }
 
