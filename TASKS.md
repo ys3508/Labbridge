@@ -71,6 +71,9 @@ is what keeps well-meaning edits from becoming merge conflicts.
 ### Claude — in progress / owned
 
 - [x] Shift 1: modules are teaching containers (concept/worked-example/self-check).
+- [ ] PlanView density polish: Codex picked this up at Sissi's request on
+      `codex/planview-density-polish` despite PlanView normally being Claude's
+      lane. Review for product-rule alignment before merge.
 - [ ] Wire the static checker's findings into PlanView (dev-only), once Codex's
       `module-check` route shape is stable.
 - [ ] Prompt tuning from golden-fixture results (horizon math on a real deadline;

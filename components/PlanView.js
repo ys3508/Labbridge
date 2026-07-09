@@ -304,21 +304,27 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
 function NodeResources({ resources, done }) {
   if (!done) {
-    return <p className="mt-2 text-xs text-ink-faint">finding resources for this task…</p>;
+    return <p className="text-xs text-ink-faint">Finding optional references for this task…</p>;
   }
   if (!resources?.length) {
     return (
-      <p className="mt-2 text-xs italic text-ink-faint">
+      <p className="text-xs italic text-ink-faint">
         Everything you need to do this is above — no outside reading required.
       </p>
     );
   }
   return (
-    <div className="mt-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-        Supporting reference — use only if you want backup
-      </p>
-      <ul className="mt-1 space-y-2">
+    <details className="group rounded-lg border border-slate-100 bg-white px-4 py-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink-soft">
+        <span>
+          <span className="font-semibold uppercase tracking-wide text-ink-faint">Supporting references</span>
+          <span className="ml-2 text-ink-faint">
+            {resources.length} optional backup source{resources.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <span className="text-ink-faint transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3">
         {resources.map((r, k) => (
           <li key={k} className="text-sm">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -337,11 +343,13 @@ function NodeResources({ resources, done }) {
                 ✓ {r.source}
               </span>
             </div>
-            {(r.use || r.why) && <div className="mt-0.5 text-xs text-ink-soft">{r.use || r.why}</div>}
+            {(r.use || r.why) && (
+              <div className="mt-1 text-xs leading-relaxed text-ink-soft">{r.use || r.why}</div>
+            )}
           </li>
         ))}
       </ul>
-    </div>
+    </details>
   );
 }
 
@@ -374,6 +382,20 @@ function SubLabel({ children }) {
   return <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{children}</p>;
 }
 
+function ModulePanel({ label, children, tone = "plain" }) {
+  const styles = {
+    plain: "border-slate-200 bg-white",
+    soft: "border-slate-100 bg-slate-50/70",
+    action: "border-brand-200 bg-brand-50/40",
+  };
+  return (
+    <section className={`rounded-lg border px-4 py-3 ${styles[tone] || styles.plain}`}>
+      <SubLabel>{label}</SubLabel>
+      <div className="mt-1.5">{children}</div>
+    </section>
+  );
+}
+
 function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -381,7 +403,7 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
   const sc = step.selfCheck || {};
   return (
     <li
-      className={`rounded-xl border p-4 transition ${
+      className={`rounded-xl border p-5 transition ${
         isDone ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white"
       }`}
     >
@@ -397,21 +419,25 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
           {isDone ? "✓" : i + 1}
         </button>
         <div className="min-w-0 flex-1">
-          <div className={`font-medium ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>{step.topic}</div>
-          <div className="mt-0.5 text-sm text-ink-soft">{step.why}</div>
+          <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
+            {step.topic}
+          </div>
+          <div className="mt-1 text-sm leading-relaxed text-ink-soft">{step.why}</div>
           {step.bridgeFromBackground && (
-            <p className="mt-1 text-sm italic text-brand-700">↪ {step.bridgeFromBackground}</p>
+            <p className="mt-2 rounded-md bg-brand-50 px-3 py-2 text-sm italic leading-relaxed text-brand-700">
+              ↪ {step.bridgeFromBackground}
+            </p>
           )}
 
-          {/* CONCEPT — the module teaches before it assigns. */}
-          {c.explanation && (
-            <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-              <SubLabel>Concept</SubLabel>
-              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{c.explanation}</p>
+          <div className="mt-4 space-y-3">
+            {/* CONCEPT — the module teaches before it assigns. */}
+            {c.explanation && (
+              <ModulePanel label="Core idea">
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{c.explanation}</p>
               {c.keyTerms?.length > 0 && (
-                <dl className="mt-2 space-y-1">
+                <dl className="mt-3 border-t border-slate-100 pt-2">
                   {c.keyTerms.map((k, j) => (
-                    <div key={j} className="text-xs">
+                    <div key={j} className="py-0.5 text-xs">
                       <dt className="inline font-semibold text-ink">{k.term}</dt>
                       <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
                     </div>
@@ -419,65 +445,63 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                 </dl>
               )}
               {c.misconceptionToAvoid && (
-                <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                <p className="mt-3 rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
                   <span className="font-medium">Common trap:</span> {c.misconceptionToAvoid}
                 </p>
               )}
-            </div>
-          )}
+              </ModulePanel>
+            )}
 
-          {/* WORKED EXAMPLE — a tiny concrete object. */}
-          {ex.setup && (
-            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
-              <SubLabel>Worked example</SubLabel>
-              <p className="mt-1 whitespace-pre-line text-sm text-ink">{ex.setup}</p>
+            {/* WORKED EXAMPLE — a tiny concrete object. */}
+            {ex.setup && (
+              <ModulePanel label="See it in practice" tone="soft">
+                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{ex.setup}</p>
               {ex.walkThrough?.length > 0 && (
-                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-soft">
+                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink-soft">
                   {ex.walkThrough.map((s, k) => (
                     <li key={k}>{s}</li>
                   ))}
                 </ol>
               )}
               {ex.takeaway && (
-                <p className="mt-2 text-xs text-ink-soft">
+                <p className="mt-3 border-t border-slate-200/70 pt-2 text-xs leading-relaxed text-ink-soft">
                   <span className="font-medium text-ink">Takeaway:</span> {ex.takeaway}
                 </p>
               )}
-            </div>
-          )}
+              </ModulePanel>
+            )}
 
-          {/* TASK — the manager-assigned assignment. */}
-          {t.title && (
-            <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2.5">
+            {/* TASK — the manager-assigned assignment. */}
+            {t.title && (
+              <ModulePanel label="Your assignment" tone="action">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your assignment</span>
                 {t.timebox && <span className="text-[10px] text-ink-faint">⏱ {t.timebox}</span>}
               </div>
               {t.managerRequest && (
-                <p className="mt-1.5 border-l-2 border-brand-300 pl-2 text-sm italic text-ink-soft">
+                <p className="mt-1.5 border-l-2 border-brand-300 pl-3 text-sm italic leading-relaxed text-ink-soft">
                   “{t.managerRequest}”
                 </p>
               )}
-              <div className="mt-1.5 text-sm font-medium text-ink">{t.title}</div>
+              <div className="mt-2 text-sm font-semibold text-ink">{t.title}</div>
               {t.givenInputs?.length > 0 && (
-                <div className="mt-1 text-xs text-ink-soft">
+                <div className="mt-1 text-xs leading-relaxed text-ink-soft">
                   <span className="font-medium">You're given:</span> {t.givenInputs.join(", ")}
                 </div>
               )}
               {t.deliverable && (
-                <div className="mt-0.5 text-xs text-ink-soft">
+                <div className="mt-0.5 text-xs leading-relaxed text-ink-soft">
                   <span className="font-medium">Deliverable:</span> {t.deliverable}
                 </div>
               )}
               {t.steps?.length > 0 && (
-                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink">
+                <ol className="mt-3 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink">
                   {t.steps.map((s, k) => (
                     <li key={k}>{s}</li>
                   ))}
                 </ol>
               )}
               {t.doneWhen && (
-                <div className="mt-2 flex items-baseline gap-1.5 text-xs text-emerald-700">
+                <div className="mt-3 flex items-baseline gap-1.5 rounded-md bg-white/60 px-2 py-1.5 text-xs leading-relaxed text-emerald-700">
                   <span>✓</span>
                   <span>
                     <span className="font-medium">Done when:</span> {t.doneWhen}
@@ -485,44 +509,46 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                 </div>
               )}
               {t.stakeholders && (
-                <div className="mt-1.5 flex items-baseline gap-1.5 text-xs text-ink-soft">
+                <div className="mt-2 flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-soft">
                   <span>👥</span>
                   <span>
                     <span className="font-medium">Who consumes this:</span> {t.stakeholders}
                   </span>
                 </div>
               )}
-            </div>
-          )}
+              </ModulePanel>
+            )}
 
-          {/* SELF-CHECK — how they know the work is good enough. */}
-          {(sc.criteria?.length > 0 || sc.redFlags?.length > 0) && (
-            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
-              <SubLabel>Check your work</SubLabel>
-              {sc.criteria?.length > 0 && (
-                <ul className="mt-1 space-y-1">
+            {/* SELF-CHECK — how they know the work is good enough. */}
+            {(sc.criteria?.length > 0 || sc.redFlags?.length > 0) && (
+              <ModulePanel label="Check your work" tone="soft">
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {sc.criteria?.length > 0 && (
+                    <ul className="space-y-1">
                   {sc.criteria.map((cr, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink">
+                    <li key={k} className="flex items-baseline gap-1.5 text-xs leading-relaxed text-ink">
                       <span className="text-emerald-600">✓</span>
                       <span>{cr}</span>
                     </li>
                   ))}
-                </ul>
-              )}
-              {sc.redFlags?.length > 0 && (
-                <ul className="mt-1.5 space-y-1">
+                    </ul>
+                  )}
+                  {sc.redFlags?.length > 0 && (
+                    <ul className="space-y-1">
                   {sc.redFlags.map((rf, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink-soft">
+                    <li key={k} className="flex items-baseline gap-1.5 text-xs leading-relaxed text-ink-soft">
                       <span className="text-rose-500">⚠</span>
                       <span>{rf}</span>
                     </li>
                   ))}
-                </ul>
-              )}
-            </div>
-          )}
+                    </ul>
+                  )}
+                </div>
+              </ModulePanel>
+            )}
 
-          <NodeResources resources={resources} done={resourcesDone} />
+            <NodeResources resources={resources} done={resourcesDone} />
+          </div>
         </div>
       </div>
     </li>

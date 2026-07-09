@@ -106,6 +106,16 @@ Set up the repo for two AI agents working in parallel without colliding:
 - **Branch discipline** — each agent on its own branch, `main` integration-only, rebase before push, worktrees for true parallelism.
 - **Codex reviewed the setup and agreed**, adding two rules we made explicit: check file ownership before editing (propose, don't sneak "small helpful changes"), and no agent merges its own branch — Claude reviews Codex's work for product-rule alignment first, with Sissi as final decision-maker.
 
+## Phase 12 — Making the richer modules easier to read
+
+**Q: "Shift 1 is working, but the page feels dense — can one module feel lighter without losing substance?"**
+Codex temporarily crossed into the PlanView lane at Sissi's request and polished the module presentation:
+- **Labels got warmer.** "Concept" became **"Core idea"** and "Worked example" became **"See it in practice"** so the section rhythm feels less academic.
+- **Module hierarchy got clearer.** Each content type now sits in a lighter, reusable panel; the capability title is stronger, the background bridge is a quiet callout, and assignment/self-check sections breathe more.
+- **References stopped competing with the lesson.** Supporting resources are collapsed by default and described as optional backup, keeping the embedded teaching container as the main product.
+
+The principle: after Shift 1 made the content smarter, the UI needed breathing room — not a new architecture, just clearer hierarchy and less visual competition.
+
 ---
 
 ## Where it stands
