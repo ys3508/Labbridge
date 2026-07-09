@@ -104,6 +104,7 @@ Set up the repo for two AI agents working in parallel without colliding:
 - **`AGENTS.md`** — Codex's instruction file (the way Claude reads context), capturing the stack, the Claude-API conventions that bite (models, `output_config` structured output, no `effort` on Haiku, `max_tokens` sizing), the retrieval-first pipeline, the non-negotiable product rules (grounding, facts-vs-fluency, fidelity), and the "keep JOURNEY updated" habit.
 - **`TASKS.md`** — a lane split so we don't edit the same files: Claude keeps the high-churn prompt/render/checkers; Codex starts on mostly-new files (the static module-quality checker, golden fixtures, grounding hardening).
 - **Branch discipline** — each agent on its own branch, `main` integration-only, rebase before push, worktrees for true parallelism.
+- **Codex reviewed the setup and agreed**, adding two rules we made explicit: check file ownership before editing (propose, don't sneak "small helpful changes"), and no agent merges its own branch — Claude reviews Codex's work for product-rule alignment first, with Sissi as final decision-maker.
 
 ---
 

@@ -135,3 +135,8 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 - Prefer **small, frequent merges** over long-lived branches.
 - For true parallelism use a **git worktree** so each agent has its own checkout:
   `git worktree add ../labbridge-codex codex/<feature>`.
+- **No agent merges its own branch to `main`** — open a PR / leave it for review.
+  Standing role: **Claude reviews Codex's changes for product-rule alignment**
+  before merge. The human (Sissi) is final decision-maker; when we disagree, the
+  tie-breaker is "which change preserves LabBridge's core product contract?"
+  (See `TASKS.md` → Integration & review.)

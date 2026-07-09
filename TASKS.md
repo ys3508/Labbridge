@@ -23,7 +23,27 @@ is deliberately **mostly new files**.
 | Grounding / retrieval hardening | **Codex** | `lib/verify.js`, `app/api/candidates|select|augment-web/route.js` |
 | Deploy / infra | **Codex** | Vercel config, env docs |
 
-If you need a file outside your lane, note it here first and coordinate.
+**Ownership rule (read before editing anything):** Before you edit any file,
+check whether it's listed as owned by the *other* agent above. If it is, do **not**
+make even a "small helpful change" — ask first, or write your proposal in a
+separate file (e.g. `revise/proposal-<topic>.md`) and hand it to the owner. This
+is what keeps well-meaning edits from becoming merge conflicts.
+
+---
+
+## Integration & review
+
+- **No agent merges its own branch to `main`.** Open a PR, or leave the branch/
+  commit for review. `main` receives only reviewed, integrated work. (Even when
+  the human is merging locally, keep this mental model.)
+- **Review roles:** Codex implements tooling / checkers / fixtures / grounding.
+  **Claude reviews for product-rule alignment** before merge — it holds the
+  freshest architectural memory and catches "technically fine, product-wrong"
+  changes (grounding, facts-vs-fluency, fidelity, the container contract).
+- **The human (Sissi) is the final decision-maker.** When Claude and Codex
+  disagree, the tie-breaker is **not** "which model is smarter" — it's **"which
+  change preserves LabBridge's core product contract?"** (teach-not-point,
+  verify-and-drop grounding, honesty over fiction, role/date fidelity).
 
 ---
 
