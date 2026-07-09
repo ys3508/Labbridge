@@ -36,11 +36,23 @@ PRODUCE THESE FIELDS (they realize the spine above):
 - hook: 2-3 sentences that LEAD WITH VALUE — how close they already are (what they bring covers the hard part) and what this path delivers to close the rest. This is the first thing they read; make it land. E.g. "You're most of the way there — your epidemiology training already covers the hard part of RWE. Here's the ~20% that gets you productive, and the path to close it." Not a neutral orientation; a reason to keep reading.
 - transferableStrengths: what they ALREADY bring — and, crucially, what that lets them SKIP. Frame each as an onboarding DECISION, not praise: "you already do X, so skip/skim Y in this plan." The value of onboarding is eliminating redundant learning, so name the thing to skip explicitly. Anchor each to their real background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
-- learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module has:
-  • topic: the skill it builds.
-  • why: a short "why this, why here" tying it to their background and to the modules around it — the reasoning, not just the topic.
-  • task: a CONCRETE, TIME-BOXED task the learner DOES to build that skill, producing a real DELIVERABLE. Provide: title, deliverable (what they end up with), timebox (realistic — the task must genuinely fit it), 2–5 concrete steps, doneWhen (a checkable "you'll know it's right when…" — a clear definition of done, not a vibe), and stakeholders (see below).
-  • stakeholders: who in the ORGANIZATION consumes this output and what each needs from it — one short line, e.g. "Medical Affairs: does it answer the clinical question? · Regulatory: is the method defensible?". Adapt the set to the target field (a PM's tasks are consumed by eng/design/leadership; an analyst's by the teams who act on the numbers). This situates the work inside a company, not a classroom.
+- learningSequence: an ORDERED sequence of MODULES (respect prerequisites — nothing before its foundation). Each module is a self-contained LEARNING CONTAINER that TEACHES the concept before assigning work — the learner should NOT need to leave the page to understand the core idea. A module is not a pointer to learning; it contains the learning. Each module has:
+  • topic: a CAPABILITY phrased as an action the learner will be able to do — not a school subject. Weak: "Medical coding systems". Strong: "Use ICD/CPT/NDC codes to make a clinical concept computable".
+  • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
+  • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
+  • concept: TEACH the missing idea directly, in their terms — this is the heart of the container:
+      · explanation: 120–220 words that make the core idea understandable WITHOUT opening any resource. Bridge from their background; not a generic textbook definition.
+      · misconceptionToAvoid: one common wrong mental model to head off.
+      · keyTerms: 1–4 essential terms, each { term, plainMeaning } — plain language, no jargon defining jargon.
+  • workedExample: make it concrete with a TINY, NAMED object (one patient with three rows; one ticket; one small file) — never "consider a dataset":
+      · setup: the tiny concrete scenario, with specifics.
+      · walkThrough: 2–4 steps reasoning through it.
+      · takeaway: the principle it illustrates — including what it CANNOT prove, where that matters.
+  • task: the manager-assigned assignment (see TASK QUALITY BAR). Provide: title; managerRequest (the stakeholder ask that kicks it off — "Your RWE lead says: …"); givenInputs (1+ named inputs they are HANDED — files, tickets, drafts); 2–5 steps; deliverable; timebox (realistic — the task must fit it); doneWhen (a checkable definition of done, not a vibe); stakeholders (who consumes it and what each needs).
+  • stakeholders: who in the ORGANIZATION consumes this output and what each needs — one short line, e.g. "Medical Affairs: does it answer the clinical question? · Regulatory: is the method defensible?". Adapt to the target field. Situates the work inside a company, not a classroom.
+  • selfCheck: PRACTICAL, not motivational — how they'd know their work is good enough:
+      · criteria: 3+ checkable statements ("another analyst can reproduce your cohort counts from the spec"), never "you feel confident".
+      · redFlags: 1+ concrete signs the work is wrong or off-track.
   TASK QUALITY BAR (this is what makes it a course, not homework):
   - REALISTIC — a work ASSIGNMENT, not schoolwork. Frame the task as a real on-the-job request that begins with a STAKEHOLDER ask (e.g. 'Your medical team says: "we need evidence on the long-term effectiveness of Drug A"') and ends in the artifact a new hire would actually hand their team — not a topic to study. When the target's real responsibilities are provided, build tasks directly on them. Prefer "produce the thing the job produces" over "practice the concept."
   - GIVE them their inputs. On a real job you are HANDED your inputs — a dataset, a file, a ticket, a draft. Name a realistic given input ("You're given claims_extract.csv", "A ticket asks you to…") rather than telling them to go find, obtain, or simulate their own practice material. "Source your own dataset" is a schoolwork tell; kill it.
@@ -51,9 +63,9 @@ PRODUCE THESE FIELDS (they realize the spine above):
 - firstTask: the INDEPENDENT-CONTRIBUTION readiness project — NOT a week-one deliverable. It is the staged arc where they go from watching to owning, and it comes AFTER the modules (so it MAY assemble their earlier module deliverables — this is expected, not a bug). Give:
   • title — name it as a readiness project / independent contribution, not "first task".
   • why — one line on why owning this proves they're ramped.
-  • horizon — the DERIVED time window as a short human phrase (see HORIZON below), e.g. "~90 days", "your 3-week runway", "by <the deadline they gave>".
+  • horizon — the DERIVED time window as a short RELATIVE phrase (see HORIZON below), e.g. "~90 days", "your ~3-week runway". Never an absolute calendar date — the app renders the real deadline next to it.
   • horizonAssumed — true ONLY if you fell back to a goal-based default because the user gave no timeline; false if it came from their deadline or pace.
-  • phases — the staged arc as 3 items, each { stage, timing, goal }. stage ∈ "Observe" | "Assist" | "Own" (Own culminates in the independent contribution). timing = the DERIVED label for that phase (e.g. "Weeks 1-2", "Days 1-30", "by <deadline>") — sized to the horizon, NOT hard-coded to 30/60/90. goal = what they do in that phase (Observe = understand the workflow / reproduce an existing analysis; Assist = modify an existing one; Own = own a small piece end-to-end). If they gave a real ticket, fold it into the Own phase.
+  • phases — the staged arc as 3 items, each { stage, timing, goal }. stage ∈ "Observe" | "Assist" | "Own" (Own culminates in the independent contribution). timing = a RELATIVE label for that phase (e.g. "Weeks 1-2", "Weeks 3-4", "Final week", "Days 1-30") — sized to the horizon, NOT hard-coded to 30/60/90. NEVER put an absolute calendar date in timing, even when a deadline was given — the app displays the real deadline itself; you only supply relative windows. goal = what they do in that phase (Observe = understand the workflow / reproduce an existing analysis; Assist = modify an existing one; Own = own a small piece end-to-end). If they gave a real ticket, fold it into the Own phase.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size. Reference a concrete date ONLY if one is in TIMELINE (see date rule below).
 
 HORIZON (derive it; never assume a fixed length):
@@ -65,7 +77,9 @@ TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted
 
 ROLE FIDELITY (critical): Refer to the target role EXACTLY as given (the "Target role" or the job-posting role). NEVER rename it to a broader or adjacent category — do not call a "Real World Evidence Analyst" a "Data Scientist," or a "Product Marketing Manager" a "Marketer." The role the user gave is the role; re-categorizing it makes them think you misunderstood them.
 
-DATE FIDELITY (critical): NEVER state or invent a concrete date or deadline unless one is explicitly given in TIMELINE. If no date was provided, speak only in relative terms (weeks, months, "your first 90 days") — do not name a month or year.
+DATE FIDELITY (critical): NEVER state or invent a concrete date or deadline unless one is explicitly given in TIMELINE. If no date was provided, speak only in relative terms (weeks, months, "your first 90 days") — do not name a month or year. Never transform a given deadline into a different date.
+
+FACTS vs FLUENCY (critical — the taught concept must not hallucinate specifics): You may freely generate workflow framing, prerequisite order, analogies from their background, manager-task wording, self-check criteria, and "what to notice" in a tiny example. You must NOT assert precise, checkable specifics that depend on a source — exact clinical/coding definitions, regulatory rules, thresholds, statutes, citations, or company-specific workflow — unless they came from the input. Teach the general shape safely (e.g. "claims data records billable events, not a full clinical narrative"), but do NOT invent a precise rule (e.g. "two E11 codes 30 days apart is THE definition of diabetes"). When a concrete threshold would help but you're not certain, say it's an example convention to confirm, not a fact.
 
 VOICE & HONESTY: Write in the person's own vocabulary where you can — translate unfamiliar target-field concepts into terms from their background. When you are not sure a step or resource truly applies to THIS person, say so plainly (e.g. "if you already know X, skip this") rather than asserting it. Flag uncertainty; never smooth over a gap with confident filler.
 
@@ -93,21 +107,61 @@ const SCHEMA = {
         properties: {
           topic: { type: "string" },
           why: { type: "string" },
+          bridgeFromBackground: { type: "string" },
+          concept: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              explanation: { type: "string" },
+              misconceptionToAvoid: { type: "string" },
+              keyTerms: {
+                type: "array",
+                items: {
+                  type: "object",
+                  additionalProperties: false,
+                  properties: { term: { type: "string" }, plainMeaning: { type: "string" } },
+                  required: ["term", "plainMeaning"],
+                },
+              },
+            },
+            required: ["explanation", "misconceptionToAvoid", "keyTerms"],
+          },
+          workedExample: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              setup: { type: "string" },
+              walkThrough: { type: "array", items: { type: "string" } },
+              takeaway: { type: "string" },
+            },
+            required: ["setup", "walkThrough", "takeaway"],
+          },
           task: {
             type: "object",
             additionalProperties: false,
             properties: {
               title: { type: "string" },
+              managerRequest: { type: "string" },
+              givenInputs: { type: "array", items: { type: "string" } },
               deliverable: { type: "string" },
               timebox: { type: "string" },
               steps: { type: "array", items: { type: "string" } },
               doneWhen: { type: "string" },
               stakeholders: { type: "string" },
             },
-            required: ["title", "deliverable", "timebox", "steps", "doneWhen", "stakeholders"],
+            required: ["title", "managerRequest", "givenInputs", "deliverable", "timebox", "steps", "doneWhen", "stakeholders"],
+          },
+          selfCheck: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              criteria: { type: "array", items: { type: "string" } },
+              redFlags: { type: "array", items: { type: "string" } },
+            },
+            required: ["criteria", "redFlags"],
           },
         },
-        required: ["topic", "why", "task"],
+        required: ["topic", "why", "bridgeFromBackground", "concept", "workedExample", "task", "selfCheck"],
       },
     },
     firstTask: {
@@ -230,9 +284,10 @@ export async function POST(request) {
   try {
     const message = await client.messages.create({
       model: PLAN_MODEL,
-      // The enterprise-onboarding schema (hook + per-task stakeholders + staged
-      // readiness arc) is large; 4096 truncated the JSON mid-string. Give headroom.
-      max_tokens: 8192,
+      // Shift 1 makes each module a teaching CONTAINER (concept + worked example +
+      // self-check), so the JSON is much larger. Give generous headroom — 8192 would
+      // truncate a full 4-5 module plan.
+      max_tokens: 16384,
       system: SYSTEM,
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: buildPrompt(payload) }],

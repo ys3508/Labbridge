@@ -152,7 +152,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
       <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" />
         <p className="mt-4 text-sm font-medium text-ink">Building your onboarding plan…</p>
-        <p className="mt-1 text-xs text-ink-faint">Reading your background and mapping the path. ~10–20s.</p>
+        <p className="mt-1 text-xs text-ink-faint">
+          Teaching each module, not just listing it — the concept, a worked example, your assignment. ~1–2 min.
+        </p>
       </div>
     );
   }
@@ -237,7 +239,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
       </Card>
 
       {/* The capstone — the culmination of the course, on a DERIVED horizon. */}
-      <ReadinessProject firstTask={plan.firstTask} hasRealTask={!!form.headed.realTask?.trim()} />
+      <ReadinessProject
+        firstTask={plan.firstTask}
+        hasRealTask={!!form.headed.realTask?.trim()}
+        deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
+      />
 
       {plan.timelineNote && (
         <p className="text-sm text-ink-soft">
@@ -303,13 +309,15 @@ function NodeResources({ resources, done }) {
   if (!resources?.length) {
     return (
       <p className="mt-2 text-xs italic text-ink-faint">
-        Hands-on module — no reading needed; learn it by doing the task.
+        Everything you need to do this is above — no outside reading required.
       </p>
     );
   }
   return (
     <div className="mt-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">For this task</p>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
+        Supporting reference — use only if you want backup
+      </p>
       <ul className="mt-1 space-y-2">
         {resources.map((r, k) => (
           <li key={k} className="text-sm">
@@ -362,8 +370,15 @@ function ProgressBar({ done, total }) {
   );
 }
 
+function SubLabel({ children }) {
+  return <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{children}</p>;
+}
+
 function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
   const t = step.task || {};
+  const c = step.concept || {};
+  const ex = step.workedExample || {};
+  const sc = step.selfCheck || {};
   return (
     <li
       className={`rounded-xl border p-4 transition ${
@@ -384,13 +399,71 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
         <div className="min-w-0 flex-1">
           <div className={`font-medium ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>{step.topic}</div>
           <div className="mt-0.5 text-sm text-ink-soft">{step.why}</div>
+          {step.bridgeFromBackground && (
+            <p className="mt-1 text-sm italic text-brand-700">↪ {step.bridgeFromBackground}</p>
+          )}
+
+          {/* CONCEPT — the module teaches before it assigns. */}
+          {c.explanation && (
+            <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
+              <SubLabel>Concept</SubLabel>
+              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{c.explanation}</p>
+              {c.keyTerms?.length > 0 && (
+                <dl className="mt-2 space-y-1">
+                  {c.keyTerms.map((k, j) => (
+                    <div key={j} className="text-xs">
+                      <dt className="inline font-semibold text-ink">{k.term}</dt>
+                      <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
+                    </div>
+                  ))}
+                </dl>
+              )}
+              {c.misconceptionToAvoid && (
+                <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
+                  <span className="font-medium">Common trap:</span> {c.misconceptionToAvoid}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* WORKED EXAMPLE — a tiny concrete object. */}
+          {ex.setup && (
+            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
+              <SubLabel>Worked example</SubLabel>
+              <p className="mt-1 whitespace-pre-line text-sm text-ink">{ex.setup}</p>
+              {ex.walkThrough?.length > 0 && (
+                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-soft">
+                  {ex.walkThrough.map((s, k) => (
+                    <li key={k}>{s}</li>
+                  ))}
+                </ol>
+              )}
+              {ex.takeaway && (
+                <p className="mt-2 text-xs text-ink-soft">
+                  <span className="font-medium text-ink">Takeaway:</span> {ex.takeaway}
+                </p>
+              )}
+            </div>
+          )}
+
+          {/* TASK — the manager-assigned assignment. */}
           {t.title && (
-            <div className="mt-3 rounded-lg bg-slate-50 px-3 py-2.5">
+            <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2.5">
               <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your task</span>
+                <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your assignment</span>
                 {t.timebox && <span className="text-[10px] text-ink-faint">⏱ {t.timebox}</span>}
               </div>
-              <div className="mt-1 text-sm font-medium text-ink">{t.title}</div>
+              {t.managerRequest && (
+                <p className="mt-1.5 border-l-2 border-brand-300 pl-2 text-sm italic text-ink-soft">
+                  “{t.managerRequest}”
+                </p>
+              )}
+              <div className="mt-1.5 text-sm font-medium text-ink">{t.title}</div>
+              {t.givenInputs?.length > 0 && (
+                <div className="mt-1 text-xs text-ink-soft">
+                  <span className="font-medium">You're given:</span> {t.givenInputs.join(", ")}
+                </div>
+              )}
               {t.deliverable && (
                 <div className="mt-0.5 text-xs text-ink-soft">
                   <span className="font-medium">Deliverable:</span> {t.deliverable}
@@ -412,7 +485,7 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                 </div>
               )}
               {t.stakeholders && (
-                <div className="mt-2 flex items-baseline gap-1.5 text-xs text-ink-soft">
+                <div className="mt-1.5 flex items-baseline gap-1.5 text-xs text-ink-soft">
                   <span>👥</span>
                   <span>
                     <span className="font-medium">Who consumes this:</span> {t.stakeholders}
@@ -421,6 +494,34 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
               )}
             </div>
           )}
+
+          {/* SELF-CHECK — how they know the work is good enough. */}
+          {(sc.criteria?.length > 0 || sc.redFlags?.length > 0) && (
+            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
+              <SubLabel>Check your work</SubLabel>
+              {sc.criteria?.length > 0 && (
+                <ul className="mt-1 space-y-1">
+                  {sc.criteria.map((cr, k) => (
+                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink">
+                      <span className="text-emerald-600">✓</span>
+                      <span>{cr}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {sc.redFlags?.length > 0 && (
+                <ul className="mt-1.5 space-y-1">
+                  {sc.redFlags.map((rf, k) => (
+                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink-soft">
+                      <span className="text-rose-500">⚠</span>
+                      <span>{rf}</span>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          )}
+
           <NodeResources resources={resources} done={resourcesDone} />
         </div>
       </div>
@@ -527,7 +628,7 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 }
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
-function ReadinessProject({ firstTask, hasRealTask }) {
+function ReadinessProject({ firstTask, hasRealTask, deadline }) {
   const ft = firstTask || {};
   const phases = ft.phases || [];
   return (
@@ -540,6 +641,12 @@ function ReadinessProject({ firstTask, hasRealTask }) {
         {ft.horizon && (
           <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
             {ft.horizon}
+          </span>
+        )}
+        {/* The UI owns the factual deadline — the model never restates or transforms it. */}
+        {deadline && (
+          <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+            due {deadline}
           </span>
         )}
       </div>

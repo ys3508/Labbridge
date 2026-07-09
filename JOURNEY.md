@@ -84,6 +84,19 @@ The principle: *lead with value, defer verification.* The course earns the spotl
 
 **Snag: "Plan generation failed."** The richer schema (hook + per-task stakeholders + staged arc) overflowed the 4096-token output cap, cutting the JSON off mid-string so it wouldn't parse. Raised the cap to 8192 and added a clear "plan too long" guard if it ever hits the ceiling again.
 
+## Phase 10 — Shift 1: modules become containers, not pointers
+
+**Q: "Turn each module from a pointer into a container — it should teach the concept before it asks me to work."**
+The plan's weak spot: a module was `topic → task → link`, so the actual learning happened off-page (or not at all). Rebuilt each module into a self-contained learning object:
+- **Teach first.** Every module now carries a **concept** (120–220 words in the learner's terms, with key-term glosses and a "common trap"), a **worked example** built on a *tiny named object* (one patient, three rows), then the assignment. You shouldn't need to leave the page to understand the idea.
+- **The assignment got realer.** Explicit **manager request** ("Your RWE lead says…") and **given inputs** (a named file/ticket you're handed), plus a practical **self-check** (checkable criteria + red flags) — "another analyst can reproduce your counts," not "you feel confident."
+- **Resources demoted to backup.** "For this task" → "Supporting reference — use only if you want backup." The container is the product; the link is a safety net.
+- **Facts vs fluency guard.** Now that we generate teaching prose, a rule keeps it from inventing precise clinical/coding/regulatory specifics — teach the general shape, never fabricate a threshold as fact.
+- **Deadline fidelity.** A test showed the model transforming `2026-08-07` into `2026-08-27` in a phase label. Fixed at the root: the **UI owns the factual deadline** (renders it verbatim), and the model only supplies *relative* phase windows ("Weeks 1–2") — it can no longer touch the date.
+- **Bumped output budget to 16k tokens** (the container plan is far larger) and reset expectations to ~1–2 min.
+
+Still ahead in this shift (not yet built): a static module-quality checker (banned phrases, min lengths) and golden regression fixtures.
+
 ---
 
 ## Where it stands
