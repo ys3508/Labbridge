@@ -138,6 +138,7 @@ The product direction is now clearer: AI should behave like an onboarding manage
 **Third follow-up: "Make this a generic learning engine, not an RWE-specific course."**
 The branch now encodes the product architecture explicitly:
 - **Workspace layer first.** The plan view widens into a project workspace with a persistent sidebar, project files, deliverables, draft notes, task progress, and an AI mentor entry point.
+- **Horizontal overflow fixed at the source.** The wider workspace briefly exposed a browser-specific failure mode: long generated artifact filenames could overflow their cards, and an older `100vw` wrapper could leave Chromium preserving a stale horizontal scroll offset. The root wrapper now uses normal centered max-width layout, long filenames break instead of widening panels, the page clips accidental x-overflow, and the workspace resets stale `scrollLeft` to zero on mount.
 - **Learning layer second.** Explanations are no longer the default body of the page; they live behind a task-linked learning layer with pages for mental model, example, mentor, and extra help.
 - **Project-first generation.** The plan prompt now tells Claude to generate project tasks first, then only the concepts required for the current deliverable. Concepts are capped to Slack-message length (80–150 words) instead of mini essays.
 - **Generic engine framing.** The prompt describes the pipeline as role/project/company/background → tasks → skills → gaps → learning layer → deliverables, so it should work across domains rather than hard-coding RWE-like chapters.

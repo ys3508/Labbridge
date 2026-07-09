@@ -51,6 +51,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   const payload = buildPayload(form, isBeginner);
 
+  // If a previous render introduced horizontal overflow, Chromium can preserve
+  // that stale x-position across hot reloads/back-forward restores. Keep the
+  // workspace anchored at the left edge while the layout itself prevents overflow.
+  useEffect(() => {
+    const root = document.scrollingElement || document.documentElement;
+    root.scrollLeft = 0;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+  }, []);
+
   // 1) Generate the plan.
   useEffect(() => {
     let alive = true;
@@ -427,7 +437,7 @@ function ProjectFolder({ modules, activeIndex, done, onSelect }) {
   return (
     <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
       <div className="flex items-baseline justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
           <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
         </div>
@@ -451,7 +461,7 @@ function ProjectFolder({ modules, activeIndex, done, onSelect }) {
               {done.has(i) ? "✓" : activeIndex === i ? "●" : "○"}
             </span>
             <span className="min-w-0 flex-1 truncate">{file}</span>
-            <span className="text-ink-faint">Open →</span>
+            <span className="shrink-0 text-ink-faint">Open →</span>
           </button>
         ))}
       </div>
@@ -864,9 +874,9 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
   return (
     <div className="mt-2 rounded-lg border border-brand-100 bg-white/70 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
-        <div>
+        <div className="min-w-0">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your deliverable</p>
-          <p className="mt-0.5 text-sm font-semibold text-ink">{file}</p>
+          <p className="mt-0.5 break-all text-sm font-semibold text-ink">{file}</p>
         </div>
         <button
           type="button"
@@ -902,7 +912,7 @@ function DoneReward({ step, moduleIndex }) {
     <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
       <p className="text-sm font-semibold text-emerald-800">Great work. Artifact added to your project.</p>
       <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-        Your RWE lead can now review <span className="font-medium">{deliverableName(step, moduleIndex)}</span>. You are
+        Your RWE lead can now review <span className="break-all font-medium">{deliverableName(step, moduleIndex)}</span>. You are
         building the project, not just checking off a lesson.
       </p>
     </div>
@@ -1044,7 +1054,7 @@ function ReadinessProject({ firstTask, hasRealTask, deadline }) {
                 </span>
                 {p.timing && <span className="text-[11px] text-ink-faint">{p.timing}</span>}
               </span>
-              <span className="text-sm text-ink">{p.goal}</span>
+              <span className="min-w-0 text-sm text-ink">{p.goal}</span>
             </li>
           ))}
         </ol>
