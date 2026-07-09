@@ -116,6 +116,16 @@ Codex temporarily crossed into the PlanView lane at Sissi's request and polished
 
 The principle: after Shift 1 made the content smarter, the UI needed breathing room — not a new architecture, just clearer hierarchy and less visual competition.
 
+**Follow-up: "It still feels like studying, not doing the job."**
+The page shifted from an all-at-once course list toward a **project workspace**:
+- The long hook became a compact mission brief: already-strong skills, what still needs learning, and the concrete mission.
+- The course list became **one active task at a time**, with task navigation and previous/next controls, so the learner moves through sessions instead of staring at the whole plan.
+- Each task now exposes a visible **deliverable artifact** and a lightweight workspace strip (notes, draft, checklist, deliverable), reinforcing that the output accumulates into a project folder.
+- Supporting references were renamed to **"Need another explanation?"** so they feel like backup help, not the center of the experience.
+- A tiny "Before you start" check gives the learner an immediate win before the lesson begins.
+
+The principle sharpened: LabBridge should help users complete work artifacts, not merely consume a personalized course.
+
 ---
 
 ## Where it stands

@@ -20,6 +20,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
   const [done, setDone] = useState(() => new Set()); // completed module indices
+  const [activeIndex, setActiveIndex] = useState(0);
 
   // Progress persists locally so checkpoints survive a refresh (the continuity
   // a one-shot chatbot can't give). Cross-session/account memory is a later step.
@@ -29,6 +30,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
       const raw = localStorage.getItem(planKey(plan.learningSequence));
       if (raw) setDone(new Set(JSON.parse(raw)));
     } catch {}
+  }, [plan]);
+
+  useEffect(() => {
+    if (!plan?.learningSequence?.length) return;
+    setActiveIndex((i) => Math.min(i, plan.learningSequence.length - 1));
   }, [plan]);
 
   const toggleDone = (i) => {
@@ -174,11 +180,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
     (payload.background.field || []).join(", ") ||
     (payload.background.sector || []).join(", ") ||
     "";
+  const modules = plan.learningSequence || [];
+  const activeModule = modules[activeIndex] || modules[0];
 
   return (
     <div className="fade-up space-y-6">
       <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding plan</p>
+        <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding workspace</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
           {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
         </h1>
@@ -187,13 +195,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
             {fromLabel} → {roleName}
           </p>
         )}
-        <p className="mt-3 text-lg leading-relaxed text-ink-soft">{plan.hook}</p>
-        {(depthLabel || purposeLabel) && (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
-            {purposeLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{purposeLabel}</span>}
-          </div>
-        )}
+        <MissionBrief
+          plan={plan}
+          roleName={roleName}
+          depthLabel={depthLabel}
+          purposeLabel={purposeLabel}
+          realTask={form.headed.realTask}
+        />
       </header>
 
       {isBeginner && (
@@ -210,31 +218,39 @@ export default function PlanView({ form, isBeginner, onBack }) {
         </Note>
       )}
 
-      {/* VALUE FIRST — the course is the center of gravity, featured right after the hook. */}
+      {/* VALUE FIRST — the workspace is the center of gravity. */}
       <Card
-        title="Your onboarding course"
-        subtitle="Work through the modules in order — each is a real assignment you complete, not a lesson to read. Check them off as you go; your progress is saved on this device."
+        title="Your project workspace"
+        subtitle="Everything you finish becomes part of your final project: the documents expected from a new analyst's first assignment."
       >
-        <ProgressBar done={done.size} total={plan.learningSequence.length} />
-        <ol className="mt-4 space-y-3">
-          {plan.learningSequence.map((step, i) => (
+        <ProgressBar done={done.size} total={modules.length} label="tasks" />
+        <ProjectFolder modules={modules} />
+        <TaskTabs modules={modules} activeIndex={activeIndex} done={done} onSelect={setActiveIndex} />
+        {activeModule && (
+          <div className="mt-4">
             <Module
-              key={i}
-              i={i}
-              step={step}
-              resources={topicResources[i]}
+              i={activeIndex}
+              total={modules.length}
+              step={activeModule}
+              resources={topicResources[activeIndex]}
               resourcesDone={resourcesDone}
-              isDone={done.has(i)}
-              onToggle={() => toggleDone(i)}
+              isDone={done.has(activeIndex)}
+              onToggle={() => toggleDone(activeIndex)}
             />
-          ))}
-        </ol>
+            <TaskPager
+              activeIndex={activeIndex}
+              total={modules.length}
+              onPrev={() => setActiveIndex((i) => Math.max(0, i - 1))}
+              onNext={() => setActiveIndex((i) => Math.min(modules.length - 1, i + 1))}
+            />
+          </div>
+        )}
         {augmenting && (
-          <p className="mt-3 text-xs text-ink-faint">Adding official docs &amp; courses to the thin modules…</p>
+          <p className="mt-3 text-xs text-ink-faint">Adding optional explanations to thin tasks…</p>
         )}
         <p className="mt-4 text-xs text-ink-faint">
-          Resources under each task are real, verified sources (Open Library, OpenAlex, or an official page), scoped to
-          the exact part you need. A task with none is meant to be done hands-on.
+          The work happens here. Optional explanations are verified sources only, kept as backup when you need another
+          angle.
         </p>
       </Card>
 
@@ -304,7 +320,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
 function NodeResources({ resources, done }) {
   if (!done) {
-    return <p className="text-xs text-ink-faint">Finding optional references for this task…</p>;
+    return <p className="text-xs text-ink-faint">Finding extra explanations for this task…</p>;
   }
   if (!resources?.length) {
     return (
@@ -317,9 +333,9 @@ function NodeResources({ resources, done }) {
     <details className="group rounded-lg border border-slate-100 bg-white px-4 py-3">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink-soft">
         <span>
-          <span className="font-semibold uppercase tracking-wide text-ink-faint">Supporting references</span>
+          <span className="font-semibold uppercase tracking-wide text-ink-faint">Need another explanation?</span>
           <span className="ml-2 text-ink-faint">
-            {resources.length} optional backup source{resources.length === 1 ? "" : "s"}
+            {resources.length} analyst-vetted source{resources.length === 1 ? "" : "s"}
           </span>
         </span>
         <span className="text-ink-faint transition-transform group-open:rotate-180">▾</span>
@@ -353,6 +369,141 @@ function NodeResources({ resources, done }) {
   );
 }
 
+function MissionBrief({ plan, roleName, depthLabel, purposeLabel, realTask }) {
+  const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
+  const gaps = (plan.knowledgeGaps || []).slice(0, 3).map((g) => cleanPoint(g.point));
+  const mission = realTask?.trim() || plan.firstTask?.title || (roleName ? `Complete your first ${roleName} assignment.` : "");
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+      <p className="text-base font-semibold text-ink">You're closer than you think.</p>
+      <div className="mt-3 grid gap-4 sm:grid-cols-2">
+        <BriefList title="Already strong" items={strengths} mark="✓" tone="emerald" />
+        <BriefList title="Need to learn" items={gaps} mark="□" tone="slate" />
+      </div>
+      {mission && (
+        <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Mission</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(mission, 180)}</p>
+        </div>
+      )}
+      {(depthLabel || purposeLabel) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
+          {purposeLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{purposeLabel}</span>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BriefList({ title, items, mark, tone }) {
+  const markColor = tone === "emerald" ? "text-emerald-600" : "text-ink-faint";
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{title}</p>
+      <ul className="mt-1.5 space-y-1">
+        {(items.length ? items : ["Add more detail to sharpen this"]).map((item, i) => (
+          <li key={i} className="flex items-start gap-2 text-sm text-ink">
+            <span className={markColor}>{mark}</span>
+            <span>{item}</span>
+          </li>
+        ))}
+      </ul>
+    </div>
+  );
+}
+
+function ProjectFolder({ modules }) {
+  const files = modules.map((m, i) => deliverableName(m, i));
+  if (!files.length) return null;
+  return (
+    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+      <div className="flex items-baseline justify-between gap-3">
+        <div>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project folder</p>
+          <p className="mt-0.5 text-sm text-ink-soft">Each task adds an artifact you can keep, revise, and show.</p>
+        </div>
+        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
+          {files.length} files
+        </span>
+      </div>
+      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+        {files.map((file, i) => (
+          <div key={i} className="rounded-md bg-white px-2.5 py-1.5 text-xs text-ink-soft ring-1 ring-slate-100">
+            {file}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskTabs({ modules, activeIndex, done, onSelect }) {
+  if (!modules.length) return null;
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Tasks</p>
+      <div className="mt-2 grid gap-2">
+        {modules.map((m, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelect(i)}
+            className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition ${
+              activeIndex === i
+                ? "border-brand-300 bg-brand-50 text-ink"
+                : "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:bg-brand-50/40"
+            }`}
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+                done.has(i)
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : activeIndex === i
+                    ? "border-brand-300 bg-white text-brand-700"
+                    : "border-slate-300 text-ink-faint"
+              }`}
+            >
+              {done.has(i) ? "✓" : i + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium leading-snug">Task {i + 1}</span>
+              <span className="block truncate text-xs">{m.task?.title || m.topic}</span>
+            </span>
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function TaskPager({ activeIndex, total, onPrev, onNext }) {
+  if (total <= 1) return null;
+  return (
+    <div className="mt-3 flex items-center justify-between">
+      <button
+        type="button"
+        onClick={onPrev}
+        disabled={activeIndex === 0}
+        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-ink-soft disabled:opacity-40"
+      >
+        Previous task
+      </button>
+      <span className="text-xs text-ink-faint">
+        Task {activeIndex + 1} of {total}
+      </span>
+      <button
+        type="button"
+        onClick={onNext}
+        disabled={activeIndex === total - 1}
+        className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
+      >
+        Next task
+      </button>
+    </div>
+  );
+}
+
 // Stable per-plan key so checkpoint progress survives a refresh.
 function planKey(seq) {
   const s = (seq || []).map((x) => x.topic).join("|");
@@ -361,13 +512,13 @@ function planKey(seq) {
   return "lb_progress_" + (h >>> 0).toString(36);
 }
 
-function ProgressBar({ done, total }) {
+function ProgressBar({ done, total, label = "modules" }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   return (
     <div>
       <div className="flex items-center justify-between text-xs text-ink-soft">
         <span>
-          {done} of {total} modules complete
+          {done} of {total} {label} complete
         </span>
         <span>{pct}%</span>
       </div>
@@ -396,13 +547,13 @@ function ModulePanel({ label, children, tone = "plain" }) {
   );
 }
 
-function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
+function Module({ i, total, step, resources, resourcesDone, isDone, onToggle }) {
   const t = step.task || {};
   const c = step.concept || {};
   const ex = step.workedExample || {};
   const sc = step.selfCheck || {};
   return (
-    <li
+    <section
       className={`rounded-xl border p-5 transition ${
         isDone ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white"
       }`}
@@ -419,8 +570,11 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
           {isDone ? "✓" : i + 1}
         </button>
         <div className="min-w-0 flex-1">
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
+            Task {i + 1}{total ? ` of ${total}` : ""}
+          </div>
           <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
-            {step.topic}
+            {t.title || step.topic}
           </div>
           <div className="mt-1 text-sm leading-relaxed text-ink-soft">{step.why}</div>
           {step.bridgeFromBackground && (
@@ -428,6 +582,7 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
               ↪ {step.bridgeFromBackground}
             </p>
           )}
+          <QuickWin task={t} />
 
           <div className="mt-4 space-y-3">
             {/* CONCEPT — the module teaches before it assigns. */}
@@ -482,7 +637,7 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
                   “{t.managerRequest}”
                 </p>
               )}
-              <div className="mt-2 text-sm font-semibold text-ink">{t.title}</div>
+              <WorkspacePanel step={step} moduleIndex={i} />
               {t.givenInputs?.length > 0 && (
                 <div className="mt-1 text-xs leading-relaxed text-ink-soft">
                   <span className="font-medium">You're given:</span> {t.givenInputs.join(", ")}
@@ -551,7 +706,78 @@ function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
           </div>
         </div>
       </div>
-    </li>
+    </section>
+  );
+}
+
+function QuickWin({ task }) {
+  const [choice, setChoice] = useState(null);
+  const anchor = task.givenInputs?.[0] || "the file your manager handed you";
+  const options = [
+    { key: "given", label: anchor, correct: true },
+    { key: "outside", label: "A random outside article", correct: false },
+    { key: "final", label: "The final summary", correct: false },
+  ];
+  const selected = options.find((o) => o.key === choice);
+  return (
+    <div className="mt-3 rounded-lg border border-emerald-100 bg-emerald-50/40 px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-emerald-700">Before you start</p>
+      <p className="mt-1 text-sm text-ink">What should anchor your first pass?</p>
+      <div className="mt-2 grid gap-1.5">
+        {options.map((o) => (
+          <button
+            key={o.key}
+            type="button"
+            onClick={() => setChoice(o.key)}
+            className={`rounded-md border px-3 py-2 text-left text-xs transition ${
+              choice === o.key
+                ? o.correct
+                  ? "border-emerald-300 bg-white text-emerald-800"
+                  : "border-amber-300 bg-white text-amber-800"
+                : "border-transparent bg-white/60 text-ink-soft hover:border-emerald-200 hover:text-ink"
+            }`}
+          >
+            {o.label}
+          </button>
+        ))}
+      </div>
+      {selected && (
+        <p className={`mt-2 text-xs ${selected.correct ? "text-emerald-700" : "text-amber-800"}`}>
+          {selected.correct
+            ? "Correct. Start from the material you were handed — that's how this becomes work, not homework."
+            : "Close, but start with the material you were handed. Outside reading only helps after you know the task."}
+        </p>
+      )}
+    </div>
+  );
+}
+
+function WorkspacePanel({ step, moduleIndex }) {
+  const file = deliverableName(step, moduleIndex);
+  const checklist = [
+    "Notes",
+    "Draft",
+    "Checklist",
+    "Deliverable",
+  ];
+  return (
+    <div className="mt-2 rounded-lg border border-brand-100 bg-white/70 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your deliverable</p>
+          <p className="mt-0.5 text-sm font-semibold text-ink">{file}</p>
+        </div>
+        <span className="rounded-full bg-brand-50 px-2 py-1 text-[11px] text-brand-700">builds final project</span>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {checklist.map((item, i) => (
+          <div key={item} className="rounded-md bg-slate-50 px-2 py-1.5 text-xs text-ink-soft">
+            <span className={i === 0 ? "text-emerald-600" : "text-ink-faint"}>{i === 0 ? "✓" : "□"}</span>{" "}
+            {item}
+          </div>
+        ))}
+      </div>
+    </div>
   );
 }
 
@@ -713,6 +939,34 @@ function ReadinessProject({ firstTask, hasRealTask, deadline }) {
 
 function cleanTopic(s) {
   return (s || "").split(" — ")[0];
+}
+
+function cleanPoint(s) {
+  return cleanTopic(s).replace(/\s+—\s*$/, "").trim();
+}
+
+function shorten(s, max = 160) {
+  const text = (s || "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
+}
+
+function deliverableName(step, index) {
+  const deliverable = step?.task?.deliverable || step?.task?.title || step?.topic || `task-${index + 1}`;
+  const lower = deliverable.toLowerCase();
+  const ext =
+    lower.includes("table") || lower.includes("csv") || lower.includes("spreadsheet")
+      ? ".csv"
+      : lower.includes("summary") || lower.includes("memo") || lower.includes("brief")
+        ? ".pdf"
+        : lower.includes("code") || lower.includes("sql") || lower.includes("script")
+          ? ".sql"
+          : ".md";
+  const base = cleanPoint(deliverable)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 42);
+  return `${String(index + 1).padStart(2, "0")}_${base || "deliverable"}${ext}`;
 }
 
 function Finding({ tone, title, children }) {
