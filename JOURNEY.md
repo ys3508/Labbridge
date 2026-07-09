@@ -126,6 +126,15 @@ The page shifted from an all-at-once course list toward a **project workspace**:
 
 The principle sharpened: LabBridge should help users complete work artifacts, not merely consume a personalized course.
 
+**Second follow-up: "The workspace is better, but it still teaches before making me try."**
+The task screen now leads with doing:
+- **Assignment first.** The learner sees the job request, deliverable, draft box, steps, and checklist before the explanation.
+- **Help is revealed when needed.** Core idea, worked example, and outside references moved behind a "Stuck?" drawer so the default experience is try → get help, not read → maybe act.
+- **The sidebar became persistent.** Project files and the AI mentor sit beside the active task on desktop, so it feels like one project workspace rather than disconnected pages.
+- **Deliverables feel more real.** Each task has an "Open" affordance, draft notes, and a completion reward that says the artifact was added to the project.
+
+The product direction is now clearer: AI should behave like an onboarding manager watching the work, not a one-time course generator.
+
 ---
 
 ## Where it stands

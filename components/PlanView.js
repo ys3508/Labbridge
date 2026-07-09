@@ -184,7 +184,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const activeModule = modules[activeIndex] || modules[0];
 
   return (
-    <div className="fade-up space-y-6">
+    <div className="relative left-1/2 w-[calc(100vw-2rem)] max-w-5xl -translate-x-1/2 fade-up space-y-6">
       <header>
         <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding workspace</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
@@ -224,27 +224,33 @@ export default function PlanView({ form, isBeginner, onBack }) {
         subtitle="Everything you finish becomes part of your final project: the documents expected from a new analyst's first assignment."
       >
         <ProgressBar done={done.size} total={modules.length} label="tasks" />
-        <ProjectFolder modules={modules} />
-        <TaskTabs modules={modules} activeIndex={activeIndex} done={done} onSelect={setActiveIndex} />
-        {activeModule && (
-          <div className="mt-4">
-            <Module
-              i={activeIndex}
-              total={modules.length}
-              step={activeModule}
-              resources={topicResources[activeIndex]}
-              resourcesDone={resourcesDone}
-              isDone={done.has(activeIndex)}
-              onToggle={() => toggleDone(activeIndex)}
-            />
-            <TaskPager
-              activeIndex={activeIndex}
-              total={modules.length}
-              onPrev={() => setActiveIndex((i) => Math.max(0, i - 1))}
-              onNext={() => setActiveIndex((i) => Math.min(modules.length - 1, i + 1))}
-            />
+        <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+          <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
+            <ProjectFolder modules={modules} activeIndex={activeIndex} done={done} onSelect={setActiveIndex} />
+            <MentorPanel activeModule={activeModule} />
+          </aside>
+          <div className="min-w-0">
+            {activeModule && (
+              <>
+                <Module
+                  i={activeIndex}
+                  total={modules.length}
+                  step={activeModule}
+                  resources={topicResources[activeIndex]}
+                  resourcesDone={resourcesDone}
+                  isDone={done.has(activeIndex)}
+                  onToggle={() => toggleDone(activeIndex)}
+                />
+                <TaskPager
+                  activeIndex={activeIndex}
+                  total={modules.length}
+                  onPrev={() => setActiveIndex((i) => Math.max(0, i - 1))}
+                  onNext={() => setActiveIndex((i) => Math.min(modules.length - 1, i + 1))}
+                />
+              </>
+            )}
           </div>
-        )}
+        </div>
         {augmenting && (
           <p className="mt-3 text-xs text-ink-faint">Adding optional explanations to thin tasks…</p>
         )}
@@ -413,27 +419,58 @@ function BriefList({ title, items, mark, tone }) {
   );
 }
 
-function ProjectFolder({ modules }) {
+function ProjectFolder({ modules, activeIndex, done, onSelect }) {
   const files = modules.map((m, i) => deliverableName(m, i));
   if (!files.length) return null;
   return (
-    <div className="mt-4 rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
+    <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
       <div className="flex items-baseline justify-between gap-3">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project folder</p>
-          <p className="mt-0.5 text-sm text-ink-soft">Each task adds an artifact you can keep, revise, and show.</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
+          <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
         </div>
         <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
           {files.length} files
         </span>
       </div>
-      <div className="mt-3 grid gap-1.5 sm:grid-cols-2">
+      <div className="mt-3 space-y-1.5">
         {files.map((file, i) => (
-          <div key={i} className="rounded-md bg-white px-2.5 py-1.5 text-xs text-ink-soft ring-1 ring-slate-100">
-            {file}
-          </div>
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelect(i)}
+            className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
+              activeIndex === i
+                ? "bg-white text-ink ring-brand-200"
+                : "bg-white/70 text-ink-soft ring-slate-100 hover:ring-brand-100"
+            }`}
+          >
+            <span className={done.has(i) ? "text-emerald-600" : activeIndex === i ? "text-amber-500" : "text-ink-faint"}>
+              {done.has(i) ? "✓" : activeIndex === i ? "●" : "○"}
+            </span>
+            <span className="min-w-0 flex-1 truncate">{file}</span>
+            <span className="text-ink-faint">Open →</span>
+          </button>
         ))}
       </div>
+    </div>
+  );
+}
+
+function MentorPanel({ activeModule }) {
+  const topic = activeModule?.task?.title || activeModule?.topic || "this task";
+  return (
+    <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">AI mentor</p>
+      <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+        Paste a draft answer or ask why a step matters. LabBridge should coach the work, not just hand you a plan.
+      </p>
+      <button
+        type="button"
+        className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-left text-xs font-medium text-brand-700 ring-1 ring-brand-100"
+      >
+        Ask about {shorten(topic, 42)}
+      </button>
     </div>
   );
 }
@@ -585,47 +622,6 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle }) 
           <QuickWin task={t} />
 
           <div className="mt-4 space-y-3">
-            {/* CONCEPT — the module teaches before it assigns. */}
-            {c.explanation && (
-              <ModulePanel label="Core idea">
-                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{c.explanation}</p>
-              {c.keyTerms?.length > 0 && (
-                <dl className="mt-3 border-t border-slate-100 pt-2">
-                  {c.keyTerms.map((k, j) => (
-                    <div key={j} className="py-0.5 text-xs">
-                      <dt className="inline font-semibold text-ink">{k.term}</dt>
-                      <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {c.misconceptionToAvoid && (
-                <p className="mt-3 rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-                  <span className="font-medium">Common trap:</span> {c.misconceptionToAvoid}
-                </p>
-              )}
-              </ModulePanel>
-            )}
-
-            {/* WORKED EXAMPLE — a tiny concrete object. */}
-            {ex.setup && (
-              <ModulePanel label="See it in practice" tone="soft">
-                <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{ex.setup}</p>
-              {ex.walkThrough?.length > 0 && (
-                <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink-soft">
-                  {ex.walkThrough.map((s, k) => (
-                    <li key={k}>{s}</li>
-                  ))}
-                </ol>
-              )}
-              {ex.takeaway && (
-                <p className="mt-3 border-t border-slate-200/70 pt-2 text-xs leading-relaxed text-ink-soft">
-                  <span className="font-medium text-ink">Takeaway:</span> {ex.takeaway}
-                </p>
-              )}
-              </ModulePanel>
-            )}
-
             {/* TASK — the manager-assigned assignment. */}
             {t.title && (
               <ModulePanel label="Your assignment" tone="action">
@@ -701,8 +697,60 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle }) 
                 </div>
               </ModulePanel>
             )}
+            {isDone && <DoneReward step={step} moduleIndex={i} />}
 
-            <NodeResources resources={resources} done={resourcesDone} />
+            <details className="group rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink-soft">
+                <span>
+                  <span className="font-semibold uppercase tracking-wide text-ink-faint">Stuck?</span>
+                  <span className="ml-2 text-ink-faint">Reveal the mental model, example, and extra explanations</span>
+                </span>
+                <span className="text-ink-faint transition-transform group-open:rotate-180">▾</span>
+              </summary>
+              <div className="mt-3 space-y-3 border-t border-slate-100 pt-3">
+                {/* CONCEPT — available after the learner has seen the assignment. */}
+                {c.explanation && (
+                  <ModulePanel label="Core idea" tone="soft">
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{shorten(c.explanation, 520)}</p>
+                    {c.keyTerms?.length > 0 && (
+                      <dl className="mt-3 border-t border-slate-100 pt-2">
+                        {c.keyTerms.map((k, j) => (
+                          <div key={j} className="py-0.5 text-xs">
+                            <dt className="inline font-semibold text-ink">{k.term}</dt>
+                            <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
+                          </div>
+                        ))}
+                      </dl>
+                    )}
+                    {c.misconceptionToAvoid && (
+                      <p className="mt-3 rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+                        <span className="font-medium">Common trap:</span> {c.misconceptionToAvoid}
+                      </p>
+                    )}
+                  </ModulePanel>
+                )}
+
+                {ex.setup && (
+                  <ModulePanel label="See it in practice" tone="soft">
+                    <p className="whitespace-pre-line text-sm leading-relaxed text-ink">{ex.setup}</p>
+                    {ex.walkThrough?.length > 0 && (
+                      <ol className="mt-2 list-decimal space-y-1.5 pl-4 text-sm leading-relaxed text-ink-soft">
+                        {ex.walkThrough.map((s, k) => (
+                          <li key={k}>{s}</li>
+                        ))}
+                      </ol>
+                    )}
+                    {ex.takeaway && (
+                      <p className="mt-3 border-t border-slate-200/70 pt-2 text-xs leading-relaxed text-ink-soft">
+                        <span className="font-medium text-ink">Takeaway:</span> {ex.takeaway}
+                      </p>
+                    )}
+                  </ModulePanel>
+                )}
+
+                <NodeResources resources={resources} done={resourcesDone} />
+              </div>
+            </details>
           </div>
         </div>
       </div>
@@ -753,6 +801,7 @@ function QuickWin({ task }) {
 }
 
 function WorkspacePanel({ step, moduleIndex }) {
+  const [draft, setDraft] = useState("");
   const file = deliverableName(step, moduleIndex);
   const checklist = [
     "Notes",
@@ -767,7 +816,12 @@ function WorkspacePanel({ step, moduleIndex }) {
           <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your deliverable</p>
           <p className="mt-0.5 text-sm font-semibold text-ink">{file}</p>
         </div>
-        <span className="rounded-full bg-brand-50 px-2 py-1 text-[11px] text-brand-700">builds final project</span>
+        <button
+          type="button"
+          className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700"
+        >
+          Open →
+        </button>
       </div>
       <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
         {checklist.map((item, i) => (
@@ -777,6 +831,28 @@ function WorkspacePanel({ step, moduleIndex }) {
           </div>
         ))}
       </div>
+      <label className="mt-3 block">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Draft notes</span>
+        <textarea
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          rows={3}
+          placeholder="Start writing the artifact here. What did you notice first?"
+          className="mt-1 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink focus:border-brand-300 focus:outline-none focus:ring-1 focus:ring-brand-200"
+        />
+      </label>
+    </div>
+  );
+}
+
+function DoneReward({ step, moduleIndex }) {
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <p className="text-sm font-semibold text-emerald-800">Great work. Artifact added to your project.</p>
+      <p className="mt-1 text-xs leading-relaxed text-emerald-700">
+        Your RWE lead can now review <span className="font-medium">{deliverableName(step, moduleIndex)}</span>. You are
+        building the project, not just checking off a lesson.
+      </p>
     </div>
   );
 }
