@@ -177,6 +177,9 @@ Codex implemented CC's `revise/page-hierarchy-spec.md`: the top brief is now onl
 **The plan view became a single-surface workspace.**
 After Sissi rejected the remaining five stacked sections, Codex implemented `revise/single-surface-workspace-spec.md`: the briefing is now a first-arrival doorway keyed by `lb_briefed_<planKey>`, and the workspace becomes home after entry/refresh. The workspace no longer renders contribution, reasoning, self-check, or payload utilities as stacked sections below it. The readiness project now opens from the queue into the main stage, while "Why this plan?" opens a right-side drawer containing the full strengths/gaps reasoning plus the plan self-check result. Back-to-edit and payload inspection moved into the drawer footer, and blocked job-link honesty remains visible as full briefing copy plus a compact dismissible workspace banner. Verified by production build and mock-mode browser smoke test.
 
+**The project folder became earned artifact state.**
+Codex implemented `revise/sidebar-workspace-spec.md` inside the single-surface shell: sidebar files now show honest artifact states (`○ outlined`, `● draft`, `✓ final`) derived from persisted drafts and completion state. Clicking a non-future file opens an inline draft preview with `Continue →` / `Reopen →`; future tasks still show the existing start-anyway confirmation. The folder now exports a zero-API Markdown project via a real `download` link once any draft exists, with empty artifacts written honestly as `_Not written yet._`, and the footer ties files to the readiness project. Verified in `?mock=1` by fresh-origin browser checks, draft persistence, preview behavior, Reward completion, future gating, export href contents, no console errors, and no horizontal overflow. Per the preview-harness rule, Codex did not run `npm run build` while the dev server was active.
+
 ---
 
 ## Where it stands

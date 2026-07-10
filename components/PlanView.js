@@ -456,6 +456,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               pendingFuture={pendingFuture}
               allTasksDone={allTasksDone}
               activeSurface={activeSurface}
+              projectTitle={planTitle}
               onSelect={openTask}
               onStartAnyway={openFutureAnyway}
               onGoRecommended={goToRecommendedTask}
@@ -630,12 +631,14 @@ function ProjectFolder({
   pendingFuture,
   allTasksDone,
   activeSurface,
+  projectTitle,
   onSelect,
   onStartAnyway,
   onGoRecommended,
   onCapstone,
   onCapstoneAnyway,
 }) {
+  const [openPreview, setOpenPreview] = useState(null);
   const files = modules.map((m, i) => deliverableName(m, i));
   if (!files.length) return null;
   const firstOpenLabel =
@@ -643,17 +646,56 @@ function ProjectFolder({
   const taskState = (m, i) => {
     const meta = getMomentMeta(m);
     const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
-    const hasDraft = !!(drafts[i] || "").trim();
+    const draft = drafts[i] || "";
+    const cleanDraft = draft.trim();
+    const hasDraft = !!cleanDraft;
     const isDone = done.has(i);
     const isFuture =
       firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i) && !isDone;
-    const status = isDone
-      ? "✓ Complete"
-      : savedMoment > 0 || hasDraft
-        ? `● resume at ${meta[savedMoment]?.label || "Brief"} (${savedMoment + 1}/${meta.length})`
-        : "○ Not started";
-    return { meta, savedMoment, hasDraft, isDone, isFuture, status };
+    const navStatus = savedMoment > 0 ? `resume at ${meta[savedMoment]?.label || "Brief"} ${savedMoment + 1}/${meta.length}` : "";
+    const words = wordCount(cleanDraft);
+    const artifactState = isDone
+      ? {
+          mark: "✓",
+          label: "final",
+          line: words ? `${words} word${words === 1 ? "" : "s"}` : "no draft",
+          tone: "final",
+        }
+      : hasDraft
+        ? {
+            mark: "●",
+            label: "draft",
+            line: `${shorten(cleanDraft, 60)} · ${words} word${words === 1 ? "" : "s"}`,
+            tone: "draft",
+          }
+        : {
+            mark: "○",
+            label: "outlined",
+            line: "not yet created",
+            tone: "outlined",
+          };
+    const status = navStatus ? `${artifactState.mark} ${artifactState.label}, ${artifactState.line} · ${navStatus}` : `${artifactState.mark} ${artifactState.label}, ${artifactState.line}`;
+    return { meta, savedMoment, draft, cleanDraft, hasDraft, isDone, isFuture, status, artifactState, words };
   };
+
+  const openFilePreview = (i) => {
+    const state = taskState(modules[i], i);
+    if (state.isFuture) {
+      setOpenPreview(null);
+      onSelect(i);
+      return;
+    }
+    setOpenPreview((current) => (current === i ? null : i));
+  };
+
+  const continueFromPreview = (i) => {
+    setOpenPreview(null);
+    onSelect(i);
+  };
+
+  const projectMarkdown = buildProjectMarkdown(projectTitle, modules, files, drafts, done);
+  const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(projectMarkdown)}`;
+  const canDownload = hasAnyDraft(drafts);
 
   const renderConfirm = (i) => (
     <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -741,7 +783,7 @@ function ProjectFolder({
               <div key={i}>
                 <button
                   type="button"
-                  onClick={() => onSelect(i)}
+                  onClick={() => openFilePreview(i)}
                   className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
                     activeIndex === i
                     && activeSurface === "task"
@@ -751,10 +793,14 @@ function ProjectFolder({
                 >
                   <span
                     className={
-                      state.isDone ? "mt-0.5 text-emerald-600" : activeIndex === i ? "mt-0.5 text-amber-500" : "mt-0.5 text-ink-faint"
+                      state.artifactState.tone === "final"
+                        ? "mt-0.5 text-emerald-600"
+                        : state.artifactState.tone === "draft"
+                          ? "mt-0.5 text-amber-500"
+                          : "mt-0.5 text-ink-faint"
                     }
                   >
-                    {state.isDone ? "✓" : activeIndex === i ? "●" : "○"}
+                    {state.artifactState.mark}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{file}</span>
@@ -765,8 +811,16 @@ function ProjectFolder({
                       </span>
                     )}
                   </span>
-                  <span className="shrink-0 text-ink-faint">Open →</span>
+                  <span className="shrink-0 text-ink-faint">{state.isFuture ? "Open →" : openPreview === i ? "Close" : "Preview"}</span>
                 </button>
+                {openPreview === i && (
+                  <FilePreview
+                    file={file}
+                    draft={state.cleanDraft}
+                    isDone={state.isDone}
+                    onContinue={() => continueFromPreview(i)}
+                  />
+                )}
                 {pendingFuture === i && renderConfirm(i)}
               </div>
             );
@@ -795,8 +849,58 @@ function ProjectFolder({
             {pendingFuture === "capstone" && renderCapstoneConfirm()}
           </div>
         </div>
+        <div className="mt-4 border-t border-slate-200 pt-3">
+          {canDownload ? (
+            <a
+              href={projectHref}
+              download="labbridge-project.md"
+              className="block w-full rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-ink ring-1 ring-slate-200 transition hover:ring-brand-200"
+            >
+              Download my project
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="Write something first — your drafts become the download."
+              className="w-full cursor-not-allowed rounded-lg bg-white px-3 py-2 text-xs font-semibold text-ink-faint opacity-60 ring-1 ring-slate-200"
+            >
+              Download my project
+            </button>
+          )}
+          <p className="mt-2 text-[11px] leading-snug text-ink-faint">These files become your readiness project.</p>
+        </div>
       </div>
     </>
+  );
+}
+
+function FilePreview({ file, draft, isDone, onContinue }) {
+  return (
+    <div className="mt-2 rounded-lg border border-brand-100 bg-white px-3 py-3 text-xs shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="break-all font-semibold text-ink">{file}</p>
+          <p className="mt-0.5 text-[11px] text-ink-faint">{draft ? `${wordCount(draft)} word${wordCount(draft) === 1 ? "" : "s"}` : "empty draft"}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="shrink-0 rounded bg-brand-50 px-2 py-1 font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
+        >
+          {isDone ? "Reopen →" : "Continue →"}
+        </button>
+      </div>
+      {draft ? (
+        <div className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 px-3 py-2 leading-relaxed text-ink-soft">
+          {draft}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 leading-relaxed text-ink-faint">
+          Nothing written yet — the Artifact moment is where this file gets made.
+        </p>
+      )}
+    </div>
   );
 }
 
@@ -873,6 +977,31 @@ function getMomentMeta(step) {
 function dependencyName(modules, index) {
   if (index < 0 || index >= modules.length) return "previous work";
   return shorten(deliverableName(modules[index], index), 36);
+}
+
+function wordCount(s) {
+  const words = (s || "").trim().match(/\S+/g);
+  return words ? words.length : 0;
+}
+
+function hasAnyDraft(drafts) {
+  return Object.values(drafts || {}).some((draft) => (draft || "").trim());
+}
+
+function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
+  const lines = [
+    `# ${projectTitle || "LabBridge project"}`,
+    "",
+    "Exported from LabBridge project workspace.",
+    "",
+  ];
+  modules.forEach((m, i) => {
+    const draft = (drafts[i] || "").trim();
+    const status = done.has(i) ? "final" : draft ? "draft" : "outlined";
+    const title = m.task?.title || m.topic || `Task ${i + 1}`;
+    lines.push(`# ${files[i]}`, "", title, "", `Status: ${status}`, "", draft || "_Not written yet._", "");
+  });
+  return lines.join("\n");
 }
 
 function ProgressBar({ done, total, label = "modules", compact = false }) {
