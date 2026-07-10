@@ -88,17 +88,6 @@ export default function PlanView({ form, isBeginner, onBack }) {
     } catch {}
   }, [drafts, plan, stateLoaded]);
 
-  const toggleDone = (i) => {
-    setDone((prev) => {
-      const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
-      try {
-        localStorage.setItem(planKey(plan.learningSequence), JSON.stringify([...next]));
-      } catch {}
-      return next;
-    });
-  };
-
   const markDone = (i) => {
     setDone((prev) => {
       if (prev.has(i)) return prev;
@@ -358,7 +347,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               {fromLabel} → {roleName}
             </p>
           )}
-          <MissionBrief plan={plan} depthLabel={depthLabel} purposeLabel={purposeLabel} />
+          <MissionBrief plan={plan} modules={modules} done={done} depthLabel={depthLabel} purposeLabel={purposeLabel} />
         </header>
 
         <div className="mt-6 space-y-3">
@@ -404,7 +393,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
             </div>
             <div className="shrink-0 space-y-2 lg:w-64">
-              <ProgressBar done={done.size} total={modules.length} label="tasks" compact />
+              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact />
               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
                 <button
                   type="button"
@@ -482,7 +471,6 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   resources={topicResources[activeIndex]}
                   resourcesDone={resourcesDone}
                   isDone={done.has(activeIndex)}
-                  onToggle={() => toggleDone(activeIndex)}
                   onComplete={() => completeAndAdvance(activeIndex)}
                   draft={drafts[activeIndex] || ""}
                   onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
@@ -568,9 +556,14 @@ function NodeResources({ resources, done }) {
   );
 }
 
-function MissionBrief({ plan, depthLabel, purposeLabel }) {
+function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purposeLabel }) {
   const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
-  const gaps = (plan.knowledgeGaps || []).slice(0, 3).map((g) => cleanPoint(g.point));
+  const gapItems = (plan.knowledgeGaps || []).slice(0, 3);
+  const gapMappings = getGapMappings(modules, gapItems.length);
+  const hasGapMappings = gapMappings.length > 0;
+  const closedGaps = hasGapMappings
+    ? gapItems.filter((_, gapIndex) => isGapClosed(gapIndex, gapMappings, done)).length
+    : 0;
   // Fallback = the readiness project's title (schema field `firstTask`), NOT task 1's
   // title — the mission is the whole arc, not the first assignment. Duplicating the
   // readiness title in a degraded state beats mislabeling task 1 as "your mission".
@@ -584,17 +577,25 @@ function MissionBrief({ plan, depthLabel, purposeLabel }) {
           <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(northStar, 180)}</p>
         </div>
       )}
+      {hasGapMappings && closedGaps > 0 && (
+        <p className="mt-3 text-xs font-medium text-emerald-700">
+          {closedGaps} of {gapItems.length} gap{gapItems.length === 1 ? "" : "s"} closed.
+        </p>
+      )}
       <div className="mt-3 flex flex-wrap gap-2">
         {strengths.map((item, i) => (
           <BriefChip key={`strength-${i}`} mark="✓" tone="emerald">
             {item}
           </BriefChip>
         ))}
-        {gaps.map((item, i) => (
-          <BriefChip key={`gap-${i}`} mark="□" tone="slate">
-            {item}
-          </BriefChip>
-        ))}
+        {gapItems.map((gap, i) => {
+          const closed = hasGapMappings && isGapClosed(i, gapMappings, done);
+          return (
+            <BriefChip key={`gap-${i}`} mark={closed ? "✓" : "□"} tone={closed ? "emerald" : "slate"}>
+              {cleanPoint(gap.point)}
+            </BriefChip>
+          );
+        })}
       </div>
       {(depthLabel || purposeLabel) && (
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
@@ -988,6 +989,17 @@ function hasAnyDraft(drafts) {
   return Object.values(drafts || {}).some((draft) => (draft || "").trim());
 }
 
+function getGapMappings(modules, gapCount) {
+  return (modules || [])
+    .map((m, taskIndex) => ({ taskIndex, gapIndex: Number(m.closesGapIndex) }))
+    .filter(({ gapIndex }) => Number.isInteger(gapIndex) && gapIndex >= 0 && gapIndex < gapCount);
+}
+
+function isGapClosed(gapIndex, mappings, done) {
+  const tasksForGap = mappings.filter((m) => m.gapIndex === gapIndex).map((m) => m.taskIndex);
+  return tasksForGap.length > 0 && tasksForGap.every((taskIndex) => done.has(taskIndex));
+}
+
 function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
   const lines = [
     `# ${projectTitle || "LabBridge project"}`,
@@ -1004,18 +1016,39 @@ function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
   return lines.join("\n");
 }
 
-function ProgressBar({ done, total, label = "modules", compact = false }) {
-  const pct = total ? Math.round((done / total) * 100) : 0;
+function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false }) {
+  const total = modules.length;
+  const doneCount = done.size;
   return (
     <div>
-      <div className="flex items-center justify-between text-xs text-ink-soft">
-        <span>
-          {done} of {total} {label} complete
-        </span>
-        <span>{pct}%</span>
+      <div className="text-xs text-ink-soft">
+        {total > 0 && doneCount >= total ? (
+          <span>All {total} files built — your readiness project is open ★</span>
+        ) : (
+          <span>
+            {doneCount} of {total} project file{total === 1 ? "" : "s"} built
+          </span>
+        )}
       </div>
-      <div className={`${compact ? "mt-1 h-1.5" : "mt-1 h-2"} w-full overflow-hidden rounded-full bg-slate-100`}>
-        <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+      <div className={`${compact ? "mt-1 h-2" : "mt-1 h-2.5"} flex w-full gap-1`}>
+        {modules.map((m, i) => {
+          const meta = getMomentMeta(m);
+          const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
+          const hasDraft = !!(drafts[i] || "").trim();
+          const isDone = done.has(i);
+          const partial = !isDone && (savedMoment > 0 || hasDraft);
+          const partialPct = partial ? Math.max(34, Math.round(((savedMoment + 1) / Math.max(1, meta.length)) * 100)) : 0;
+          return (
+            <div key={i} className="h-full min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  isDone ? "bg-brand-500" : partial ? "bg-brand-200" : "bg-transparent"
+                }`}
+                style={{ width: isDone ? "100%" : partial ? `${partialPct}%` : "0%" }}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
@@ -1028,7 +1061,6 @@ function Module({
   resources,
   resourcesDone,
   isDone,
-  onToggle,
   onComplete,
   draft,
   onDraftChange,
@@ -1049,16 +1081,13 @@ function Module({
       }`}
     >
       <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={isDone ? "Mark not done" : "Mark done"}
+        <span
           className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
-            isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint hover:border-brand-400"
+            isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint"
           }`}
         >
             {isDone ? "✓" : i + 1}
-        </button>
+        </span>
         <div className="min-w-0 flex-1">
           <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
             Task {i + 1}{total ? ` of ${total}` : ""}

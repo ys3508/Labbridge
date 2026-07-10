@@ -39,6 +39,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
 - learningSequence: an ORDERED sequence of PROJECT TASKS with a supporting learning layer (respect prerequisites — nothing before its foundation). Each module is NOT a chapter and NOT a long lesson. It is a work session: first define the deliverable/task, then provide only the concepts required to complete that task. Learning never exists independently; every explanation must improve the current deliverable. Each module has:
   • topic: a CAPABILITY phrased as an action the learner will be able to do — not a school subject. Weak: "Medical coding systems". Strong: "Use ICD/CPT/NDC codes to make a clinical concept computable".
+  • closesGapIndex: the index of the knowledge gap this task most directly closes (0-based into knowledgeGaps). Every gap should be closed by at least one task.
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
   • comprehensionCheck (optional but preferred): a ONE-question quick check the learner answers BEFORE the concept, so they try first — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
@@ -109,6 +110,7 @@ const SCHEMA = {
         additionalProperties: false,
         properties: {
           topic: { type: "string" },
+          closesGapIndex: { type: "integer" },
           why: { type: "string" },
           bridgeFromBackground: { type: "string" },
           comprehensionCheck: {
