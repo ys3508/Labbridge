@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Note } from "./ui";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 import { looksLikeUrl } from "@/lib/stubs";
@@ -22,14 +22,36 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [done, setDone] = useState(() => new Set()); // completed module indices
   const [activeIndex, setActiveIndex] = useState(0);
   const [drafts, setDrafts] = useState({});
+  const [momentsByTask, setMomentsByTask] = useState({});
+  const [checksByTask, setChecksByTask] = useState({});
+  const [futureOverrides, setFutureOverrides] = useState(() => new Set());
+  const [pendingFuture, setPendingFuture] = useState(null);
+  const [capstonePulse, setCapstonePulse] = useState(false);
+  const [stateLoaded, setStateLoaded] = useState(false);
+  const taskPanelRef = useRef(null);
+  const capstoneRef = useRef(null);
 
   // Progress persists locally so checkpoints survive a refresh (the continuity
   // a one-shot chatbot can't give). Cross-session/account memory is a later step.
   useEffect(() => {
     if (!plan) return;
     try {
-      const raw = localStorage.getItem(planKey(plan.learningSequence));
-      if (raw) setDone(new Set(JSON.parse(raw)));
+      setStateLoaded(false);
+      const seq = plan.learningSequence || [];
+      const rawDone = localStorage.getItem(planKey(seq));
+      const loadedDone = new Set(rawDone ? JSON.parse(rawDone) : []);
+      const rawMoments = localStorage.getItem(scopedPlanKey("lb_moments", seq));
+      const rawChecks = localStorage.getItem(scopedPlanKey("lb_checks", seq));
+      const rawDrafts = localStorage.getItem(scopedPlanKey("lb_drafts", seq));
+      setDone(loadedDone);
+      setMomentsByTask(rawMoments ? JSON.parse(rawMoments) : {});
+      setChecksByTask(rawChecks ? JSON.parse(rawChecks) : {});
+      setDrafts(rawDrafts ? JSON.parse(rawDrafts) : {});
+      setFutureOverrides(new Set());
+      setPendingFuture(null);
+      const firstOpen = seq.findIndex((_, i) => !loadedDone.has(i));
+      setActiveIndex(firstOpen === -1 ? Math.max(0, seq.length - 1) : firstOpen);
+      setStateLoaded(true);
     } catch {}
   }, [plan]);
 
@@ -37,6 +59,27 @@ export default function PlanView({ form, isBeginner, onBack }) {
     if (!plan?.learningSequence?.length) return;
     setActiveIndex((i) => Math.min(i, plan.learningSequence.length - 1));
   }, [plan]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_moments", plan.learningSequence), JSON.stringify(momentsByTask));
+    } catch {}
+  }, [momentsByTask, plan, stateLoaded]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_checks", plan.learningSequence), JSON.stringify(checksByTask));
+    } catch {}
+  }, [checksByTask, plan, stateLoaded]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_drafts", plan.learningSequence), JSON.stringify(drafts));
+    } catch {}
+  }, [drafts, plan, stateLoaded]);
 
   const toggleDone = (i) => {
     setDone((prev) => {
@@ -46,6 +89,34 @@ export default function PlanView({ form, isBeginner, onBack }) {
         localStorage.setItem(planKey(plan.learningSequence), JSON.stringify([...next]));
       } catch {}
       return next;
+    });
+  };
+
+  const markDone = (i) => {
+    setDone((prev) => {
+      if (prev.has(i)) return prev;
+      const next = new Set(prev);
+      next.add(i);
+      try {
+        localStorage.setItem(planKey(plan.learningSequence), JSON.stringify([...next]));
+      } catch {}
+      return next;
+    });
+  };
+
+  const setTaskMoment = (taskIndex, momentIndex) => {
+    setMomentsByTask((prev) => ({ ...prev, [taskIndex]: momentIndex }));
+  };
+
+  const setTaskDraft = (taskIndex, draft) => {
+    setDrafts((prev) => ({ ...prev, [taskIndex]: draft }));
+  };
+
+  const toggleTaskCheck = (taskIndex, key) => {
+    setChecksByTask((prev) => {
+      const current = new Set(prev[taskIndex] || []);
+      current.has(key) ? current.delete(key) : current.add(key);
+      return { ...prev, [taskIndex]: [...current] };
     });
   };
 
@@ -193,6 +264,65 @@ export default function PlanView({ form, isBeginner, onBack }) {
     "";
   const modules = plan.learningSequence || [];
   const activeModule = modules[activeIndex] || modules[0];
+  const firstIncompleteIndexRaw = modules.findIndex((_, i) => !done.has(i));
+  const firstIncompleteIndex = firstIncompleteIndexRaw === -1 ? modules.length : firstIncompleteIndexRaw;
+  const allTasksDone = modules.length > 0 && done.size >= modules.length;
+  const scrollTaskIntoView = () => {
+    setTimeout(() => taskPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
+  const scrollCapstoneIntoView = () => {
+    setTimeout(() => {
+      capstoneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      setCapstonePulse(true);
+      setTimeout(() => setCapstonePulse(false), 1200);
+    }, 0);
+  };
+  const openTask = (i) => {
+    const isFuture = firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i);
+    if (isFuture) {
+      setPendingFuture(i);
+      return;
+    }
+    setPendingFuture(null);
+    setActiveIndex(i);
+    scrollTaskIntoView();
+  };
+  const openFutureAnyway = (i) => {
+    setFutureOverrides((prev) => new Set([...prev, i]));
+    setPendingFuture(null);
+    setActiveIndex(i);
+    scrollTaskIntoView();
+  };
+  const goToRecommendedTask = () => {
+    if (firstIncompleteIndex < modules.length) {
+      setPendingFuture(null);
+      setActiveIndex(firstIncompleteIndex);
+      scrollTaskIntoView();
+    }
+  };
+  const completeAndAdvance = (i) => {
+    markDone(i);
+    if (i < modules.length - 1) {
+      setActiveIndex(i + 1);
+      setTaskMoment(i + 1, 0);
+      scrollTaskIntoView();
+    } else {
+      scrollCapstoneIntoView();
+    }
+  };
+  const openCapstone = () => {
+    if (!allTasksDone && !futureOverrides.has("capstone")) {
+      setPendingFuture("capstone");
+      return;
+    }
+    setPendingFuture(null);
+    scrollCapstoneIntoView();
+  };
+  const openCapstoneAnyway = () => {
+    setFutureOverrides((prev) => new Set([...prev, "capstone"]));
+    setPendingFuture(null);
+    scrollCapstoneIntoView();
+  };
 
   return (
     <div className="w-full fade-up space-y-6">
@@ -236,31 +366,43 @@ export default function PlanView({ form, isBeginner, onBack }) {
       >
         <ProgressBar done={done.size} total={modules.length} label="tasks" />
         <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
-          <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
-            <ProjectFolder modules={modules} activeIndex={activeIndex} done={done} onSelect={setActiveIndex} />
+          <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start">
+            <ProjectFolder
+              modules={modules}
+              activeIndex={activeIndex}
+              done={done}
+              drafts={drafts}
+              momentsByTask={momentsByTask}
+              firstIncompleteIndex={firstIncompleteIndex}
+              futureOverrides={futureOverrides}
+              pendingFuture={pendingFuture}
+              allTasksDone={allTasksDone}
+              onSelect={openTask}
+              onStartAnyway={openFutureAnyway}
+              onGoRecommended={goToRecommendedTask}
+              onCapstone={openCapstone}
+              onCapstoneAnyway={openCapstoneAnyway}
+            />
           </aside>
-          <div className="min-w-0">
+          <div ref={taskPanelRef} className="min-w-0 scroll-mt-4">
             {activeModule && (
-              <>
-                <Module
-                  i={activeIndex}
-                  total={modules.length}
-                  step={activeModule}
-                  resources={topicResources[activeIndex]}
-                  resourcesDone={resourcesDone}
-                  isDone={done.has(activeIndex)}
-                  onToggle={() => toggleDone(activeIndex)}
-                  draft={drafts[activeIndex] || ""}
-                  onDraftChange={(draft) => setDrafts((d) => ({ ...d, [activeIndex]: draft }))}
-                  nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
-                />
-                <TaskPager
-                  activeIndex={activeIndex}
-                  total={modules.length}
-                  onPrev={() => setActiveIndex((i) => Math.max(0, i - 1))}
-                  onNext={() => setActiveIndex((i) => Math.min(modules.length - 1, i + 1))}
-                />
-              </>
+              <Module
+                i={activeIndex}
+                total={modules.length}
+                step={activeModule}
+                resources={topicResources[activeIndex]}
+                resourcesDone={resourcesDone}
+                isDone={done.has(activeIndex)}
+                onToggle={() => toggleDone(activeIndex)}
+                onComplete={() => completeAndAdvance(activeIndex)}
+                draft={drafts[activeIndex] || ""}
+                onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
+                nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
+                momentIndex={momentsByTask[activeIndex] || 0}
+                onMomentChange={(momentIndex) => setTaskMoment(activeIndex, momentIndex)}
+                checks={checksByTask[activeIndex] || []}
+                onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
+              />
             )}
           </div>
         </div>
@@ -273,11 +415,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
       </Card>
 
       {/* The capstone — the culmination of the course, on a DERIVED horizon. */}
-      <ReadinessProject
-        firstTask={plan.firstTask}
-        hasRealTask={!!form.headed.realTask?.trim()}
-        deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
-      />
+      <div
+        ref={capstoneRef}
+        className={`scroll-mt-4 rounded-2xl transition ${capstonePulse ? "ring-2 ring-brand-300 ring-offset-2" : ""}`}
+      >
+        <ReadinessProject
+          firstTask={plan.firstTask}
+          hasRealTask={!!form.headed.realTask?.trim()}
+          deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
+        />
+      </div>
 
       {plan.timelineNote && (
         <p className="text-sm text-ink-soft">
@@ -431,41 +578,178 @@ function BriefList({ title, items, mark, tone }) {
   );
 }
 
-function ProjectFolder({ modules, activeIndex, done, onSelect }) {
+function ProjectFolder({
+  modules,
+  activeIndex,
+  done,
+  drafts,
+  momentsByTask,
+  firstIncompleteIndex,
+  futureOverrides,
+  pendingFuture,
+  allTasksDone,
+  onSelect,
+  onStartAnyway,
+  onGoRecommended,
+  onCapstone,
+  onCapstoneAnyway,
+}) {
   const files = modules.map((m, i) => deliverableName(m, i));
   if (!files.length) return null;
-  return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3">
-      <div className="flex items-baseline justify-between gap-3">
-        <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
-          <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
-        </div>
-        <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
-          {files.length} files
-        </span>
-      </div>
-      <div className="mt-3 space-y-1.5">
-        {files.map((file, i) => (
-          <button
-            key={i}
-            type="button"
-            onClick={() => onSelect(i)}
-            className={`flex w-full items-center gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
-              activeIndex === i
-                ? "bg-white text-ink ring-brand-200"
-                : "bg-white/70 text-ink-soft ring-slate-100 hover:ring-brand-100"
-            }`}
-          >
-            <span className={done.has(i) ? "text-emerald-600" : activeIndex === i ? "text-amber-500" : "text-ink-faint"}>
-              {done.has(i) ? "✓" : activeIndex === i ? "●" : "○"}
-            </span>
-            <span className="min-w-0 flex-1 truncate">{file}</span>
-            <span className="shrink-0 text-ink-faint">Open →</span>
-          </button>
-        ))}
+  const firstOpenLabel =
+    firstIncompleteIndex < modules.length ? `Task ${firstIncompleteIndex + 1}` : `Task ${modules.length}`;
+  const taskState = (m, i) => {
+    const meta = getMomentMeta(m);
+    const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
+    const hasDraft = !!(drafts[i] || "").trim();
+    const isDone = done.has(i);
+    const isFuture =
+      firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i) && !isDone;
+    const status = isDone
+      ? "✓ Complete"
+      : savedMoment > 0 || hasDraft
+        ? `● resume at ${meta[savedMoment]?.label || "Brief"} (${savedMoment + 1}/${meta.length})`
+        : "○ Not started";
+    return { meta, savedMoment, hasDraft, isDone, isFuture, status };
+  };
+
+  const renderConfirm = (i) => (
+    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <p>We recommend finishing {firstOpenLabel} first — start anyway?</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onStartAnyway(i)} className="rounded bg-white px-2 py-1 font-medium ring-1 ring-amber-200">
+          Start anyway
+        </button>
+        <button type="button" onClick={onGoRecommended} className="rounded px-2 py-1 font-medium text-amber-800 hover:bg-white/70">
+          Go to {firstOpenLabel}
+        </button>
       </div>
     </div>
+  );
+
+  const renderCapstoneConfirm = () => (
+    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <p>We recommend finishing {firstOpenLabel} first — start anyway?</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={onCapstoneAnyway} className="rounded bg-white px-2 py-1 font-medium ring-1 ring-amber-200">
+          Start anyway
+        </button>
+        <button type="button" onClick={onGoRecommended} className="rounded px-2 py-1 font-medium text-amber-800 hover:bg-white/70">
+          Go to {firstOpenLabel}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="lg:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {modules.map((m, i) => {
+            const state = taskState(m, i);
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onSelect(i)}
+                className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-xs font-semibold transition ${
+                  activeIndex === i
+                    ? "border-brand-300 bg-white text-brand-700"
+                    : "border-slate-200 bg-white/70 text-ink-soft"
+                } ${state.isFuture ? "opacity-45" : ""}`}
+                title={state.status}
+              >
+                {state.isDone ? "✓" : activeIndex === i ? "●" : i + 1}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={onCapstone}
+            className={`flex h-10 min-w-[4.5rem] items-center justify-center rounded-full border px-3 text-xs font-semibold transition ${
+              allTasksDone || futureOverrides.has("capstone")
+                ? "border-brand-200 bg-white text-brand-700"
+                : "border-slate-200 bg-white/70 text-ink-soft opacity-45"
+            }`}
+            title="Readiness project"
+          >
+            Project
+          </button>
+        </div>
+        {typeof pendingFuture === "number" && renderConfirm(pendingFuture)}
+        {pendingFuture === "capstone" && renderCapstoneConfirm()}
+      </div>
+
+      <div className="hidden rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 lg:block">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
+            <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
+            {files.length} files
+          </span>
+        </div>
+        <div className="mt-3 space-y-1.5">
+          {files.map((file, i) => {
+            const state = taskState(modules[i], i);
+            return (
+              <div key={i}>
+                <button
+                  type="button"
+                  onClick={() => onSelect(i)}
+                  className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
+                    activeIndex === i
+                      ? "bg-white text-ink ring-brand-200"
+                      : "bg-white/70 text-ink-soft ring-slate-100 hover:ring-brand-100"
+                  } ${state.isFuture ? "opacity-50" : ""}`}
+                >
+                  <span
+                    className={
+                      state.isDone ? "mt-0.5 text-emerald-600" : activeIndex === i ? "mt-0.5 text-amber-500" : "mt-0.5 text-ink-faint"
+                    }
+                  >
+                    {state.isDone ? "✓" : activeIndex === i ? "●" : "○"}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{file}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">{state.status}</span>
+                    {state.isFuture && (
+                      <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                        Builds on Task {firstIncompleteIndex + 1}'s {dependencyName(modules, firstIncompleteIndex)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-ink-faint">Open →</span>
+                </button>
+                {pendingFuture === i && renderConfirm(i)}
+              </div>
+            );
+          })}
+          <div>
+            <button
+              type="button"
+              onClick={onCapstone}
+              className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
+                allTasksDone || futureOverrides.has("capstone")
+                  ? "bg-white/70 text-ink-soft ring-brand-100 hover:ring-brand-200"
+                  : "bg-white/60 text-ink-soft opacity-50 ring-slate-100 hover:ring-brand-100"
+              }`}
+            >
+              <span className="mt-0.5 text-brand-500">◆</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">Readiness project</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                  {allTasksDone ? "Ready to review" : `Builds on all ${modules.length} tasks`}
+                </span>
+              </span>
+              <span className="shrink-0 text-ink-faint">Open →</span>
+            </button>
+            {pendingFuture === "capstone" && renderCapstoneConfirm()}
+          </div>
+        </div>
+      </div>
+    </>
   );
 }
 
@@ -508,39 +792,40 @@ function TaskTabs({ modules, activeIndex, done, onSelect }) {
   );
 }
 
-function TaskPager({ activeIndex, total, onPrev, onNext }) {
-  if (total <= 1) return null;
-  return (
-    <div className="mt-3 flex items-center justify-between">
-      <button
-        type="button"
-        onClick={onPrev}
-        disabled={activeIndex === 0}
-        className="rounded-lg border border-slate-200 px-3 py-2 text-xs font-medium text-ink-soft disabled:opacity-40"
-      >
-        Previous task
-      </button>
-      <span className="text-xs text-ink-faint">
-        Task {activeIndex + 1} of {total}
-      </span>
-      <button
-        type="button"
-        onClick={onNext}
-        disabled={activeIndex === total - 1}
-        className="rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-40"
-      >
-        Next task
-      </button>
-    </div>
-  );
-}
-
 // Stable per-plan key so checkpoint progress survives a refresh.
 function planKey(seq) {
   const s = (seq || []).map((x) => x.topic).join("|");
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
   return "lb_progress_" + (h >>> 0).toString(36);
+}
+
+function scopedPlanKey(prefix, seq) {
+  return `${prefix}_${planKey(seq)}`;
+}
+
+function getMomentMeta(step) {
+  const task = step?.task || {};
+  const concept = step?.concept || {};
+  const example = step?.workedExample || {};
+  const moments = [{ key: "brief", label: "Brief", objective: "Why am I here?" }];
+  if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
+    moments.push({ key: "question", label: "Question", objective: "Can I try first?" });
+  }
+  if (concept.explanation) moments.push({ key: "model", label: "Model", objective: "What's the idea?" });
+  if (example.setup) moments.push({ key: "visual", label: "Visual", objective: "What does it look like?" });
+  if (task.steps?.length) moments.push({ key: "practice", label: "Practice", objective: "Can I do it myself?" });
+  moments.push(
+    { key: "coach", label: "Coach", objective: "Am I right?" },
+    { key: "artifact", label: "Artifact", objective: "What did I produce?" },
+    { key: "reward", label: "Reward", objective: "What changed in my project?" }
+  );
+  return moments;
+}
+
+function dependencyName(modules, index) {
+  if (index < 0 || index >= modules.length) return "previous work";
+  return shorten(deliverableName(modules[index], index), 36);
 }
 
 function ProgressBar({ done, total, label = "modules" }) {
@@ -560,7 +845,23 @@ function ProgressBar({ done, total, label = "modules" }) {
   );
 }
 
-function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, draft, onDraftChange, nextLabel }) {
+function Module({
+  i,
+  total,
+  step,
+  resources,
+  resourcesDone,
+  isDone,
+  onToggle,
+  onComplete,
+  draft,
+  onDraftChange,
+  nextLabel,
+  momentIndex,
+  onMomentChange,
+  checks,
+  onToggleCheck,
+}) {
   const t = step.task || {};
   const c = step.concept || {};
   const ex = step.workedExample || {};
@@ -602,10 +903,14 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, dr
         resources={resources}
         resourcesDone={resourcesDone}
         isDone={isDone}
-        onComplete={onToggle}
+        onComplete={onComplete}
         draft={draft}
         onDraftChange={onDraftChange}
         nextLabel={nextLabel}
+        momentIndex={momentIndex}
+        onMomentChange={onMomentChange}
+        checks={checks}
+        onToggleCheck={onToggleCheck}
       />
     </section>
   );
@@ -625,16 +930,13 @@ function MomentFlow({
   draft,
   onDraftChange,
   nextLabel,
+  momentIndex,
+  onMomentChange,
+  checks,
+  onToggleCheck,
 }) {
-  const [moment, setMoment] = useState(0);
   const [choice, setChoice] = useState(null);
-  const [checks, setChecks] = useState(() => new Set());
-  const toggleCheck = (key) =>
-    setChecks((prev) => {
-      const next = new Set(prev);
-      next.has(key) ? next.delete(key) : next.add(key);
-      return next;
-    });
+  const checkSet = new Set(checks || []);
   const moments = buildMoments({
     step,
     task,
@@ -649,22 +951,20 @@ function MomentFlow({
     setChoice,
     moduleIndex,
     comprehension: step.comprehensionCheck,
-    checks,
-    toggleCheck,
+    checks: checkSet,
+    toggleCheck: onToggleCheck,
     nextLabel,
     isDone,
   });
+  const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
-  const pct = moments.length > 1 ? Math.round(((moment + 1) / moments.length) * 100) : 100;
 
   useEffect(() => {
-    setMoment(0);
     setChoice(null);
-    setChecks(new Set());
   }, [moduleIndex]);
 
   const goNext = () => {
-    if (moment < moments.length - 1) setMoment((m) => m + 1);
+    if (moment < moments.length - 1) onMomentChange(moment + 1);
     else if (!isDone) onComplete();
   };
 
@@ -673,20 +973,21 @@ function MomentFlow({
       <div className="border-b border-slate-100 bg-white px-5 py-3">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-            Moment {moment + 1} of {moments.length}
+            {current.label} — {current.objective}
           </p>
-          <p className="text-xs text-ink-faint">{pct}% through this task</p>
+          <p className="text-xs text-ink-faint">{moment + 1}/{moments.length}</p>
         </div>
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
-          <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+          <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${((moment + 1) / moments.length) * 100}%` }} />
         </div>
         <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-8">
           {moments.map((m, idx) => (
             <button
               key={m.key}
               type="button"
-              onClick={() => setMoment(idx)}
+              onClick={() => onMomentChange(idx)}
               aria-label={`Open ${m.label}`}
+              title={m.label}
               className={`h-1.5 rounded-full transition ${
                 idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
               }`}
@@ -706,7 +1007,7 @@ function MomentFlow({
         <div className="mt-4 flex items-center justify-between gap-3">
           <button
             type="button"
-            onClick={() => setMoment((m) => Math.max(0, m - 1))}
+            onClick={() => onMomentChange(Math.max(0, moment - 1))}
             disabled={moment === 0}
             className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-ink-soft disabled:opacity-40"
           >
@@ -722,7 +1023,11 @@ function MomentFlow({
                 : "bg-brand-500 text-white hover:bg-brand-600"
             }`}
           >
-            {moment === moments.length - 1 ? (isDone ? "Task complete" : "Add to project") : "Next moment"}
+            {moment === moments.length - 1
+              ? nextLabel
+                ? `Start Task ${moduleIndex + 2} →`
+                : "Finish — review your project →"
+              : "Next moment"}
           </button>
         </div>
       </div>

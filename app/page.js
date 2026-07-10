@@ -26,6 +26,15 @@ export default function Page() {
   const [form, setForm] = useState(INITIAL);
   const [stage, setStage] = useState("form"); // form | review | done
 
+  // Mock mode is for offline UI work. Reopen the generated workspace directly
+  // after refresh so local progress/draft state can be verified without API.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") === "1" || localStorage.getItem("lb_mock") === "1") setStage("done");
+    } catch {}
+  }, []);
+
   const setPart = (key) => (val) => setForm((f) => ({ ...f, [key]: val }));
 
   const filledArtifacts = form.headed.artifacts.filter((a) => (a.text || "").trim());
