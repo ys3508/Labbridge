@@ -106,6 +106,83 @@ Set up the repo for two AI agents working in parallel without colliding:
 - **Branch discipline** — each agent on its own branch, `main` integration-only, rebase before push, worktrees for true parallelism.
 - **Codex reviewed the setup and agreed**, adding two rules we made explicit: check file ownership before editing (propose, don't sneak "small helpful changes"), and no agent merges its own branch — Claude reviews Codex's work for product-rule alignment first, with Sissi as final decision-maker.
 
+## Phase 12 — Making the richer modules easier to read
+
+**Q: "Shift 1 is working, but the page feels dense — can one module feel lighter without losing substance?"**
+Codex temporarily crossed into the PlanView lane at Sissi's request and polished the module presentation:
+- **Labels got warmer.** "Concept" became **"Core idea"** and "Worked example" became **"See it in practice"** so the section rhythm feels less academic.
+- **Module hierarchy got clearer.** Each content type now sits in a lighter, reusable panel; the capability title is stronger, the background bridge is a quiet callout, and assignment/self-check sections breathe more.
+- **References stopped competing with the lesson.** Supporting resources are collapsed by default and described as optional backup, keeping the embedded teaching container as the main product.
+
+The principle: after Shift 1 made the content smarter, the UI needed breathing room — not a new architecture, just clearer hierarchy and less visual competition.
+
+**Follow-up: "It still feels like studying, not doing the job."**
+The page shifted from an all-at-once course list toward a **project workspace**:
+- The long hook became a compact mission brief: already-strong skills, what still needs learning, and the concrete mission.
+- The course list became **one active task at a time**, with task navigation and previous/next controls, so the learner moves through sessions instead of staring at the whole plan.
+- Each task now exposes a visible **deliverable artifact** and a lightweight workspace strip (notes, draft, checklist, deliverable), reinforcing that the output accumulates into a project folder.
+- Supporting references were renamed to **"Need another explanation?"** so they feel like backup help, not the center of the experience.
+- A tiny "Before you start" check gives the learner an immediate win before the lesson begins.
+
+The principle sharpened: LabBridge should help users complete work artifacts, not merely consume a personalized course.
+
+**Second follow-up: "The workspace is better, but it still teaches before making me try."**
+The task screen now leads with doing:
+- **Assignment first.** The learner sees the job request, deliverable, draft box, steps, and checklist before the explanation.
+- **Help is revealed when needed.** Core idea, worked example, and outside references moved behind a "Stuck?" drawer so the default experience is try → get help, not read → maybe act.
+- **The sidebar became persistent.** Project files and the AI mentor sit beside the active task on desktop, so it feels like one project workspace rather than disconnected pages.
+- **Deliverables feel more real.** Each task has an "Open" affordance, draft notes, and a completion reward that says the artifact was added to the project.
+
+The product direction is now clearer: AI should behave like an onboarding manager watching the work, not a one-time course generator.
+
+**Third follow-up: "Make this a generic learning engine, not an RWE-specific course."**
+The branch now encodes the product architecture explicitly:
+- **Workspace layer first.** The plan view widens into a project workspace with a persistent sidebar, project files, deliverables, draft notes, task progress, and an AI mentor entry point.
+- **Horizontal overflow fixed at the source.** The wider workspace briefly exposed a browser-specific failure mode: long generated artifact filenames could overflow their cards, and an older `100vw` wrapper could leave Chromium preserving a stale horizontal scroll offset. The root wrapper now uses normal centered max-width layout, long filenames break instead of widening panels, the page clips accidental x-overflow, and the workspace resets stale `scrollLeft` to zero on mount.
+- **Learning layer second.** Explanations are no longer the default body of the page; they live behind a task-linked learning layer with pages for mental model, example, mentor, and extra help.
+- **Project-first generation.** The plan prompt now tells Claude to generate project tasks first, then only the concepts required for the current deliverable. Concepts are capped to Slack-message length (80–150 words) instead of mini essays.
+- **Generic engine framing.** The prompt describes the pipeline as role/project/company/background → tasks → skills → gaps → learning layer → deliverables, so it should work across domains rather than hard-coding RWE-like chapters.
+
+**Fourth follow-up: "Make the learning layer progressive, not a long document."**
+The active task now behaves like a sequence of **Moments** rather than a scrollable lesson:
+- **One objective per screen.** A task moves through Mission → Question → Mental model → Visual → Example → Practice → AI coaching → Apply to project. Each Moment shows only what the learner needs at that point.
+- **The learner tries earlier.** The first decision appears before the explanation, then the concept, visual, and example unlock progressively.
+- **Project workspace stays persistent.** The sidebar still holds the project files and mentor entry point, while the main panel behaves like a guided onboarding flow instead of an article.
+- **Completion becomes artifact-driven.** The final Moment asks the user to add draft notes/deliverable work to the project, then marks the task complete.
+
+The principle: the user is not completing a course. They are completing the artifacts expected from a real first assignment, with adaptive learning and AI mentorship wrapped around the work.
+
+---
+
+## Phase 13 — Moments: a manager beside you, not a lesson
+
+**Q (Sissi, brainstormed with Codex): "Moments should feel less like pages of a lesson and more like a manager walking beside you while you produce one work artifact."**
+We turned that into a **Moment grammar** — a fixed rhythm with variable length: `Brief → Question → Model → Visual → Practice → Coach → Artifact → Reward`. Rules we agreed on (all three of us):
+- **Code assembles the flow, the model never chooses it.** Always-on beats (Brief, Coach, Artifact, Reward) plus conditional ones (Question/Model/Visual/Practice) that appear only when a task has that content — 4–8 moments per task, deterministically.
+- **Coach is honest by construction.** No fake AI: it's a self-check the user *ticks* against the criteria, with a "Watch for" list and a plain note that real AI review is coming later. The future `/api/coach` slots in above it without pretending now.
+- **Reward reads live state** — the ticked count and the saved draft feed the payoff ("Self-check: 2/3 confirmed · memo added · Next: …"), so progress is earned, not a canned banner.
+- Along the way: restored the personalized **hook** (generated but not shown), un-truncated the taught concept, added a per-task **comprehension question**, and cut the fake-AI mentor panel.
+
+Built and verified entirely **offline in mock mode** (`?mock=1`) — zero API — while the balance was unpaid. We also stood up that mock mode (a fetch interceptor + canned data) so the whole app runs without spending, and settled a standing working rhythm: **Claude/CC writes specs, acceptance criteria, and reviews product fit; Codex executes code changes, verification, cleanup, and implementation tasks.** Codex should keep future implementation notes in `JOURNEY.md` so later agents can see what changed, why it changed, and how it was verified.
+
+**Codex cleanup pass from CC's handoff.**
+CC handed off `revise/handoff-to-codex.md`; Codex executed item A only: removed obsolete `PlanView` helpers left behind by earlier learning-layer iterations (`QuickWin`, `LearningLayer`, `CoachChecklist`, `WorkPath`, `FlowBox`, `FlowArrow`, `ModulePanel`, `SubLabel`). This was pure dead-code removal — no Moment behavior changed. Verified by grep (no definitions/references remain) and an offline browser smoke test at `?mock=1`: Brief → Question → Model → Visual → Practice → Coach → Artifact → Reward all rendered with no console errors.
+
+**Task navigation became earned state.**
+Codex implemented CC's `revise/task-navigation-spec.md`: removed the competing TaskPager, made Reward the forward-navigation engine, persisted per-task Moment position / Coach ticks / draft notes under plan-scoped localStorage keys, and upgraded the sidebar into a real project map with complete, in-progress, future, and capstone states. Future tasks and the readiness project are dimmed-but-openable with inline "start anyway" nudges, not locks. Mock mode now reopens directly into the workspace after refresh so offline resume behavior can be verified without API calls. Verified in `?mock=1` against the spec's 9 acceptance criteria: Task 1 Reward advanced to Task 2 and marked progress, Task 2 resumed at Coach after switching and refresh, draft text persisted, Task 3 showed the future-task confirm and honored Start anyway, the capstone queue item scrolled to the independent contribution card, and no console errors appeared.
+
+**Page hierarchy became weight-based instead of document-like.**
+Codex implemented CC's `revise/page-hierarchy-spec.md`: the top brief is now only the hook, a "Your mission" north-star sentence, compact strengths/gaps chips, and the existing quiet goal chips. The old two-column strengths/gaps and duplicated mission box left the opening, while the full strengths/gaps detail remains available inside the collapsed reasoning drawer. The workspace card now has the strongest visual treatment so it reads as the main product surface, and the timeline/pace note moved into "Your independent contribution" instead of floating as a standalone paragraph. Added optional `northStar` to the plan schema and mock mode, with a UI fallback to the first task when old plans do not include it.
+
+**The plan view became a single-surface workspace.**
+After Sissi rejected the remaining five stacked sections, Codex implemented `revise/single-surface-workspace-spec.md`: the briefing is now a first-arrival doorway keyed by `lb_briefed_<planKey>`, and the workspace becomes home after entry/refresh. The workspace no longer renders contribution, reasoning, self-check, or payload utilities as stacked sections below it. The readiness project now opens from the queue into the main stage, while "Why this plan?" opens a right-side drawer containing the full strengths/gaps reasoning plus the plan self-check result. Back-to-edit and payload inspection moved into the drawer footer, and blocked job-link honesty remains visible as full briefing copy plus a compact dismissible workspace banner. Verified by production build and mock-mode browser smoke test.
+
+**The project folder became earned artifact state.**
+Codex implemented `revise/sidebar-workspace-spec.md` inside the single-surface shell: sidebar files now show honest artifact states (`○ outlined`, `● draft`, `✓ final`) derived from persisted drafts and completion state. Clicking a non-future file opens an inline draft preview with `Continue →` / `Reopen →`; future tasks still show the existing start-anyway confirmation. The folder now exports a zero-API Markdown project via a real `download` link once any draft exists, with empty artifacts written honestly as `_Not written yet._`, and the footer ties files to the readiness project. Verified in `?mock=1` by fresh-origin browser checks, draft persistence, preview behavior, Reward completion, future gating, export href contents, no console errors, and no horizontal overflow. Per the preview-harness rule, Codex did not run `npm run build` while the dev server was active.
+
+**Progress now measures files built and gaps closed.**
+Codex implemented `revise/progress-states-spec.md`: the workspace header no longer shows a percent and now says `{N} of {M} project files built`, with one segment per task. Segments can tint for saved moment/draft activity, but the counted number only changes through Reward completion. To enforce that honesty rule, the old task-header manual done toggle was removed; completion now flows through `markDone` from Reward only. The mock/schema gained optional `closesGapIndex`, and the Briefing gap chips flip from `□` to `✓` only when every mapped task for that gap is in `done`; old plans without mappings remain static. When all tasks are complete, the header hands off to readiness: `All {N} files built — your readiness project is open ★`. Verified in mock mode without running `npm run build`: all-done restore, closed-gap Briefing, no manual mark-done button, no percent in the workspace header, mobile no-overflow, and no console errors.
+
 ---
 
 ## Where it stands

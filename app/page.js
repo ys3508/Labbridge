@@ -26,6 +26,15 @@ export default function Page() {
   const [form, setForm] = useState(INITIAL);
   const [stage, setStage] = useState("form"); // form | review | done
 
+  // Mock mode is for offline UI work. Reopen the generated workspace directly
+  // after refresh so local progress/draft state can be verified without API.
+  useEffect(() => {
+    try {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get("mock") === "1" || localStorage.getItem("lb_mock") === "1") setStage("done");
+    } catch {}
+  }, []);
+
   const setPart = (key) => (val) => setForm((f) => ({ ...f, [key]: val }));
 
   const filledArtifacts = form.headed.artifacts.filter((a) => (a.text || "").trim());
@@ -93,7 +102,7 @@ export default function Page() {
 
   if (stage === "done") {
     return (
-      <Shell>
+      <Shell wide>
         <PlanView form={form} isBeginner={isBeginner} onBack={() => setStage("review")} />
       </Shell>
     );
@@ -149,9 +158,9 @@ export default function Page() {
   );
 }
 
-function Shell({ children }) {
+function Shell({ children, wide = false }) {
   return (
-    <main className="mx-auto max-w-2xl px-4 py-10 sm:py-14">{children}</main>
+    <main className={`mx-auto px-4 py-10 sm:py-14 ${wide ? "max-w-5xl" : "max-w-2xl"}`}>{children}</main>
   );
 }
 

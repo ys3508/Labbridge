@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Note } from "./ui";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 import { looksLikeUrl } from "@/lib/stubs";
@@ -20,21 +20,79 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [check, setCheck] = useState(null);
   const [checking, setChecking] = useState(false);
   const [done, setDone] = useState(() => new Set()); // completed module indices
+  const [activeIndex, setActiveIndex] = useState(0);
+  const [drafts, setDrafts] = useState({});
+  const [momentsByTask, setMomentsByTask] = useState({});
+  const [checksByTask, setChecksByTask] = useState({});
+  const [futureOverrides, setFutureOverrides] = useState(() => new Set());
+  const [pendingFuture, setPendingFuture] = useState(null);
+  const [briefingOpen, setBriefingOpen] = useState(true);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [activeSurface, setActiveSurface] = useState("task");
+  const [workspaceWarningDismissed, setWorkspaceWarningDismissed] = useState(false);
+  const [stateLoaded, setStateLoaded] = useState(false);
+  const taskPanelRef = useRef(null);
 
   // Progress persists locally so checkpoints survive a refresh (the continuity
   // a one-shot chatbot can't give). Cross-session/account memory is a later step.
   useEffect(() => {
     if (!plan) return;
     try {
-      const raw = localStorage.getItem(planKey(plan.learningSequence));
-      if (raw) setDone(new Set(JSON.parse(raw)));
+      setStateLoaded(false);
+      const seq = plan.learningSequence || [];
+      const rawDone = localStorage.getItem(planKey(seq));
+      const loadedDone = new Set(rawDone ? JSON.parse(rawDone) : []);
+      const rawMoments = localStorage.getItem(scopedPlanKey("lb_moments", seq));
+      const rawChecks = localStorage.getItem(scopedPlanKey("lb_checks", seq));
+      const rawDrafts = localStorage.getItem(scopedPlanKey("lb_drafts", seq));
+      const rawBriefed = localStorage.getItem(scopedPlanKey("lb_briefed", seq));
+      setDone(loadedDone);
+      setMomentsByTask(rawMoments ? JSON.parse(rawMoments) : {});
+      setChecksByTask(rawChecks ? JSON.parse(rawChecks) : {});
+      setDrafts(rawDrafts ? JSON.parse(rawDrafts) : {});
+      setFutureOverrides(new Set());
+      setPendingFuture(null);
+      setBriefingOpen(rawBriefed !== "1");
+      setWhyOpen(false);
+      setActiveSurface("task");
+      setWorkspaceWarningDismissed(false);
+      const firstOpen = seq.findIndex((_, i) => !loadedDone.has(i));
+      setActiveIndex(firstOpen === -1 ? Math.max(0, seq.length - 1) : firstOpen);
+      setStateLoaded(true);
     } catch {}
   }, [plan]);
 
-  const toggleDone = (i) => {
+  useEffect(() => {
+    if (!plan?.learningSequence?.length) return;
+    setActiveIndex((i) => Math.min(i, plan.learningSequence.length - 1));
+  }, [plan]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_moments", plan.learningSequence), JSON.stringify(momentsByTask));
+    } catch {}
+  }, [momentsByTask, plan, stateLoaded]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_checks", plan.learningSequence), JSON.stringify(checksByTask));
+    } catch {}
+  }, [checksByTask, plan, stateLoaded]);
+
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_drafts", plan.learningSequence), JSON.stringify(drafts));
+    } catch {}
+  }, [drafts, plan, stateLoaded]);
+
+  const markDone = (i) => {
     setDone((prev) => {
+      if (prev.has(i)) return prev;
       const next = new Set(prev);
-      next.has(i) ? next.delete(i) : next.add(i);
+      next.add(i);
       try {
         localStorage.setItem(planKey(plan.learningSequence), JSON.stringify([...next]));
       } catch {}
@@ -42,7 +100,33 @@ export default function PlanView({ form, isBeginner, onBack }) {
     });
   };
 
+  const setTaskMoment = (taskIndex, momentIndex) => {
+    setMomentsByTask((prev) => ({ ...prev, [taskIndex]: momentIndex }));
+  };
+
+  const setTaskDraft = (taskIndex, draft) => {
+    setDrafts((prev) => ({ ...prev, [taskIndex]: draft }));
+  };
+
+  const toggleTaskCheck = (taskIndex, key) => {
+    setChecksByTask((prev) => {
+      const current = new Set(prev[taskIndex] || []);
+      current.has(key) ? current.delete(key) : current.add(key);
+      return { ...prev, [taskIndex]: [...current] };
+    });
+  };
+
   const payload = buildPayload(form, isBeginner);
+
+  // If a previous render introduced horizontal overflow, Chromium can preserve
+  // that stale x-position across hot reloads/back-forward restores. Keep the
+  // workspace anchored at the left edge while the layout itself prevents overflow.
+  useEffect(() => {
+    const root = document.scrollingElement || document.documentElement;
+    root.scrollLeft = 0;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollLeft = 0;
+  }, []);
 
   // 1) Generate the plan.
   useEffect(() => {
@@ -151,9 +235,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
     return (
       <div className="flex flex-col items-center justify-center py-24 text-center fade-up">
         <div className="h-8 w-8 animate-spin rounded-full border-2 border-brand-200 border-t-brand-500" />
-        <p className="mt-4 text-sm font-medium text-ink">Building your onboarding plan…</p>
+        <p className="mt-4 text-sm font-medium text-ink">Building your onboarding workspace…</p>
         <p className="mt-1 text-xs text-ink-faint">
-          Teaching each module, not just listing it — the concept, a worked example, your assignment. ~1–2 min.
+          Turning your target into project tasks, deliverables, and just-enough learning. ~1–2 min.
         </p>
       </div>
     );
@@ -174,129 +258,248 @@ export default function PlanView({ form, isBeginner, onBack }) {
     (payload.background.field || []).join(", ") ||
     (payload.background.sector || []).join(", ") ||
     "";
+  const modules = plan.learningSequence || [];
+  const activeModule = modules[activeIndex] || modules[0];
+  const firstIncompleteIndexRaw = modules.findIndex((_, i) => !done.has(i));
+  const firstIncompleteIndex = firstIncompleteIndexRaw === -1 ? modules.length : firstIncompleteIndexRaw;
+  const allTasksDone = modules.length > 0 && done.size >= modules.length;
+  const missionLine = plan.northStar?.trim() || plan.firstTask?.title || "Build the evidence package this role expects.";
+  const planTitle = roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Your onboarding workspace";
+  const deadline = payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : "";
+  const checkFailures = checkFailureCount(check);
+  const enterWorkspace = () => {
+    try {
+      localStorage.setItem(scopedPlanKey("lb_briefed", modules), "1");
+    } catch {}
+    setBriefingOpen(false);
+  };
+  const reopenBriefing = () => {
+    setWhyOpen(false);
+    setBriefingOpen(true);
+  };
+  const scrollTaskIntoView = () => {
+    setTimeout(() => taskPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
+  };
+  const openTask = (i) => {
+    const isFuture = firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i);
+    if (isFuture) {
+      setPendingFuture(i);
+      return;
+    }
+    setPendingFuture(null);
+    setActiveSurface("task");
+    setActiveIndex(i);
+    scrollTaskIntoView();
+  };
+  const openFutureAnyway = (i) => {
+    setFutureOverrides((prev) => new Set([...prev, i]));
+    setPendingFuture(null);
+    setActiveSurface("task");
+    setActiveIndex(i);
+    scrollTaskIntoView();
+  };
+  const goToRecommendedTask = () => {
+    if (firstIncompleteIndex < modules.length) {
+      setPendingFuture(null);
+      setActiveSurface("task");
+      setActiveIndex(firstIncompleteIndex);
+      scrollTaskIntoView();
+    }
+  };
+  const completeAndAdvance = (i) => {
+    markDone(i);
+    if (i < modules.length - 1) {
+      setActiveIndex(i + 1);
+      setTaskMoment(i + 1, 0);
+      setActiveSurface("task");
+      scrollTaskIntoView();
+    } else {
+      setActiveSurface("capstone");
+      scrollTaskIntoView();
+    }
+  };
+  const openCapstone = () => {
+    if (!allTasksDone && !futureOverrides.has("capstone")) {
+      setPendingFuture("capstone");
+      return;
+    }
+    setPendingFuture(null);
+    setActiveSurface("capstone");
+    scrollTaskIntoView();
+  };
+  const openCapstoneAnyway = () => {
+    setFutureOverrides((prev) => new Set([...prev, "capstone"]));
+    setPendingFuture(null);
+    setActiveSurface("capstone");
+    scrollTaskIntoView();
+  };
+
+  if (briefingOpen) {
+    return (
+      <div className="mx-auto flex min-h-[72vh] w-full max-w-3xl flex-col justify-center fade-up">
+        <header>
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding briefing</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
+            {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
+          </h1>
+          {roleName && fromLabel && (
+            <p className="mt-1 text-sm text-ink-faint">
+              {fromLabel} → {roleName}
+            </p>
+          )}
+          <MissionBrief plan={plan} modules={modules} done={done} depthLabel={depthLabel} purposeLabel={purposeLabel} />
+        </header>
+
+        <div className="mt-6 space-y-3">
+          {isBeginner && (
+            <Note>
+              We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
+            </Note>
+          )}
+
+          {payload.target.unreadableLink && (
+            <Note tone="warn">
+              We couldn't read a job link you added — the site may block automated reading. This plan is built from your
+              background and any other materials, <strong>not</strong> that posting. Paste the job description text in
+              section 2 to target the exact role and company.
+            </Note>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={enterWorkspace}
+            className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+          >
+            Enter your workspace →
+          </button>
+          <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+            ← Back to edit
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="fade-up space-y-6">
-      <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding plan</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-          {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
-        </h1>
-        {roleName && fromLabel && (
-          <p className="mt-1 text-sm text-ink-faint">
-            {fromLabel} → {roleName}
-          </p>
-        )}
-        <p className="mt-3 text-lg leading-relaxed text-ink-soft">{plan.hook}</p>
-        {(depthLabel || purposeLabel) && (
-          <div className="mt-3 flex flex-wrap gap-2 text-xs">
-            {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
-            {purposeLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{purposeLabel}</span>}
+    <div className="w-full fade-up">
+      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm">
+        <header className="border-b border-brand-100 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Workspace home</p>
+              <h1 className="mt-1 text-lg font-semibold leading-tight text-ink">{planTitle}</h1>
+              <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
+            </div>
+            <div className="shrink-0 space-y-2 lg:w-64">
+              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact />
+              <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+                <button
+                  type="button"
+                  onClick={reopenBriefing}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+                >
+                  Briefing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWhyOpen(true)}
+                  className="relative rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+                >
+                  Why this plan?
+                  {checkFailures > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500" aria-label="Self-check needs review" />
+                  )}
+                </button>
+              </div>
+            </div>
           </div>
-        )}
-      </header>
 
-      {isBeginner && (
-        <Note>
-          We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
-        </Note>
-      )}
+          {payload.target.unreadableLink && !workspaceWarningDismissed && (
+            <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <p>
+                Job link unreadable — this workspace uses your background and provided materials, not that blocked page.
+              </p>
+              <button
+                type="button"
+                onClick={() => setWorkspaceWarningDismissed(true)}
+                className="shrink-0 font-semibold text-amber-800 hover:text-amber-950"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+        </header>
 
-      {payload.target.unreadableLink && (
-        <Note tone="warn">
-          We couldn't read a job link you added — the site may block automated reading. This plan is built from your
-          background and any other materials, <strong>not</strong> that posting. Paste the job description text in
-          section 2 to target the exact role and company.
-        </Note>
-      )}
-
-      {/* VALUE FIRST — the course is the center of gravity, featured right after the hook. */}
-      <Card
-        title="Your onboarding course"
-        subtitle="Work through the modules in order — each is a real assignment you complete, not a lesson to read. Check them off as you go; your progress is saved on this device."
-      >
-        <ProgressBar done={done.size} total={plan.learningSequence.length} />
-        <ol className="mt-4 space-y-3">
-          {plan.learningSequence.map((step, i) => (
-            <Module
-              key={i}
-              i={i}
-              step={step}
-              resources={topicResources[i]}
-              resourcesDone={resourcesDone}
-              isDone={done.has(i)}
-              onToggle={() => toggleDone(i)}
+        <div className="grid gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
+          <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start">
+            <ProjectFolder
+              modules={modules}
+              activeIndex={activeIndex}
+              done={done}
+              drafts={drafts}
+              momentsByTask={momentsByTask}
+              firstIncompleteIndex={firstIncompleteIndex}
+              futureOverrides={futureOverrides}
+              pendingFuture={pendingFuture}
+              allTasksDone={allTasksDone}
+              activeSurface={activeSurface}
+              projectTitle={planTitle}
+              onSelect={openTask}
+              onStartAnyway={openFutureAnyway}
+              onGoRecommended={goToRecommendedTask}
+              onCapstone={openCapstone}
+              onCapstoneAnyway={openCapstoneAnyway}
             />
-          ))}
-        </ol>
-        {augmenting && (
-          <p className="mt-3 text-xs text-ink-faint">Adding official docs &amp; courses to the thin modules…</p>
-        )}
-        <p className="mt-4 text-xs text-ink-faint">
-          Resources under each task are real, verified sources (Open Library, OpenAlex, or an official page), scoped to
-          the exact part you need. A task with none is meant to be done hands-on.
-        </p>
-      </Card>
-
-      {/* The capstone — the culmination of the course, on a DERIVED horizon. */}
-      <ReadinessProject
-        firstTask={plan.firstTask}
-        hasRealTask={!!form.headed.realTask?.trim()}
-        deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
-      />
-
-      {plan.timelineNote && (
-        <p className="text-sm text-ink-soft">
-          <span className="font-medium text-ink">Pace:</span> {plan.timelineNote}
-        </p>
-      )}
-
-      {/* VERIFICATION, DEFERRED — the reasoning and self-check are available, not front-and-center. */}
-      <Collapse
-        summary={`The reasoning — built on ${plan.transferableStrengths?.length || 0} transferable strength${
-          plan.transferableStrengths?.length === 1 ? "" : "s"
-        }, targeting ${plan.knowledgeGaps?.length || 0} job-critical gap${
-          plan.knowledgeGaps?.length === 1 ? "" : "s"
-        }`}
-        hint="why it picked these"
-      >
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              What you already bring — and can skip
-            </h3>
-            <div className="mt-2">
-              <PointList items={plan.transferableStrengths} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What's actually missing</h3>
-            <div className="mt-2">
-              <PointList items={plan.knowledgeGaps} />
-            </div>
+          </aside>
+          <div ref={taskPanelRef} className="min-w-0 scroll-mt-4">
+            {activeSurface === "capstone" ? (
+              <ReadinessProject
+                firstTask={plan.firstTask}
+                hasRealTask={!!form.headed.realTask?.trim()}
+                deadline={deadline}
+                timelineNote={plan.timelineNote}
+                embedded
+              />
+            ) : (
+              activeModule && (
+                <Module
+                  i={activeIndex}
+                  total={modules.length}
+                  step={activeModule}
+                  resources={topicResources[activeIndex]}
+                  resourcesDone={resourcesDone}
+                  isDone={done.has(activeIndex)}
+                  onComplete={() => completeAndAdvance(activeIndex)}
+                  draft={drafts[activeIndex] || ""}
+                  onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
+                  nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
+                  momentIndex={momentsByTask[activeIndex] || 0}
+                  onMomentChange={(momentIndex) => setTaskMoment(activeIndex, momentIndex)}
+                  checks={checksByTask[activeIndex] || []}
+                  onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
+                />
+              )
+            )}
+            {augmenting && (
+              <p className="mt-3 text-xs text-ink-faint">Adding optional explanations to thin tasks…</p>
+            )}
           </div>
         </div>
-      </Collapse>
+      </section>
 
-      <CheckReview check={check} checking={checking} />
-
-      <div className="flex items-center justify-between border-t border-slate-200 pt-6">
-        <button onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
-          ← Back to edit
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowPayload((s) => !s)}
-          className="text-xs text-ink-faint hover:text-ink-soft"
-        >
-          {showPayload ? "Hide" : "Show"} what the generator received
-        </button>
-      </div>
-
-      {showPayload && (
-        <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
-          {JSON.stringify(payload, null, 2)}
-        </pre>
+      {whyOpen && (
+        <PlanDrawer
+          plan={plan}
+          check={check}
+          checking={checking}
+          payload={payload}
+          showPayload={showPayload}
+          onTogglePayload={() => setShowPayload((s) => !s)}
+          onBack={onBack}
+          onClose={() => setWhyOpen(false)}
+        />
       )}
     </div>
   );
@@ -304,21 +507,27 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
 function NodeResources({ resources, done }) {
   if (!done) {
-    return <p className="mt-2 text-xs text-ink-faint">finding resources for this task…</p>;
+    return <p className="text-xs text-ink-faint">Finding extra explanations for this task…</p>;
   }
   if (!resources?.length) {
     return (
-      <p className="mt-2 text-xs italic text-ink-faint">
+      <p className="text-xs italic text-ink-faint">
         Everything you need to do this is above — no outside reading required.
       </p>
     );
   }
   return (
-    <div className="mt-2">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">
-        Supporting reference — use only if you want backup
-      </p>
-      <ul className="mt-1 space-y-2">
+    <details className="group rounded-lg border border-slate-100 bg-white px-4 py-3">
+      <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink-soft">
+        <span>
+          <span className="font-semibold uppercase tracking-wide text-ink-faint">Need another explanation?</span>
+          <span className="ml-2 text-ink-faint">
+            {resources.length} analyst-vetted source{resources.length === 1 ? "" : "s"}
+          </span>
+        </span>
+        <span className="text-ink-faint transition-transform group-open:rotate-180">▾</span>
+      </summary>
+      <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3">
         {resources.map((r, k) => (
           <li key={k} className="text-sm">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
@@ -337,10 +546,400 @@ function NodeResources({ resources, done }) {
                 ✓ {r.source}
               </span>
             </div>
-            {(r.use || r.why) && <div className="mt-0.5 text-xs text-ink-soft">{r.use || r.why}</div>}
+            {(r.use || r.why) && (
+              <div className="mt-1 text-xs leading-relaxed text-ink-soft">{r.use || r.why}</div>
+            )}
           </li>
         ))}
       </ul>
+    </details>
+  );
+}
+
+function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purposeLabel }) {
+  const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
+  const gapItems = (plan.knowledgeGaps || []).slice(0, 3);
+  const gapMappings = getGapMappings(modules, gapItems.length);
+  const hasGapMappings = gapMappings.length > 0;
+  const closedGaps = hasGapMappings
+    ? gapItems.filter((_, gapIndex) => isGapClosed(gapIndex, gapMappings, done)).length
+    : 0;
+  // Fallback = the readiness project's title (schema field `firstTask`), NOT task 1's
+  // title — the mission is the whole arc, not the first assignment. Duplicating the
+  // readiness title in a degraded state beats mislabeling task 1 as "your mission".
+  const northStar = plan.northStar?.trim() || plan.firstTask?.title || "";
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
+      {northStar && (
+        <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your mission</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(northStar, 180)}</p>
+        </div>
+      )}
+      {hasGapMappings && closedGaps > 0 && (
+        <p className="mt-3 text-xs font-medium text-emerald-700">
+          {closedGaps} of {gapItems.length} gap{gapItems.length === 1 ? "" : "s"} closed.
+        </p>
+      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {strengths.map((item, i) => (
+          <BriefChip key={`strength-${i}`} mark="✓" tone="emerald">
+            {item}
+          </BriefChip>
+        ))}
+        {gapItems.map((gap, i) => {
+          const closed = hasGapMappings && isGapClosed(i, gapMappings, done);
+          return (
+            <BriefChip key={`gap-${i}`} mark={closed ? "✓" : "□"} tone={closed ? "emerald" : "slate"}>
+              {cleanPoint(gap.point)}
+            </BriefChip>
+          );
+        })}
+      </div>
+      {(depthLabel || purposeLabel) && (
+        <div className="mt-3 flex flex-wrap gap-2 text-xs">
+          {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
+          {purposeLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{purposeLabel}</span>}
+        </div>
+      )}
+    </section>
+  );
+}
+
+function BriefChip({ children, mark, tone }) {
+  const styles =
+    tone === "emerald"
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-100"
+      : "bg-slate-100 text-ink-soft ring-slate-200";
+  const markColor = tone === "emerald" ? "text-emerald-600" : "text-ink-faint";
+  return (
+    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ring-1 ${styles}`}>
+      <span className={markColor}>{mark}</span>
+      <span className="min-w-0 truncate">{shorten(children, 28)}</span>
+    </span>
+  );
+}
+
+function ProjectFolder({
+  modules,
+  activeIndex,
+  done,
+  drafts,
+  momentsByTask,
+  firstIncompleteIndex,
+  futureOverrides,
+  pendingFuture,
+  allTasksDone,
+  activeSurface,
+  projectTitle,
+  onSelect,
+  onStartAnyway,
+  onGoRecommended,
+  onCapstone,
+  onCapstoneAnyway,
+}) {
+  const [openPreview, setOpenPreview] = useState(null);
+  const files = modules.map((m, i) => deliverableName(m, i));
+  if (!files.length) return null;
+  const firstOpenLabel =
+    firstIncompleteIndex < modules.length ? `Task ${firstIncompleteIndex + 1}` : `Task ${modules.length}`;
+  const taskState = (m, i) => {
+    const meta = getMomentMeta(m);
+    const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
+    const draft = drafts[i] || "";
+    const cleanDraft = draft.trim();
+    const hasDraft = !!cleanDraft;
+    const isDone = done.has(i);
+    const isFuture =
+      firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i) && !isDone;
+    const navStatus = savedMoment > 0 ? `resume at ${meta[savedMoment]?.label || "Brief"} ${savedMoment + 1}/${meta.length}` : "";
+    const words = wordCount(cleanDraft);
+    const artifactState = isDone
+      ? {
+          mark: "✓",
+          label: "final",
+          line: words ? `${words} word${words === 1 ? "" : "s"}` : "no draft",
+          tone: "final",
+        }
+      : hasDraft
+        ? {
+            mark: "●",
+            label: "draft",
+            line: `${shorten(cleanDraft, 60)} · ${words} word${words === 1 ? "" : "s"}`,
+            tone: "draft",
+          }
+        : {
+            mark: "○",
+            label: "outlined",
+            line: "not yet created",
+            tone: "outlined",
+          };
+    const status = navStatus ? `${artifactState.mark} ${artifactState.label}, ${artifactState.line} · ${navStatus}` : `${artifactState.mark} ${artifactState.label}, ${artifactState.line}`;
+    return { meta, savedMoment, draft, cleanDraft, hasDraft, isDone, isFuture, status, artifactState, words };
+  };
+
+  const openFilePreview = (i) => {
+    const state = taskState(modules[i], i);
+    if (state.isFuture) {
+      setOpenPreview(null);
+      onSelect(i);
+      return;
+    }
+    setOpenPreview((current) => (current === i ? null : i));
+  };
+
+  const continueFromPreview = (i) => {
+    setOpenPreview(null);
+    onSelect(i);
+  };
+
+  const projectMarkdown = buildProjectMarkdown(projectTitle, modules, files, drafts, done);
+  const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(projectMarkdown)}`;
+  const canDownload = hasAnyDraft(drafts);
+
+  const renderConfirm = (i) => (
+    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <p>We recommend finishing {firstOpenLabel} first — start anyway?</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={() => onStartAnyway(i)} className="rounded bg-white px-2 py-1 font-medium ring-1 ring-amber-200">
+          Start anyway
+        </button>
+        <button type="button" onClick={onGoRecommended} className="rounded px-2 py-1 font-medium text-amber-800 hover:bg-white/70">
+          Go to {firstOpenLabel}
+        </button>
+      </div>
+    </div>
+  );
+
+  const renderCapstoneConfirm = () => (
+    <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+      <p>We recommend finishing {firstOpenLabel} first — start anyway?</p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button type="button" onClick={onCapstoneAnyway} className="rounded bg-white px-2 py-1 font-medium ring-1 ring-amber-200">
+          Start anyway
+        </button>
+        <button type="button" onClick={onGoRecommended} className="rounded px-2 py-1 font-medium text-amber-800 hover:bg-white/70">
+          Go to {firstOpenLabel}
+        </button>
+      </div>
+    </div>
+  );
+
+  return (
+    <>
+      <div className="lg:hidden">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          {modules.map((m, i) => {
+            const state = taskState(m, i);
+            return (
+              <button
+                key={i}
+                type="button"
+                onClick={() => onSelect(i)}
+                className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-xs font-semibold transition ${
+                  activeSurface === "task" && activeIndex === i
+                    ? "border-brand-300 bg-white text-brand-700"
+                    : "border-slate-200 bg-white/70 text-ink-soft"
+                } ${state.isFuture ? "opacity-45" : ""}`}
+                title={state.status}
+              >
+                {state.isDone ? "✓" : activeIndex === i ? "●" : i + 1}
+              </button>
+            );
+          })}
+          <button
+            type="button"
+            onClick={onCapstone}
+            className={`flex h-10 min-w-[4.5rem] items-center justify-center rounded-full border px-3 text-xs font-semibold transition ${
+              activeSurface === "capstone"
+                ? "border-brand-300 bg-white text-brand-700"
+                : allTasksDone || futureOverrides.has("capstone")
+                  ? "border-brand-200 bg-white text-brand-700"
+                : "border-slate-200 bg-white/70 text-ink-soft opacity-45"
+            }`}
+            title="Readiness project"
+          >
+            Project
+          </button>
+        </div>
+        {typeof pendingFuture === "number" && renderConfirm(pendingFuture)}
+        {pendingFuture === "capstone" && renderCapstoneConfirm()}
+      </div>
+
+      <div className="hidden rounded-xl border border-slate-200 bg-slate-50/70 px-4 py-3 lg:block">
+        <div className="flex items-baseline justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
+            <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
+          </div>
+          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
+            {files.length} files
+          </span>
+        </div>
+        <div className="mt-3 space-y-1.5">
+          {files.map((file, i) => {
+            const state = taskState(modules[i], i);
+            return (
+              <div key={i}>
+                <button
+                  type="button"
+                  onClick={() => openFilePreview(i)}
+                  className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
+                    activeIndex === i
+                    && activeSurface === "task"
+                      ? "bg-white text-ink ring-brand-200"
+                      : "bg-white/70 text-ink-soft ring-slate-100 hover:ring-brand-100"
+                  } ${state.isFuture ? "opacity-50" : ""}`}
+                >
+                  <span
+                    className={
+                      state.artifactState.tone === "final"
+                        ? "mt-0.5 text-emerald-600"
+                        : state.artifactState.tone === "draft"
+                          ? "mt-0.5 text-amber-500"
+                          : "mt-0.5 text-ink-faint"
+                    }
+                  >
+                    {state.artifactState.mark}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate font-medium">{file}</span>
+                    <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">{state.status}</span>
+                    {state.isFuture && (
+                      <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                        Builds on Task {firstIncompleteIndex + 1}'s {dependencyName(modules, firstIncompleteIndex)}
+                      </span>
+                    )}
+                  </span>
+                  <span className="shrink-0 text-ink-faint">{state.isFuture ? "Open →" : openPreview === i ? "Close" : "Preview"}</span>
+                </button>
+                {openPreview === i && (
+                  <FilePreview
+                    file={file}
+                    draft={state.cleanDraft}
+                    isDone={state.isDone}
+                    onContinue={() => continueFromPreview(i)}
+                  />
+                )}
+                {pendingFuture === i && renderConfirm(i)}
+              </div>
+            );
+          })}
+          <div>
+            <button
+              type="button"
+              onClick={onCapstone}
+              className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
+                activeSurface === "capstone"
+                  ? "bg-white text-ink ring-brand-200"
+                  : allTasksDone || futureOverrides.has("capstone")
+                    ? "bg-white/70 text-ink-soft ring-brand-100 hover:ring-brand-200"
+                  : "bg-white/60 text-ink-soft opacity-50 ring-slate-100 hover:ring-brand-100"
+              }`}
+            >
+              <span className="mt-0.5 text-brand-500">★</span>
+              <span className="min-w-0 flex-1">
+                <span className="block font-medium">Readiness project</span>
+                <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                  {allTasksDone ? "Ready to review" : `Builds on all ${modules.length} tasks`}
+                </span>
+              </span>
+              <span className="shrink-0 text-ink-faint">Open →</span>
+            </button>
+            {pendingFuture === "capstone" && renderCapstoneConfirm()}
+          </div>
+        </div>
+        <div className="mt-4 border-t border-slate-200 pt-3">
+          {canDownload ? (
+            <a
+              href={projectHref}
+              download="labbridge-project.md"
+              className="block w-full rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-ink ring-1 ring-slate-200 transition hover:ring-brand-200"
+            >
+              Download my project
+            </a>
+          ) : (
+            <button
+              type="button"
+              disabled
+              title="Write something first — your drafts become the download."
+              className="w-full cursor-not-allowed rounded-lg bg-white px-3 py-2 text-xs font-semibold text-ink-faint opacity-60 ring-1 ring-slate-200"
+            >
+              Download my project
+            </button>
+          )}
+          <p className="mt-2 text-[11px] leading-snug text-ink-faint">These files become your readiness project.</p>
+        </div>
+      </div>
+    </>
+  );
+}
+
+function FilePreview({ file, draft, isDone, onContinue }) {
+  return (
+    <div className="mt-2 rounded-lg border border-brand-100 bg-white px-3 py-3 text-xs shadow-sm">
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="break-all font-semibold text-ink">{file}</p>
+          <p className="mt-0.5 text-[11px] text-ink-faint">{draft ? `${wordCount(draft)} word${wordCount(draft) === 1 ? "" : "s"}` : "empty draft"}</p>
+        </div>
+        <button
+          type="button"
+          onClick={onContinue}
+          className="shrink-0 rounded bg-brand-50 px-2 py-1 font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
+        >
+          {isDone ? "Reopen →" : "Continue →"}
+        </button>
+      </div>
+      {draft ? (
+        <div className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 px-3 py-2 leading-relaxed text-ink-soft">
+          {draft}
+        </div>
+      ) : (
+        <p className="mt-3 rounded-md bg-slate-50 px-3 py-2 leading-relaxed text-ink-faint">
+          Nothing written yet — the Artifact moment is where this file gets made.
+        </p>
+      )}
+    </div>
+  );
+}
+
+function TaskTabs({ modules, activeIndex, done, onSelect }) {
+  if (!modules.length) return null;
+  return (
+    <div className="mt-4">
+      <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Tasks</p>
+      <div className="mt-2 grid gap-2">
+        {modules.map((m, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => onSelect(i)}
+            className={`flex items-center gap-3 rounded-lg border px-3 py-2 text-left transition ${
+              activeIndex === i
+                ? "border-brand-300 bg-brand-50 text-ink"
+                : "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:bg-brand-50/40"
+            }`}
+          >
+            <span
+              className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs ${
+                done.has(i)
+                  ? "border-emerald-500 bg-emerald-500 text-white"
+                  : activeIndex === i
+                    ? "border-brand-300 bg-white text-brand-700"
+                    : "border-slate-300 text-ink-faint"
+              }`}
+            >
+              {done.has(i) ? "✓" : i + 1}
+            </span>
+            <span className="min-w-0">
+              <span className="block text-sm font-medium leading-snug">Task {i + 1}</span>
+              <span className="block truncate text-xs">{m.task?.title || m.topic}</span>
+            </span>
+          </button>
+        ))}
+      </div>
     </div>
   );
 }
@@ -353,179 +952,678 @@ function planKey(seq) {
   return "lb_progress_" + (h >>> 0).toString(36);
 }
 
-function ProgressBar({ done, total }) {
-  const pct = total ? Math.round((done / total) * 100) : 0;
+function scopedPlanKey(prefix, seq) {
+  return `${prefix}_${planKey(seq)}`;
+}
+
+function getMomentMeta(step) {
+  const task = step?.task || {};
+  const concept = step?.concept || {};
+  const example = step?.workedExample || {};
+  const moments = [{ key: "brief", label: "Brief", objective: "Why am I here?" }];
+  if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
+    moments.push({ key: "question", label: "Question", objective: "Can I try first?" });
+  }
+  if (concept.explanation) moments.push({ key: "model", label: "Model", objective: "What's the idea?" });
+  if (example.setup) moments.push({ key: "visual", label: "Visual", objective: "What does it look like?" });
+  if (task.steps?.length) moments.push({ key: "practice", label: "Practice", objective: "Can I do it myself?" });
+  moments.push(
+    { key: "coach", label: "Coach", objective: "Am I right?" },
+    { key: "artifact", label: "Artifact", objective: "What did I produce?" },
+    { key: "reward", label: "Reward", objective: "What changed in my project?" }
+  );
+  return moments;
+}
+
+function dependencyName(modules, index) {
+  if (index < 0 || index >= modules.length) return "previous work";
+  return shorten(deliverableName(modules[index], index), 36);
+}
+
+function wordCount(s) {
+  const words = (s || "").trim().match(/\S+/g);
+  return words ? words.length : 0;
+}
+
+function hasAnyDraft(drafts) {
+  return Object.values(drafts || {}).some((draft) => (draft || "").trim());
+}
+
+function getGapMappings(modules, gapCount) {
+  return (modules || [])
+    .map((m, taskIndex) => ({ taskIndex, gapIndex: Number(m.closesGapIndex) }))
+    .filter(({ gapIndex }) => Number.isInteger(gapIndex) && gapIndex >= 0 && gapIndex < gapCount);
+}
+
+function isGapClosed(gapIndex, mappings, done) {
+  const tasksForGap = mappings.filter((m) => m.gapIndex === gapIndex).map((m) => m.taskIndex);
+  return tasksForGap.length > 0 && tasksForGap.every((taskIndex) => done.has(taskIndex));
+}
+
+function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
+  const lines = [
+    `# ${projectTitle || "LabBridge project"}`,
+    "",
+    "Exported from LabBridge project workspace.",
+    "",
+  ];
+  modules.forEach((m, i) => {
+    const draft = (drafts[i] || "").trim();
+    const status = done.has(i) ? "final" : draft ? "draft" : "outlined";
+    const title = m.task?.title || m.topic || `Task ${i + 1}`;
+    lines.push(`# ${files[i]}`, "", title, "", `Status: ${status}`, "", draft || "_Not written yet._", "");
+  });
+  return lines.join("\n");
+}
+
+function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false }) {
+  const total = modules.length;
+  const doneCount = done.size;
   return (
     <div>
-      <div className="flex items-center justify-between text-xs text-ink-soft">
-        <span>
-          {done} of {total} modules complete
-        </span>
-        <span>{pct}%</span>
+      <div className="text-xs text-ink-soft">
+        {total > 0 && doneCount >= total ? (
+          <span>All {total} files built — your readiness project is open ★</span>
+        ) : (
+          <span>
+            {doneCount} of {total} project file{total === 1 ? "" : "s"} built
+          </span>
+        )}
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
-        <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
+      <div className={`${compact ? "mt-1 h-2" : "mt-1 h-2.5"} flex w-full gap-1`}>
+        {modules.map((m, i) => {
+          const meta = getMomentMeta(m);
+          const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
+          const hasDraft = !!(drafts[i] || "").trim();
+          const isDone = done.has(i);
+          const partial = !isDone && (savedMoment > 0 || hasDraft);
+          const partialPct = partial ? Math.max(34, Math.round(((savedMoment + 1) / Math.max(1, meta.length)) * 100)) : 0;
+          return (
+            <div key={i} className="h-full min-w-0 flex-1 overflow-hidden rounded-full bg-slate-100 ring-1 ring-slate-200">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  isDone ? "bg-brand-500" : partial ? "bg-brand-200" : "bg-transparent"
+                }`}
+                style={{ width: isDone ? "100%" : partial ? `${partialPct}%` : "0%" }}
+              />
+            </div>
+          );
+        })}
       </div>
     </div>
   );
 }
 
-function SubLabel({ children }) {
-  return <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{children}</p>;
-}
-
-function Module({ i, step, resources, resourcesDone, isDone, onToggle }) {
+function Module({
+  i,
+  total,
+  step,
+  resources,
+  resourcesDone,
+  isDone,
+  onComplete,
+  draft,
+  onDraftChange,
+  nextLabel,
+  momentIndex,
+  onMomentChange,
+  checks,
+  onToggleCheck,
+}) {
   const t = step.task || {};
   const c = step.concept || {};
   const ex = step.workedExample || {};
   const sc = step.selfCheck || {};
   return (
-    <li
-      className={`rounded-xl border p-4 transition ${
+    <section
+      className={`overflow-hidden rounded-xl border transition ${
         isDone ? "border-emerald-200 bg-emerald-50/40" : "border-slate-200 bg-white"
       }`}
     >
-      <div className="flex items-start gap-3">
-        <button
-          type="button"
-          onClick={onToggle}
-          aria-label={isDone ? "Mark not done" : "Mark done"}
+      <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
+        <span
           className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
-            isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint hover:border-brand-400"
+            isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint"
           }`}
         >
-          {isDone ? "✓" : i + 1}
-        </button>
+            {isDone ? "✓" : i + 1}
+        </span>
         <div className="min-w-0 flex-1">
-          <div className={`font-medium ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>{step.topic}</div>
-          <div className="mt-0.5 text-sm text-ink-soft">{step.why}</div>
-          {step.bridgeFromBackground && (
-            <p className="mt-1 text-sm italic text-brand-700">↪ {step.bridgeFromBackground}</p>
-          )}
-
-          {/* CONCEPT — the module teaches before it assigns. */}
-          {c.explanation && (
-            <div className="mt-3 rounded-lg border border-slate-200 bg-white px-3 py-2.5">
-              <SubLabel>Concept</SubLabel>
-              <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{c.explanation}</p>
-              {c.keyTerms?.length > 0 && (
-                <dl className="mt-2 space-y-1">
-                  {c.keyTerms.map((k, j) => (
-                    <div key={j} className="text-xs">
-                      <dt className="inline font-semibold text-ink">{k.term}</dt>
-                      <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
-                    </div>
-                  ))}
-                </dl>
-              )}
-              {c.misconceptionToAvoid && (
-                <p className="mt-2 rounded bg-amber-50 px-2 py-1 text-xs text-amber-800">
-                  <span className="font-medium">Common trap:</span> {c.misconceptionToAvoid}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* WORKED EXAMPLE — a tiny concrete object. */}
-          {ex.setup && (
-            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
-              <SubLabel>Worked example</SubLabel>
-              <p className="mt-1 whitespace-pre-line text-sm text-ink">{ex.setup}</p>
-              {ex.walkThrough?.length > 0 && (
-                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink-soft">
-                  {ex.walkThrough.map((s, k) => (
-                    <li key={k}>{s}</li>
-                  ))}
-                </ol>
-              )}
-              {ex.takeaway && (
-                <p className="mt-2 text-xs text-ink-soft">
-                  <span className="font-medium text-ink">Takeaway:</span> {ex.takeaway}
-                </p>
-              )}
-            </div>
-          )}
-
-          {/* TASK — the manager-assigned assignment. */}
-          {t.title && (
-            <div className="mt-2 rounded-lg border border-brand-200 bg-brand-50/50 px-3 py-2.5">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your assignment</span>
-                {t.timebox && <span className="text-[10px] text-ink-faint">⏱ {t.timebox}</span>}
-              </div>
-              {t.managerRequest && (
-                <p className="mt-1.5 border-l-2 border-brand-300 pl-2 text-sm italic text-ink-soft">
-                  “{t.managerRequest}”
-                </p>
-              )}
-              <div className="mt-1.5 text-sm font-medium text-ink">{t.title}</div>
-              {t.givenInputs?.length > 0 && (
-                <div className="mt-1 text-xs text-ink-soft">
-                  <span className="font-medium">You're given:</span> {t.givenInputs.join(", ")}
-                </div>
-              )}
-              {t.deliverable && (
-                <div className="mt-0.5 text-xs text-ink-soft">
-                  <span className="font-medium">Deliverable:</span> {t.deliverable}
-                </div>
-              )}
-              {t.steps?.length > 0 && (
-                <ol className="mt-2 list-decimal space-y-1 pl-4 text-sm text-ink">
-                  {t.steps.map((s, k) => (
-                    <li key={k}>{s}</li>
-                  ))}
-                </ol>
-              )}
-              {t.doneWhen && (
-                <div className="mt-2 flex items-baseline gap-1.5 text-xs text-emerald-700">
-                  <span>✓</span>
-                  <span>
-                    <span className="font-medium">Done when:</span> {t.doneWhen}
-                  </span>
-                </div>
-              )}
-              {t.stakeholders && (
-                <div className="mt-1.5 flex items-baseline gap-1.5 text-xs text-ink-soft">
-                  <span>👥</span>
-                  <span>
-                    <span className="font-medium">Who consumes this:</span> {t.stakeholders}
-                  </span>
-                </div>
-              )}
-            </div>
-          )}
-
-          {/* SELF-CHECK — how they know the work is good enough. */}
-          {(sc.criteria?.length > 0 || sc.redFlags?.length > 0) && (
-            <div className="mt-2 rounded-lg bg-slate-50 px-3 py-2.5">
-              <SubLabel>Check your work</SubLabel>
-              {sc.criteria?.length > 0 && (
-                <ul className="mt-1 space-y-1">
-                  {sc.criteria.map((cr, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink">
-                      <span className="text-emerald-600">✓</span>
-                      <span>{cr}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {sc.redFlags?.length > 0 && (
-                <ul className="mt-1.5 space-y-1">
-                  {sc.redFlags.map((rf, k) => (
-                    <li key={k} className="flex items-baseline gap-1.5 text-xs text-ink-soft">
-                      <span className="text-rose-500">⚠</span>
-                      <span>{rf}</span>
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
-
-          <NodeResources resources={resources} done={resourcesDone} />
+          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
+            Task {i + 1}{total ? ` of ${total}` : ""}
+          </div>
+          <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
+            {t.title || step.topic}
+          </div>
+          <p className="mt-1 text-sm leading-relaxed text-ink-soft">{shorten(step.why, 150)}</p>
         </div>
       </div>
-    </li>
+      <MomentFlow
+        moduleIndex={i}
+        step={step}
+        task={t}
+        concept={c}
+        example={ex}
+        selfCheck={sc}
+        resources={resources}
+        resourcesDone={resourcesDone}
+        isDone={isDone}
+        onComplete={onComplete}
+        draft={draft}
+        onDraftChange={onDraftChange}
+        nextLabel={nextLabel}
+        momentIndex={momentIndex}
+        onMomentChange={onMomentChange}
+        checks={checks}
+        onToggleCheck={onToggleCheck}
+      />
+    </section>
+  );
+}
+
+function MomentFlow({
+  moduleIndex,
+  step,
+  task,
+  concept,
+  example,
+  selfCheck,
+  resources,
+  resourcesDone,
+  isDone,
+  onComplete,
+  draft,
+  onDraftChange,
+  nextLabel,
+  momentIndex,
+  onMomentChange,
+  checks,
+  onToggleCheck,
+}) {
+  const [choice, setChoice] = useState(null);
+  const checkSet = new Set(checks || []);
+  const moments = buildMoments({
+    step,
+    task,
+    concept,
+    example,
+    selfCheck,
+    resources,
+    resourcesDone,
+    draft,
+    onDraftChange,
+    choice,
+    setChoice,
+    moduleIndex,
+    comprehension: step.comprehensionCheck,
+    checks: checkSet,
+    toggleCheck: onToggleCheck,
+    nextLabel,
+    isDone,
+  });
+  const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
+  const current = moments[moment] || moments[0];
+
+  useEffect(() => {
+    setChoice(null);
+  }, [moduleIndex]);
+
+  const goNext = () => {
+    if (moment < moments.length - 1) onMomentChange(moment + 1);
+    else if (!isDone) onComplete();
+  };
+
+  return (
+    <div className="bg-slate-50/60">
+      <div className="border-b border-slate-100 bg-white px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            {current.label} — {current.objective}
+          </p>
+          <p className="text-xs text-ink-faint">{moment + 1}/{moments.length}</p>
+        </div>
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
+          <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${((moment + 1) / moments.length) * 100}%` }} />
+        </div>
+        <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-8">
+          {moments.map((m, idx) => (
+            <button
+              key={m.key}
+              type="button"
+              onClick={() => onMomentChange(idx)}
+              aria-label={`Open ${m.label}`}
+              title={m.label}
+              className={`h-1.5 rounded-full transition ${
+                idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
+              }`}
+            />
+          ))}
+        </div>
+      </div>
+
+      <div className="px-5 py-5">
+        <div className="min-h-[360px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">{current.label}</p>
+          <h3 className="mt-1 text-xl font-semibold tracking-tight text-ink">{current.title}</h3>
+          {current.kicker && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{current.kicker}</p>}
+          <div className="mt-5">{current.body}</div>
+        </div>
+
+        <div className="mt-4 flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={() => onMomentChange(Math.max(0, moment - 1))}
+            disabled={moment === 0}
+            className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-ink-soft disabled:opacity-40"
+          >
+            Back
+          </button>
+          <span className="hidden text-xs text-ink-faint sm:inline">{current.objective}</span>
+          <button
+            type="button"
+            onClick={goNext}
+            className={`rounded-lg px-4 py-2 text-xs font-semibold ${
+              moment === moments.length - 1
+                ? "bg-emerald-600 text-white"
+                : "bg-brand-500 text-white hover:bg-brand-600"
+            }`}
+          >
+            {moment === moments.length - 1
+              ? nextLabel
+                ? `Start Task ${moduleIndex + 2} →`
+                : "Finish — review your project →"
+              : "Next moment"}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function buildMoments({
+  step,
+  task,
+  concept,
+  example,
+  selfCheck,
+  resources,
+  resourcesDone,
+  draft,
+  onDraftChange,
+  choice,
+  setChoice,
+  moduleIndex,
+  comprehension,
+  checks,
+  toggleCheck,
+  nextLabel,
+  isDone,
+}) {
+  // Fixed grammar, variable inclusion. Code assembles the beats a task has content
+  // for: Brief/Coach/Artifact/Reward always; Question/Model/Visual/Practice when
+  // their content exists. The model never chooses the flow.
+  const artifact = deliverableName(step, moduleIndex);
+  const criteria = selfCheck.criteria || [];
+  const redFlags = selfCheck.redFlags || [];
+  const answered = choice !== null && choice !== undefined;
+  const moments = [];
+
+  // BRIEF — Why am I here?
+  moments.push({
+    key: "brief",
+    label: "Brief",
+    title: task.title || step.topic,
+    objective: "Why am I here?",
+    kicker: "Start with the job, not the lesson.",
+    body: (
+      <div className="space-y-4">
+        {task.managerRequest && (
+          <blockquote className="border-l-2 border-brand-300 pl-4 text-base italic leading-relaxed text-ink">
+            “{task.managerRequest}”
+          </blockquote>
+        )}
+        <div className="rounded-lg bg-brand-50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your goal</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{task.deliverable || artifact}</p>
+        </div>
+        {task.givenInputs?.length > 0 && (
+          <p className="text-sm leading-relaxed text-ink-soft">
+            <span className="font-medium text-ink">You're given:</span> {task.givenInputs.join(", ")}
+          </p>
+        )}
+        {task.stakeholders && (
+          <p className="text-sm leading-relaxed text-ink-soft">
+            <span className="font-medium text-ink">Who uses it:</span> {task.stakeholders}
+          </p>
+        )}
+      </div>
+    ),
+  });
+
+  // QUESTION — Can I try first? (only if a real check exists)
+  if (comprehension?.question && comprehension.options?.length) {
+    moments.push({
+      key: "question",
+      label: "Question",
+      title: comprehension.question,
+      objective: "Can I try first?",
+      kicker: "Take a guess before the model — the first try is what makes it stick.",
+      body: (
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            {comprehension.options.map((o, idx) => {
+              const isSel = choice === idx;
+              const isCorrect = idx === comprehension.answerIndex;
+              const cls = !answered
+                ? "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
+                : isCorrect
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : isSel
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-white text-ink-faint";
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setChoice(idx)}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm transition ${cls}`}
+                >
+                  {o}
+                </button>
+              );
+            })}
+          </div>
+          {answered && (
+            <p
+              className={`rounded-lg px-3 py-2 text-sm ${
+                choice === comprehension.answerIndex ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"
+              }`}
+            >
+              {choice === comprehension.answerIndex ? "Correct. " : "Not quite. "}
+              {comprehension.explanation}
+            </p>
+          )}
+        </div>
+      ),
+    });
+  }
+
+  // MODEL — What's the idea? (full concept, no truncation)
+  if (concept.explanation) {
+    moments.push({
+      key: "model",
+      label: "Model",
+      title: "The idea you need.",
+      objective: "What's the idea?",
+      kicker: "One compact model — short enough to use while working.",
+      body: (
+        <div className="space-y-4">
+          <p className="whitespace-pre-line text-base leading-relaxed text-ink">{concept.explanation}</p>
+          {concept.keyTerms?.length > 0 && (
+            <dl className="border-t border-slate-100 pt-2">
+              {concept.keyTerms.map((k, j) => (
+                <div key={j} className="py-0.5 text-xs">
+                  <dt className="inline font-semibold text-ink">{k.term}</dt>
+                  <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {concept.misconceptionToAvoid && (
+            <p className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+              <span className="font-medium">Common mistake:</span> {concept.misconceptionToAvoid}
+            </p>
+          )}
+          {step.bridgeFromBackground && (
+            <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm italic leading-relaxed text-brand-700">
+              ↪ {step.bridgeFromBackground}
+            </p>
+          )}
+        </div>
+      ),
+    });
+  }
+
+  // VISUAL — What does it look like? (worked example as a clean card)
+  if (example.setup) {
+    moments.push({
+      key: "visual",
+      label: "Visual",
+      title: "See it on one tiny case.",
+      objective: "What does it look like?",
+      kicker: null,
+      body: (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">The case</p>
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{example.setup}</p>
+          </div>
+          {example.walkThrough?.length > 0 && (
+            <ol className="space-y-2">
+              {example.walkThrough.map((s, k) => (
+                <li
+                  key={k}
+                  className="flex gap-3 rounded-lg bg-white px-3 py-2 text-sm leading-relaxed text-ink ring-1 ring-slate-100"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-50 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+                    {k + 1}
+                  </span>
+                  <span>{s}</span>
+                </li>
+              ))}
+            </ol>
+          )}
+          {example.takeaway && (
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Takeaway:</span> {example.takeaway}
+            </p>
+          )}
+        </div>
+      ),
+    });
+  }
+
+  // PRACTICE — Can I do it myself? (only if steps exist)
+  if (task.steps?.length) {
+    moments.push({
+      key: "practice",
+      label: "Practice",
+      title: "Make the first move.",
+      objective: "Can I do it myself?",
+      kicker: "Small action, real project.",
+      body: (
+        <div>
+          <ol className="space-y-2">
+            {task.steps.map((s, k) => (
+              <li
+                key={k}
+                className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink"
+              >
+                <span className="pt-0.5 text-brand-600">□</span>
+                <span>{s}</span>
+              </li>
+            ))}
+          </ol>
+          {task.givenInputs?.length > 0 && (
+            <p className="mt-3 text-xs leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Use:</span> {task.givenInputs.join(", ")}
+            </p>
+          )}
+        </div>
+      ),
+    });
+  }
+
+  // COACH — Am I right? (honest self-check: the user ticks, nothing auto-responds)
+  moments.push({
+    key: "coach",
+    label: "Coach",
+    title: "Self-check first.",
+    objective: "Am I right?",
+    kicker: "Tick these against your own draft. It's ready for AI review when they all hold.",
+    body: (
+      <div className="space-y-3">
+        {criteria.length > 0 && (
+          <ul className="space-y-1.5">
+            {criteria.map((cr, k) => {
+              const on = checks.has(`c${k}`);
+              return (
+                <li key={k}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCheck(`c${k}`)}
+                    className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      on ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:border-brand-200"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                        on ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className={on ? "text-emerald-800" : "text-ink"}>{cr}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {redFlags.length > 0 && (
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-600">Watch for</p>
+            <ul className="mt-1.5 space-y-1">
+              {redFlags.map((rf, k) => (
+                <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                  <span className="text-rose-500">△</span>
+                  <span>{rf}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-ink-faint">
+          AI review is coming — soon you'll be able to paste your draft and have LabBridge check it against these
+          criteria. For now, judge it yourself.
+        </p>
+      </div>
+    ),
+  });
+
+  // ARTIFACT — What did I produce?
+  moments.push({
+    key: "artifact",
+    label: "Artifact",
+    title: "Write your draft.",
+    objective: "What did I produce?",
+    kicker: "This is where it becomes yours — part of your final project.",
+    body: (
+      <div className="space-y-3">
+        <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+        {task.doneWhen && (
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
+            <span className="font-medium">Done when:</span> {task.doneWhen}
+          </p>
+        )}
+        <NodeResources resources={resources} done={resourcesDone} />
+      </div>
+    ),
+  });
+
+  // REWARD — What changed in my project? (reads live state)
+  const ticked = criteria.filter((_, k) => checks.has(`c${k}`)).length;
+  const hasDraft = (draft || "").trim().length > 0;
+  moments.push({
+    key: "reward",
+    label: "Reward",
+    title: isDone ? "Task complete." : "Add it to your project.",
+    objective: "What changed in my project?",
+    kicker: null,
+    body: (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Added to your project</p>
+          <p className="mt-1 font-mono text-sm font-medium text-ink">{artifact}</p>
+          <p className="mt-1 text-xs text-ink-soft">
+            {hasDraft ? "Draft saved." : "Draft still empty — you can add it any time."}
+          </p>
+        </div>
+        {criteria.length > 0 && (
+          <p className="text-sm text-ink-soft">
+            <span className="font-medium text-ink">Self-check:</span> {ticked}/{criteria.length} confirmed
+            {ticked < criteria.length ? " — a few still open, but you can move on." : " — all clear."}
+          </p>
+        )}
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
+          {nextLabel ? (
+            <>
+              <span className="font-medium">Next:</span> {nextLabel}
+            </>
+          ) : (
+            "That's the last task — your project is assembled. The readiness project below is where you own it end-to-end."
+          )}
+        </p>
+      </div>
+    ),
+  });
+
+  return moments;
+}
+
+function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
+  const file = deliverableName(step, moduleIndex);
+  const checklist = [
+    "Notes",
+    "Draft",
+    "Checklist",
+    "Deliverable",
+  ];
+  return (
+    <div className="mt-2 rounded-lg border border-brand-100 bg-white/70 px-3 py-2">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="min-w-0">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your deliverable</p>
+          <p className="mt-0.5 break-all text-sm font-semibold text-ink">{file}</p>
+        </div>
+        <button
+          type="button"
+          className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700"
+        >
+          Open →
+        </button>
+      </div>
+      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
+        {checklist.map((item, i) => (
+          <div key={item} className="rounded-md bg-slate-50 px-2 py-1.5 text-xs text-ink-soft">
+            <span className={i === 0 ? "text-emerald-600" : "text-ink-faint"}>{i === 0 ? "✓" : "□"}</span>{" "}
+            {item}
+          </div>
+        ))}
+      </div>
+      <label className="mt-3 block">
+        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Draft notes</span>
+        <textarea
+          value={draft}
+          onChange={(e) => onDraftChange(e.target.value)}
+          rows={3}
+          placeholder="Start writing the artifact here. What did you notice first?"
+          className="mt-1 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink focus:border-brand-300 focus:outline-none focus:ring-1 focus:ring-brand-200"
+        />
+      </label>
+    </div>
+  );
+}
+
+function DoneReward({ step, moduleIndex }) {
+  return (
+    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <p className="text-sm font-semibold text-emerald-800">Great work. Artifact added to your project.</p>
+      <p className="mt-1 text-xs leading-relaxed text-emerald-700">
+        Your RWE lead can now review <span className="break-all font-medium">{deliverableName(step, moduleIndex)}</span>. You are
+        building the project, not just checking off a lesson.
+      </p>
+    </div>
   );
 }
 
@@ -605,6 +1703,162 @@ function CheckReview({ check, checking }) {
   );
 }
 
+function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePayload, onBack, onClose }) {
+  return (
+    <div className="fixed inset-0 z-40">
+      <button
+        type="button"
+        aria-label="Close why this plan"
+        className="absolute inset-0 bg-ink/20"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Plan logic</p>
+            <h2 className="mt-1 text-lg font-semibold text-ink">Why this plan?</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-ink-soft hover:text-ink"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <PlanReasoning plan={plan} />
+          <section className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-4">
+            <h3 className="text-sm font-semibold text-ink">Plan self-check</h3>
+            <div className="mt-3">
+              <PlanSelfCheckContent check={check} checking={checking} />
+            </div>
+          </section>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+              ← Back to edit
+            </button>
+            <button type="button" onClick={onTogglePayload} className="text-xs text-ink-faint hover:text-ink-soft">
+              {showPayload ? "Hide" : "Show"} what the generator received
+            </button>
+          </div>
+          {showPayload && (
+            <pre className="mt-3 max-h-56 overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+              {JSON.stringify(payload, null, 2)}
+            </pre>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function PlanReasoning({ plan }) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+      <h3 className="text-sm font-semibold text-ink">
+        The reasoning — built on {plan.transferableStrengths?.length || 0} transferable strength
+        {plan.transferableStrengths?.length === 1 ? "" : "s"}, targeting {plan.knowledgeGaps?.length || 0} job-critical gap
+        {plan.knowledgeGaps?.length === 1 ? "" : "s"}
+      </h3>
+      <div className="mt-4 space-y-4">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            What you already bring — and can skip
+          </h4>
+          <div className="mt-2">
+            <PointList items={plan.transferableStrengths} />
+          </div>
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What's actually missing</h4>
+          <div className="mt-2">
+            <PointList items={plan.knowledgeGaps} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlanSelfCheckContent({ check, checking }) {
+  if (!check) {
+    return checking ? (
+      <p className="text-xs text-ink-faint">Running a background self-check on the plan…</p>
+    ) : (
+      <p className="text-xs text-ink-faint">Self-check has not returned yet.</p>
+    );
+  }
+  const ot = check.overteaching || {};
+  const ft = check.firstTask || {};
+  const known = ot.already_known || [];
+  const otReview = ot.needs_review || [];
+  const missing = ft.missing_prerequisites || [];
+  const vague = ft.vague_points || [];
+  const ftReview = ft.needs_review || [];
+  const scope = (ft.scope_concern || "").trim();
+  const failures = checkFailureCount(check);
+  return (
+    <div className="space-y-3 text-sm">
+      {failures === 0 && (
+        <p className="text-xs font-medium text-emerald-700">✓ Self-check passed — no blocking gaps found.</p>
+      )}
+      {missing.length > 0 && (
+        <Finding tone="amber" title="The readiness project may need skills the plan didn't cover:">
+          {missing.map((m, i) => (
+            <li key={i}>
+              <strong>{m.skill}</strong> — for “{m.task_part}”
+            </li>
+          ))}
+        </Finding>
+      )}
+      {scope && (
+        <Finding tone="amber" title="Scope concern:">
+          <li>{scope}</li>
+        </Finding>
+      )}
+      {vague.length > 0 && (
+        <Finding tone="slate" title="Could be more concrete:">
+          {vague.map((v, i) => (
+            <li key={i}>{v}</li>
+          ))}
+        </Finding>
+      )}
+      {known.length > 0 && (
+        <Finding tone="slate" title="You may already know these — consider trimming:">
+          {known.map((k, i) => (
+            <li key={i}>
+              <strong>{cleanTopic(k.node)}</strong> — <span className="text-ink-soft">{k.evidence}</span>
+            </li>
+          ))}
+        </Finding>
+      )}
+      {(otReview.length > 0 || ftReview.length > 0) && (
+        <Finding tone="slate" title="Worth a human glance:">
+          {otReview.map((r, i) => (
+            <li key={`o${i}`}>
+              <strong>{cleanTopic(r.node)}</strong> — {r.reason}
+            </li>
+          ))}
+          {ftReview.map((r, i) => (
+            <li key={`f${i}`}>{r}</li>
+          ))}
+        </Finding>
+      )}
+    </div>
+  );
+}
+
+function checkFailureCount(check) {
+  if (!check) return 0;
+  const ft = check.firstTask || {};
+  return (ft.missing_prerequisites || []).length + ((ft.scope_concern || "").trim() ? 1 : 0) + (ft.vague_points || []).length;
+}
+
 // A lightweight, default-collapsed drawer — used for verification surfaces
 // (the reasoning, the self-check) so the plan leads with value, not audit.
 function Collapse({ summary, hint, children, defaultOpen = false }) {
@@ -628,11 +1882,11 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 }
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
-function ReadinessProject({ firstTask, hasRealTask, deadline }) {
+function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote, embedded = false }) {
   const ft = firstTask || {};
   const phases = ft.phases || [];
-  return (
-    <Card title="Your independent contribution" accent>
+  const content = (
+    <>
       <p className="text-xs text-ink-soft">
         Readiness is staged — you go from watching the work to owning a piece of it. This is where the modules add up.
       </p>
@@ -664,10 +1918,15 @@ function ReadinessProject({ firstTask, hasRealTask, deadline }) {
                 </span>
                 {p.timing && <span className="text-[11px] text-ink-faint">{p.timing}</span>}
               </span>
-              <span className="text-sm text-ink">{p.goal}</span>
+              <span className="min-w-0 text-sm text-ink">{p.goal}</span>
             </li>
           ))}
         </ol>
+      )}
+      {timelineNote && (
+        <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs leading-relaxed text-ink-soft ring-1 ring-brand-100">
+          <span className="font-medium text-ink">Pace:</span> {timelineNote}
+        </p>
       )}
       {ft.horizonAssumed && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -681,12 +1940,53 @@ function ReadinessProject({ firstTask, hasRealTask, deadline }) {
           one.
         </p>
       )}
+    </>
+  );
+  if (embedded) {
+    return (
+      <section className="rounded-xl border border-brand-200 bg-white px-5 py-5">
+        <h2 className="text-base font-semibold text-ink">Your independent contribution</h2>
+        <div className="mt-3">{content}</div>
+      </section>
+    );
+  }
+  return (
+    <Card title="Your independent contribution" accent>
+      {content}
     </Card>
   );
 }
 
 function cleanTopic(s) {
   return (s || "").split(" — ")[0];
+}
+
+function cleanPoint(s) {
+  return cleanTopic(s).replace(/\s+—\s*$/, "").trim();
+}
+
+function shorten(s, max = 160) {
+  const text = (s || "").replace(/\s+/g, " ").trim();
+  return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
+}
+
+function deliverableName(step, index) {
+  const deliverable = step?.task?.deliverable || step?.task?.title || step?.topic || `task-${index + 1}`;
+  const lower = deliverable.toLowerCase();
+  const ext =
+    lower.includes("table") || lower.includes("csv") || lower.includes("spreadsheet")
+      ? ".csv"
+      : lower.includes("summary") || lower.includes("memo") || lower.includes("brief")
+        ? ".pdf"
+        : lower.includes("code") || lower.includes("sql") || lower.includes("script")
+          ? ".sql"
+          : ".md";
+  const base = cleanPoint(deliverable)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, "_")
+    .replace(/^_+|_+$/g, "")
+    .slice(0, 42);
+  return `${String(index + 1).padStart(2, "0")}_${base || "deliverable"}${ext}`;
 }
 
 function Finding({ tone, title, children }) {
@@ -700,13 +2000,23 @@ function Finding({ tone, title, children }) {
   );
 }
 
-function Card({ title, subtitle, accent, children }) {
+function Card({ title, subtitle, accent, emphasis, children }) {
+  const shell =
+    emphasis === "workspace"
+      ? "border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm"
+      : accent
+        ? "border-brand-200 bg-brand-50/50"
+        : "border-slate-200 bg-white";
   return (
-    <section
-      className={`rounded-2xl border p-6 ${accent ? "border-brand-200 bg-brand-50/50" : "border-slate-200 bg-white"}`}
-    >
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>}
+    <section className={`rounded-2xl border p-5 sm:p-6 ${shell}`}>
+      <h2 className={emphasis === "workspace" ? "text-base font-semibold text-ink" : "text-sm font-semibold text-ink"}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p className={emphasis === "workspace" ? "mt-1 max-w-2xl text-sm text-ink-soft" : "mt-0.5 text-xs text-ink-soft"}>
+          {subtitle}
+        </p>
+      )}
       <div className="mt-3">{children}</div>
     </section>
   );
