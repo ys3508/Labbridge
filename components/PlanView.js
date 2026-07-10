@@ -629,7 +629,7 @@ function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purpos
   const northStar = plan.northStar?.trim() || plan.firstTask?.title || "";
   return (
     <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-      <p className="max-w-prose font-letter text-lg leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
+      <p className="max-w-prose font-letter text-xl leading-relaxed text-ink sm:text-2xl sm:leading-relaxed">{plan.hook || "You're closer than you think."}</p>
       {northStar && (
         <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
           <p className="t-label text-brand-600">Your mission</p>

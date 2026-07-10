@@ -9,11 +9,11 @@ module.exports = {
       colors: {
         // Visual-design spec: warm off-white ground; ink ramp darkened so every
         // tier clears WCAG AA (4.5:1) on it. ink-faint was #8898a8 (~2.9:1 — fail).
-        ground: "#faf9f7",
+        ground: "#f4f1ea",
         ink: {
           DEFAULT: "#1c2530",
           soft: "#51616f",
-          faint: "#64748b",
+          faint: "#5b6a7e",
         },
         brand: {
           50: "#eef6f6",
