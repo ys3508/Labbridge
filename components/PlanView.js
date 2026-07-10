@@ -30,6 +30,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const [activeSurface, setActiveSurface] = useState("task");
   const [workspaceWarningDismissed, setWorkspaceWarningDismissed] = useState(false);
+  const [welcomeBack, setWelcomeBack] = useState(null);
   const [stateLoaded, setStateLoaded] = useState(false);
   const taskPanelRef = useRef(null);
 
@@ -46,16 +47,20 @@ export default function PlanView({ form, isBeginner, onBack }) {
       const rawChecks = localStorage.getItem(scopedPlanKey("lb_checks", seq));
       const rawDrafts = localStorage.getItem(scopedPlanKey("lb_drafts", seq));
       const rawBriefed = localStorage.getItem(scopedPlanKey("lb_briefed", seq));
+      const loadedMoments = rawMoments ? JSON.parse(rawMoments) : {};
+      const loadedChecks = rawChecks ? JSON.parse(rawChecks) : {};
+      const loadedDrafts = rawDrafts ? JSON.parse(rawDrafts) : {};
       setDone(loadedDone);
-      setMomentsByTask(rawMoments ? JSON.parse(rawMoments) : {});
-      setChecksByTask(rawChecks ? JSON.parse(rawChecks) : {});
-      setDrafts(rawDrafts ? JSON.parse(rawDrafts) : {});
+      setMomentsByTask(loadedMoments);
+      setChecksByTask(loadedChecks);
+      setDrafts(loadedDrafts);
       setFutureOverrides(new Set());
       setPendingFuture(null);
       setBriefingOpen(rawBriefed !== "1");
       setWhyOpen(false);
       setActiveSurface("task");
       setWorkspaceWarningDismissed(false);
+      setWelcomeBack(rawBriefed === "1" ? getWelcomeBack(seq, loadedDone, loadedDrafts, loadedMoments) : null);
       const firstOpen = seq.findIndex((_, i) => !loadedDone.has(i));
       setActiveIndex(firstOpen === -1 ? Math.max(0, seq.length - 1) : firstOpen);
       setStateLoaded(true);
@@ -286,12 +291,14 @@ export default function PlanView({ form, isBeginner, onBack }) {
       setPendingFuture(i);
       return;
     }
+    setWelcomeBack(null);
     setPendingFuture(null);
     setActiveSurface("task");
     setActiveIndex(i);
     scrollTaskIntoView();
   };
   const openFutureAnyway = (i) => {
+    setWelcomeBack(null);
     setFutureOverrides((prev) => new Set([...prev, i]));
     setPendingFuture(null);
     setActiveSurface("task");
@@ -300,6 +307,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   };
   const goToRecommendedTask = () => {
     if (firstIncompleteIndex < modules.length) {
+      setWelcomeBack(null);
       setPendingFuture(null);
       setActiveSurface("task");
       setActiveIndex(firstIncompleteIndex);
@@ -307,6 +315,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
     }
   };
   const completeAndAdvance = (i) => {
+    setWelcomeBack(null);
     markDone(i);
     if (i < modules.length - 1) {
       setActiveIndex(i + 1);
@@ -323,11 +332,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
       setPendingFuture("capstone");
       return;
     }
+    setWelcomeBack(null);
     setPendingFuture(null);
     setActiveSurface("capstone");
     scrollTaskIntoView();
   };
   const openCapstoneAnyway = () => {
+    setWelcomeBack(null);
     setFutureOverrides((prev) => new Set([...prev, "capstone"]));
     setPendingFuture(null);
     setActiveSurface("capstone");
@@ -430,6 +441,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
               </button>
             </div>
           )}
+          {welcomeBack && (
+            <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs text-ink-soft ring-1 ring-brand-100">
+              {welcomeBack}
+            </p>
+          )}
         </header>
 
         <div className="grid gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
@@ -460,6 +476,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
                 hasRealTask={!!form.headed.realTask?.trim()}
                 deadline={deadline}
                 timelineNote={plan.timelineNote}
+                modules={modules}
+                drafts={drafts}
+                done={done}
+                projectTitle={planTitle}
+                gapCount={getClosedGapCount(plan, modules, done)}
                 embedded
               />
             ) : (
@@ -468,6 +489,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   i={activeIndex}
                   total={modules.length}
                   step={activeModule}
+                  plan={plan}
+                  modules={modules}
+                  done={done}
+                  roleName={roleName}
                   resources={topicResources[activeIndex]}
                   resourcesDone={resourcesDone}
                   isDone={done.has(activeIndex)}
@@ -476,7 +501,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
                   nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
                   momentIndex={momentsByTask[activeIndex] || 0}
-                  onMomentChange={(momentIndex) => setTaskMoment(activeIndex, momentIndex)}
+                  onMomentChange={(momentIndex) => {
+                    setWelcomeBack(null);
+                    setTaskMoment(activeIndex, momentIndex);
+                  }}
                   checks={checksByTask[activeIndex] || []}
                   onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
                 />
@@ -697,6 +725,8 @@ function ProjectFolder({
   const projectMarkdown = buildProjectMarkdown(projectTitle, modules, files, drafts, done);
   const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(projectMarkdown)}`;
   const canDownload = hasAnyDraft(drafts);
+  const draftStats = getDraftStats(modules, drafts);
+  const downloadLabel = `Download my project — ${draftStats.drafted} of ${modules.length} files drafted · ${draftStats.words} word${draftStats.words === 1 ? "" : "s"}`;
 
   const renderConfirm = (i) => (
     <div className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
@@ -857,7 +887,7 @@ function ProjectFolder({
               download="labbridge-project.md"
               className="block w-full rounded-lg bg-white px-3 py-2 text-center text-xs font-semibold text-ink ring-1 ring-slate-200 transition hover:ring-brand-200"
             >
-              Download my project
+              {downloadLabel}
             </a>
           ) : (
             <button
@@ -866,7 +896,7 @@ function ProjectFolder({
               title="Write something first — your drafts become the download."
               className="w-full cursor-not-allowed rounded-lg bg-white px-3 py-2 text-xs font-semibold text-ink-faint opacity-60 ring-1 ring-slate-200"
             >
-              Download my project
+              {downloadLabel}
             </button>
           )}
           <p className="mt-2 text-[11px] leading-snug text-ink-faint">These files become your readiness project.</p>
@@ -989,6 +1019,46 @@ function hasAnyDraft(drafts) {
   return Object.values(drafts || {}).some((draft) => (draft || "").trim());
 }
 
+function getDraftStats(modules, drafts) {
+  return (modules || []).reduce(
+    (acc, _m, i) => {
+      const draft = (drafts[i] || "").trim();
+      if (draft) {
+        acc.drafted += 1;
+        acc.words += wordCount(draft);
+        acc.files.push(deliverableName(modules[i], i));
+      }
+      return acc;
+    },
+    { drafted: 0, words: 0, files: [] }
+  );
+}
+
+function getWelcomeBack(modules, done, drafts, momentsByTask) {
+  const hasProgress =
+    done.size > 0 ||
+    Object.values(drafts || {}).some((draft) => (draft || "").trim()) ||
+    Object.values(momentsByTask || {}).some((moment) => Number(moment) > 0);
+  if (!hasProgress) return null;
+  const inProgress = (modules || []).findIndex((m, i) => {
+    if (done.has(i)) return false;
+    return Number(momentsByTask[i] || 0) > 0 || !!(drafts[i] || "").trim();
+  });
+  if (inProgress >= 0) {
+    const meta = getMomentMeta(modules[inProgress]);
+    const savedMoment = Math.min(Number(momentsByTask[inProgress] || 0), Math.max(0, meta.length - 1));
+    const beat = meta[savedMoment]?.label || "Brief";
+    const title = modules[inProgress]?.task?.title || modules[inProgress]?.topic || `Task ${inProgress + 1}`;
+    return `You left off mid-${title} — ${beat} is next.`;
+  }
+  const firstIncomplete = (modules || []).findIndex((_, i) => !done.has(i));
+  if (firstIncomplete >= 0) {
+    const title = modules[firstIncomplete]?.task?.title || modules[firstIncomplete]?.topic || `Task ${firstIncomplete + 1}`;
+    return `Next up: ${title}.`;
+  }
+  return null;
+}
+
 function getGapMappings(modules, gapCount) {
   return (modules || [])
     .map((m, taskIndex) => ({ taskIndex, gapIndex: Number(m.closesGapIndex) }))
@@ -998,6 +1068,40 @@ function getGapMappings(modules, gapCount) {
 function isGapClosed(gapIndex, mappings, done) {
   const tasksForGap = mappings.filter((m) => m.gapIndex === gapIndex).map((m) => m.taskIndex);
   return tasksForGap.length > 0 && tasksForGap.every((taskIndex) => done.has(taskIndex));
+}
+
+function getClosedGapCount(plan, modules, done) {
+  const gaps = plan?.knowledgeGaps || [];
+  const mappings = getGapMappings(modules, gaps.length);
+  if (!mappings.length) return 0;
+  return gaps.filter((_, gapIndex) => isGapClosed(gapIndex, mappings, done)).length;
+}
+
+function getGapClosedReward(plan, modules, done, doneAsIf, taskIndex, roleName) {
+  const gaps = plan?.knowledgeGaps || [];
+  const gapIndex = Number(modules?.[taskIndex]?.closesGapIndex);
+  if (!Number.isInteger(gapIndex) || gapIndex < 0 || gapIndex >= gaps.length) return null;
+  const mappings = getGapMappings(modules, gaps.length);
+  const wasClosed = isGapClosed(gapIndex, mappings, done);
+  const isClosed = isGapClosed(gapIndex, mappings, doneAsIf);
+  if (wasClosed || !isClosed) return null;
+  return {
+    gap: cleanPoint(gaps[gapIndex]?.point || ""),
+    role: roleName || "the role",
+  };
+}
+
+function getFinalMirrorReward(plan, modules, roleName) {
+  const gaps = plan?.knowledgeGaps || [];
+  const mappings = getGapMappings(modules, gaps.length);
+  const files = (modules || []).map((m, i) => deliverableName(m, i));
+  return {
+    before:
+      mappings.length > 0
+        ? `${gaps.length} gap${gaps.length === 1 ? "" : "s"} stood between you and ${roleName || "the role"}.`
+        : `You arrived with ${gaps.length} gap${gaps.length === 1 ? "" : "s"} to close.`,
+    now: `${files.length} file${files.length === 1 ? "" : "s"} in your project prove otherwise — ${files.join(" · ")}.`,
+  };
 }
 
 function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
@@ -1058,6 +1162,10 @@ function Module({
   i,
   total,
   step,
+  plan,
+  modules,
+  done,
+  roleName,
   resources,
   resourcesDone,
   isDone,
@@ -1101,6 +1209,10 @@ function Module({
       <MomentFlow
         moduleIndex={i}
         step={step}
+        plan={plan}
+        modules={modules}
+        done={done}
+        roleName={roleName}
         task={t}
         concept={c}
         example={ex}
@@ -1124,6 +1236,10 @@ function Module({
 function MomentFlow({
   moduleIndex,
   step,
+  plan,
+  modules,
+  done,
+  roleName,
   task,
   concept,
   example,
@@ -1144,6 +1260,10 @@ function MomentFlow({
   const checkSet = new Set(checks || []);
   const moments = buildMoments({
     step,
+    plan,
+    modules,
+    done,
+    roleName,
     task,
     concept,
     example,
@@ -1242,6 +1362,10 @@ function MomentFlow({
 
 function buildMoments({
   step,
+  plan,
+  modules,
+  done,
+  roleName,
   task,
   concept,
   example,
@@ -1534,6 +1658,12 @@ function buildMoments({
   // REWARD — What changed in my project? (reads live state)
   const ticked = criteria.filter((_, k) => checks.has(`c${k}`)).length;
   const hasDraft = (draft || "").trim().length > 0;
+  const doneAsIf = new Set(done || []);
+  doneAsIf.add(moduleIndex);
+  const gapReward = getGapClosedReward(plan, modules, done || new Set(), doneAsIf, moduleIndex, roleName);
+  const mirrorReward = doneAsIf.size >= (modules || []).length
+    ? getFinalMirrorReward(plan, modules, roleName)
+    : null;
   moments.push({
     key: "reward",
     label: "Reward",
@@ -1542,6 +1672,7 @@ function buildMoments({
     kicker: null,
     body: (
       <div className="space-y-3">
+        {gapReward && <GapClosedReward reward={gapReward} />}
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
           <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Added to your project</p>
           <p className="mt-1 font-mono text-sm font-medium text-ink">{artifact}</p>
@@ -1564,6 +1695,7 @@ function buildMoments({
             "That's the last task — your project is assembled. The readiness project below is where you own it end-to-end."
           )}
         </p>
+        {mirrorReward && <FinalMirrorReward reward={mirrorReward} />}
       </div>
     ),
   });
@@ -1623,6 +1755,35 @@ function DoneReward({ step, moduleIndex }) {
         Your RWE lead can now review <span className="break-all font-medium">{deliverableName(step, moduleIndex)}</span>. You are
         building the project, not just checking off a lesson.
       </p>
+    </div>
+  );
+}
+
+function GapClosedReward({ reward }) {
+  return (
+    <div className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3">
+      <p className="text-sm font-semibold text-emerald-800">You closed a gap.</p>
+      <p className="mt-1 text-sm text-emerald-800">
+        <span className="text-ink-faint">□</span> <span className="mx-1 text-ink-faint">→</span>{" "}
+        <span className="font-semibold">✓ {reward.gap}</span>
+      </p>
+      <p className="mt-1 text-xs leading-relaxed text-emerald-700">
+        This stood between you and {reward.role}. It doesn't anymore.
+      </p>
+    </div>
+  );
+}
+
+function FinalMirrorReward({ reward }) {
+  return (
+    <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+      <p className="text-sm text-ink">
+        <span className="font-semibold">When you arrived:</span> {reward.before}
+      </p>
+      <p className="mt-1 text-sm text-ink">
+        <span className="font-semibold">Now:</span> {reward.now}
+      </p>
+      <p className="mt-2 text-sm font-semibold text-brand-700">Your readiness project is open ★</p>
     </div>
   );
 }
@@ -1882,11 +2043,36 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 }
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
-function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote, embedded = false }) {
+function ReadinessProject({
+  firstTask,
+  hasRealTask,
+  deadline,
+  timelineNote,
+  modules = [],
+  drafts = {},
+  done = new Set(),
+  projectTitle,
+  gapCount = 0,
+  embedded = false,
+}) {
   const ft = firstTask || {};
   const phases = ft.phases || [];
+  const allDone = modules.length > 0 && done.size >= modules.length;
+  const draftStats = getDraftStats(modules, drafts);
+  const fileNames = modules.map((m, i) => deliverableName(m, i));
+  const markdown = buildProjectMarkdown(projectTitle, modules, fileNames, drafts, done);
+  const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(markdown)}`;
   const content = (
     <>
+      {allDone && (
+        <HandoffMemo
+          drafted={draftStats.drafted}
+          total={modules.length}
+          files={draftStats.files}
+          gapCount={gapCount}
+          href={projectHref}
+        />
+      )}
       <p className="text-xs text-ink-soft">
         Readiness is staged — you go from watching the work to owning a piece of it. This is where the modules add up.
       </p>
@@ -1954,6 +2140,26 @@ function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote, embe
     <Card title="Your independent contribution" accent>
       {content}
     </Card>
+  );
+}
+
+function HandoffMemo({ drafted, total, files, gapCount, href }) {
+  const fileText = files.length ? files.join(" · ") : "no drafts yet";
+  return (
+    <div className="mb-4 rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+      <p className="text-sm leading-relaxed text-ink">
+        <span className="font-semibold">Handoff.</span> You arrive with {drafted} of {total} artifact
+        {total === 1 ? "" : "s"} drafted — {fileText} — and {gapCount} gap{gapCount === 1 ? "" : "s"} closed.
+        From here the arc is yours: Observe → Assist → Own.
+      </p>
+      <a
+        href={href}
+        download="labbridge-project.md"
+        className="mt-3 inline-flex rounded-lg bg-white px-3 py-2 text-xs font-semibold text-brand-700 ring-1 ring-brand-200 hover:bg-brand-100"
+      >
+        Download my project — take your portfolio with you
+      </a>
+    </div>
   );
 }
 
