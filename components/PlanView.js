@@ -338,10 +338,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
         )}
         <MissionBrief
           plan={plan}
-          roleName={roleName}
           depthLabel={depthLabel}
           purposeLabel={purposeLabel}
-          realTask={form.headed.realTask}
         />
       </header>
 
@@ -363,6 +361,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
       <Card
         title="Your project workspace"
         subtitle="Everything you finish becomes part of your final project: the documents expected from a new analyst's first assignment."
+        emphasis="workspace"
       >
         <ProgressBar done={done.size} total={modules.length} label="tasks" />
         <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
@@ -423,14 +422,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
           firstTask={plan.firstTask}
           hasRealTask={!!form.headed.realTask?.trim()}
           deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
+          timelineNote={plan.timelineNote}
         />
       </div>
-
-      {plan.timelineNote && (
-        <p className="text-sm text-ink-soft">
-          <span className="font-medium text-ink">Pace:</span> {plan.timelineNote}
-        </p>
-      )}
 
       {/* VERIFICATION, DEFERRED — the reasoning and self-check are available, not front-and-center. */}
       <Collapse
@@ -534,23 +528,31 @@ function NodeResources({ resources, done }) {
   );
 }
 
-function MissionBrief({ plan, roleName, depthLabel, purposeLabel, realTask }) {
+function MissionBrief({ plan, depthLabel, purposeLabel }) {
   const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
   const gaps = (plan.knowledgeGaps || []).slice(0, 3).map((g) => cleanPoint(g.point));
-  const mission = realTask?.trim() || plan.firstTask?.title || (roleName ? `Complete your first ${roleName} assignment.` : "");
+  const northStar = plan.northStar?.trim() || plan.learningSequence?.[0]?.task?.title || plan.learningSequence?.[0]?.topic || "";
   return (
-    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
       <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
-      <div className="mt-3 grid gap-4 sm:grid-cols-2">
-        <BriefList title="Already strong" items={strengths} mark="✓" tone="emerald" />
-        <BriefList title="Need to learn" items={gaps} mark="□" tone="slate" />
-      </div>
-      {mission && (
+      {northStar && (
         <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Mission</p>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(mission, 180)}</p>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your mission</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(northStar, 180)}</p>
         </div>
       )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {strengths.map((item, i) => (
+          <BriefChip key={`strength-${i}`} mark="✓" tone="emerald">
+            {item}
+          </BriefChip>
+        ))}
+        {gaps.map((item, i) => (
+          <BriefChip key={`gap-${i}`} mark="□" tone="slate">
+            {item}
+          </BriefChip>
+        ))}
+      </div>
       {(depthLabel || purposeLabel) && (
         <div className="mt-3 flex flex-wrap gap-2 text-xs">
           {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
@@ -561,20 +563,17 @@ function MissionBrief({ plan, roleName, depthLabel, purposeLabel, realTask }) {
   );
 }
 
-function BriefList({ title, items, mark, tone }) {
+function BriefChip({ children, mark, tone }) {
+  const styles =
+    tone === "emerald"
+      ? "bg-emerald-50 text-emerald-800 ring-emerald-100"
+      : "bg-slate-100 text-ink-soft ring-slate-200";
   const markColor = tone === "emerald" ? "text-emerald-600" : "text-ink-faint";
   return (
-    <div>
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">{title}</p>
-      <ul className="mt-1.5 space-y-1">
-        {(items.length ? items : ["Add more detail to sharpen this"]).map((item, i) => (
-          <li key={i} className="flex items-start gap-2 text-sm text-ink">
-            <span className={markColor}>{mark}</span>
-            <span>{item}</span>
-          </li>
-        ))}
-      </ul>
-    </div>
+    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ring-1 ${styles}`}>
+      <span className={markColor}>{mark}</span>
+      <span className="min-w-0 truncate">{shorten(children, 28)}</span>
+    </span>
   );
 }
 
@@ -1521,7 +1520,7 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 }
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
-function ReadinessProject({ firstTask, hasRealTask, deadline }) {
+function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote }) {
   const ft = firstTask || {};
   const phases = ft.phases || [];
   return (
@@ -1561,6 +1560,11 @@ function ReadinessProject({ firstTask, hasRealTask, deadline }) {
             </li>
           ))}
         </ol>
+      )}
+      {timelineNote && (
+        <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs leading-relaxed text-ink-soft ring-1 ring-brand-100">
+          <span className="font-medium text-ink">Pace:</span> {timelineNote}
+        </p>
       )}
       {ft.horizonAssumed && (
         <p className="mt-3 rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
@@ -1621,13 +1625,23 @@ function Finding({ tone, title, children }) {
   );
 }
 
-function Card({ title, subtitle, accent, children }) {
+function Card({ title, subtitle, accent, emphasis, children }) {
+  const shell =
+    emphasis === "workspace"
+      ? "border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm"
+      : accent
+        ? "border-brand-200 bg-brand-50/50"
+        : "border-slate-200 bg-white";
   return (
-    <section
-      className={`rounded-2xl border p-6 ${accent ? "border-brand-200 bg-brand-50/50" : "border-slate-200 bg-white"}`}
-    >
-      <h2 className="text-sm font-semibold text-ink">{title}</h2>
-      {subtitle && <p className="mt-0.5 text-xs text-ink-soft">{subtitle}</p>}
+    <section className={`rounded-2xl border p-5 sm:p-6 ${shell}`}>
+      <h2 className={emphasis === "workspace" ? "text-base font-semibold text-ink" : "text-sm font-semibold text-ink"}>
+        {title}
+      </h2>
+      {subtitle && (
+        <p className={emphasis === "workspace" ? "mt-1 max-w-2xl text-sm text-ink-soft" : "mt-0.5 text-xs text-ink-soft"}>
+          {subtitle}
+        </p>
+      )}
       <div className="mt-3">{children}</div>
     </section>
   );

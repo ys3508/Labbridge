@@ -34,6 +34,7 @@ Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
 
 PRODUCE THESE FIELDS (they realize the spine above):
 - hook: 2-3 sentences that LEAD WITH VALUE — how close they already are (what they bring covers the hard part) and what this path delivers to close the rest. This is the first thing they read; make it land. E.g. "You're most of the way there — your epidemiology training already covers the hard part of RWE. Here's the ~20% that gets you productive, and the path to close it." Not a neutral orientation; a reason to keep reading.
+- northStar: ONE sentence naming the concrete thing they'll be able to ship and for whom — their mission in plain words (e.g. "Build the evidence package a new RWE analyst ships in their first month"). Grounded in the actual plan; no invented company/dates (fidelity rules apply).
 - transferableStrengths: what they ALREADY bring — and, crucially, what that lets them SKIP. Frame each as an onboarding DECISION, not praise: "you already do X, so skip/skim Y in this plan." The value of onboarding is eliminating redundant learning, so name the thing to skip explicitly. Anchor each to their real background; don't invent. If the background is empty, say they're starting fresh and keep this short.
 - knowledgeGaps: what's ACTUALLY missing to reach the target — not everything they don't know. Be specific and honest. For each gap, the detail should connect it to what they ALREADY do — given their background, why THIS is the thing standing between them and the target (bridge from their world).
 - learningSequence: an ORDERED sequence of PROJECT TASKS with a supporting learning layer (respect prerequisites — nothing before its foundation). Each module is NOT a chapter and NOT a long lesson. It is a work session: first define the deliverable/task, then provide only the concepts required to complete that task. Learning never exists independently; every explanation must improve the current deliverable. Each module has:
@@ -98,6 +99,7 @@ const SCHEMA = {
   additionalProperties: false,
   properties: {
     hook: { type: "string" },
+    northStar: { type: "string" },
     transferableStrengths: { type: "array", items: strengthItem },
     knowledgeGaps: { type: "array", items: strengthItem },
     learningSequence: {

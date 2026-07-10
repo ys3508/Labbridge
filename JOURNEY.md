@@ -171,6 +171,9 @@ CC handed off `revise/handoff-to-codex.md`; Codex executed item A only: removed 
 **Task navigation became earned state.**
 Codex implemented CC's `revise/task-navigation-spec.md`: removed the competing TaskPager, made Reward the forward-navigation engine, persisted per-task Moment position / Coach ticks / draft notes under plan-scoped localStorage keys, and upgraded the sidebar into a real project map with complete, in-progress, future, and capstone states. Future tasks and the readiness project are dimmed-but-openable with inline "start anyway" nudges, not locks. Mock mode now reopens directly into the workspace after refresh so offline resume behavior can be verified without API calls. Verified in `?mock=1` against the spec's 9 acceptance criteria: Task 1 Reward advanced to Task 2 and marked progress, Task 2 resumed at Coach after switching and refresh, draft text persisted, Task 3 showed the future-task confirm and honored Start anyway, the capstone queue item scrolled to the independent contribution card, and no console errors appeared.
 
+**Page hierarchy became weight-based instead of document-like.**
+Codex implemented CC's `revise/page-hierarchy-spec.md`: the top brief is now only the hook, a "Your mission" north-star sentence, compact strengths/gaps chips, and the existing quiet goal chips. The old two-column strengths/gaps and duplicated mission box left the opening, while the full strengths/gaps detail remains available inside the collapsed reasoning drawer. The workspace card now has the strongest visual treatment so it reads as the main product surface, and the timeline/pace note moved into "Your independent contribution" instead of floating as a standalone paragraph. Added optional `northStar` to the plan schema and mock mode, with a UI fallback to the first task when old plans do not include it.
+
 ---
 
 ## Where it stands
