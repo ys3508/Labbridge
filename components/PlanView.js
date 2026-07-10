@@ -531,7 +531,10 @@ function NodeResources({ resources, done }) {
 function MissionBrief({ plan, depthLabel, purposeLabel }) {
   const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
   const gaps = (plan.knowledgeGaps || []).slice(0, 3).map((g) => cleanPoint(g.point));
-  const northStar = plan.northStar?.trim() || plan.learningSequence?.[0]?.task?.title || plan.learningSequence?.[0]?.topic || "";
+  // Fallback = the readiness project's title (schema field `firstTask`), NOT task 1's
+  // title — the mission is the whole arc, not the first assignment. Duplicating the
+  // readiness title in a degraded state beats mislabeling task 1 as "your mission".
+  const northStar = plan.northStar?.trim() || plan.firstTask?.title || "";
   return (
     <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
       <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
