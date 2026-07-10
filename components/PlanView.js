@@ -238,7 +238,6 @@ export default function PlanView({ form, isBeginner, onBack }) {
         <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
           <aside className="space-y-3 lg:sticky lg:top-4 lg:self-start">
             <ProjectFolder modules={modules} activeIndex={activeIndex} done={done} onSelect={setActiveIndex} />
-            <MentorPanel activeModule={activeModule} />
           </aside>
           <div className="min-w-0">
             {activeModule && (
@@ -253,6 +252,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   onToggle={() => toggleDone(activeIndex)}
                   draft={drafts[activeIndex] || ""}
                   onDraftChange={(draft) => setDrafts((d) => ({ ...d, [activeIndex]: draft }))}
+                  nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
                 />
                 <TaskPager
                   activeIndex={activeIndex}
@@ -393,7 +393,7 @@ function MissionBrief({ plan, roleName, depthLabel, purposeLabel, realTask }) {
   const mission = realTask?.trim() || plan.firstTask?.title || (roleName ? `Complete your first ${roleName} assignment.` : "");
   return (
     <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4">
-      <p className="text-base font-semibold text-ink">You're closer than you think.</p>
+      <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
       <div className="mt-3 grid gap-4 sm:grid-cols-2">
         <BriefList title="Already strong" items={strengths} mark="✓" tone="emerald" />
         <BriefList title="Need to learn" items={gaps} mark="□" tone="slate" />
@@ -465,24 +465,6 @@ function ProjectFolder({ modules, activeIndex, done, onSelect }) {
           </button>
         ))}
       </div>
-    </div>
-  );
-}
-
-function MentorPanel({ activeModule }) {
-  const topic = activeModule?.task?.title || activeModule?.topic || "this task";
-  return (
-    <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
-      <p className="text-xs font-semibold uppercase tracking-wide text-brand-600">AI mentor</p>
-      <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-        Paste a draft answer or ask why a step matters. LabBridge should coach the work, not just hand you a plan.
-      </p>
-      <button
-        type="button"
-        className="mt-3 w-full rounded-lg bg-white px-3 py-2 text-left text-xs font-medium text-brand-700 ring-1 ring-brand-100"
-      >
-        Ask about {shorten(topic, 42)}
-      </button>
     </div>
   );
 }
@@ -596,7 +578,7 @@ function ModulePanel({ label, children, tone = "plain" }) {
   );
 }
 
-function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, draft, onDraftChange }) {
+function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, draft, onDraftChange, nextLabel }) {
   const t = step.task || {};
   const c = step.concept || {};
   const ex = step.workedExample || {};
@@ -641,6 +623,7 @@ function Module({ i, total, step, resources, resourcesDone, isDone, onToggle, dr
         onComplete={onToggle}
         draft={draft}
         onDraftChange={onDraftChange}
+        nextLabel={nextLabel}
       />
     </section>
   );
@@ -659,16 +642,43 @@ function MomentFlow({
   onComplete,
   draft,
   onDraftChange,
+  nextLabel,
 }) {
   const [moment, setMoment] = useState(0);
   const [choice, setChoice] = useState(null);
-  const moments = buildMoments({ step, task, concept, example, selfCheck, resources, resourcesDone, draft, onDraftChange, choice, setChoice, moduleIndex });
+  const [checks, setChecks] = useState(() => new Set());
+  const toggleCheck = (key) =>
+    setChecks((prev) => {
+      const next = new Set(prev);
+      next.has(key) ? next.delete(key) : next.add(key);
+      return next;
+    });
+  const moments = buildMoments({
+    step,
+    task,
+    concept,
+    example,
+    selfCheck,
+    resources,
+    resourcesDone,
+    draft,
+    onDraftChange,
+    choice,
+    setChoice,
+    moduleIndex,
+    comprehension: step.comprehensionCheck,
+    checks,
+    toggleCheck,
+    nextLabel,
+    isDone,
+  });
   const current = moments[moment] || moments[0];
   const pct = moments.length > 1 ? Math.round(((moment + 1) / moments.length) * 100) : 100;
 
   useEffect(() => {
     setMoment(0);
     setChoice(null);
+    setChecks(new Set());
   }, [moduleIndex]);
 
   const goNext = () => {
@@ -751,88 +761,127 @@ function buildMoments({
   choice,
   setChoice,
   moduleIndex,
+  comprehension,
+  checks,
+  toggleCheck,
+  nextLabel,
+  isDone,
 }) {
-  const anchor = task.givenInputs?.[0] || "the file your manager handed you";
-  const options = [
-    { key: "given", label: anchor, correct: true },
-    { key: "outside", label: "A general outside article", correct: false },
-    { key: "summary", label: "The final executive summary", correct: false },
-  ];
-  const selected = options.find((o) => o.key === choice);
-  return [
-    {
-      key: "mission",
-      label: "Moment 1",
-      title: "Understand the problem.",
-      objective: "Know what work this task produces.",
-      kicker: "Start with the job, not the lesson.",
-      body: (
-        <div className="space-y-4">
-          {task.managerRequest && (
-            <blockquote className="border-l-2 border-brand-300 pl-4 text-base italic leading-relaxed text-ink">
-              “{task.managerRequest}”
-            </blockquote>
-          )}
-          <div className="rounded-lg bg-brand-50 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your output</p>
-            <p className="mt-1 text-sm font-medium leading-relaxed text-ink">
-              {task.deliverable || deliverableName(step, moduleIndex)}
-            </p>
-          </div>
-          {task.stakeholders && (
-            <p className="text-sm leading-relaxed text-ink-soft">
-              <span className="font-medium text-ink">Who uses it:</span> {task.stakeholders}
-            </p>
-          )}
+  // Fixed grammar, variable inclusion. Code assembles the beats a task has content
+  // for: Brief/Coach/Artifact/Reward always; Question/Model/Visual/Practice when
+  // their content exists. The model never chooses the flow.
+  const artifact = deliverableName(step, moduleIndex);
+  const criteria = selfCheck.criteria || [];
+  const redFlags = selfCheck.redFlags || [];
+  const answered = choice !== null && choice !== undefined;
+  const moments = [];
+
+  // BRIEF — Why am I here?
+  moments.push({
+    key: "brief",
+    label: "Brief",
+    title: task.title || step.topic,
+    objective: "Why am I here?",
+    kicker: "Start with the job, not the lesson.",
+    body: (
+      <div className="space-y-4">
+        {task.managerRequest && (
+          <blockquote className="border-l-2 border-brand-300 pl-4 text-base italic leading-relaxed text-ink">
+            “{task.managerRequest}”
+          </blockquote>
+        )}
+        <div className="rounded-lg bg-brand-50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your goal</p>
+          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{task.deliverable || artifact}</p>
         </div>
-      ),
-    },
-    {
+        {task.givenInputs?.length > 0 && (
+          <p className="text-sm leading-relaxed text-ink-soft">
+            <span className="font-medium text-ink">You're given:</span> {task.givenInputs.join(", ")}
+          </p>
+        )}
+        {task.stakeholders && (
+          <p className="text-sm leading-relaxed text-ink-soft">
+            <span className="font-medium text-ink">Who uses it:</span> {task.stakeholders}
+          </p>
+        )}
+      </div>
+    ),
+  });
+
+  // QUESTION — Can I try first? (only if a real check exists)
+  if (comprehension?.question && comprehension.options?.length) {
+    moments.push({
       key: "question",
-      label: "Moment 2",
-      title: "Make the first decision.",
-      objective: "Choose the right starting point.",
-      kicker: "Before LabBridge explains anything, try the analyst move.",
+      label: "Question",
+      title: comprehension.question,
+      objective: "Can I try first?",
+      kicker: "Take a guess before the model — the first try is what makes it stick.",
       body: (
-        <div>
-          <p className="text-sm font-medium text-ink">What should anchor your first pass?</p>
-          <div className="mt-3 grid gap-2">
-            {options.map((o) => (
-              <button
-                key={o.key}
-                type="button"
-                onClick={() => setChoice(o.key)}
-                className={`rounded-lg border px-4 py-3 text-left text-sm transition ${
-                  choice === o.key
-                    ? o.correct
-                      ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                      : "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
-                }`}
-              >
-                {o.label}
-              </button>
-            ))}
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            {comprehension.options.map((o, idx) => {
+              const isSel = choice === idx;
+              const isCorrect = idx === comprehension.answerIndex;
+              const cls = !answered
+                ? "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
+                : isCorrect
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : isSel
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-white text-ink-faint";
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setChoice(idx)}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm transition ${cls}`}
+                >
+                  {o}
+                </button>
+              );
+            })}
           </div>
-          {selected && (
-            <p className={`mt-3 rounded-lg px-3 py-2 text-sm ${selected.correct ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"}`}>
-              {selected.correct
-                ? "Correct. Start from the material you were handed. That keeps the work grounded."
-                : "Close, but begin with the material you were handed. Outside explanations help after you know the job."}
+          {answered && (
+            <p
+              className={`rounded-lg px-3 py-2 text-sm ${
+                choice === comprehension.answerIndex ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"
+              }`}
+            >
+              {choice === comprehension.answerIndex ? "Correct. " : "Not quite. "}
+              {comprehension.explanation}
             </p>
           )}
         </div>
       ),
-    },
-    {
-      key: "mental",
-      label: "Moment 3",
-      title: "Learn the mental model.",
-      objective: "Hold the core idea in one compact frame.",
-      kicker: "One idea, short enough to use while working.",
+    });
+  }
+
+  // MODEL — What's the idea? (full concept, no truncation)
+  if (concept.explanation) {
+    moments.push({
+      key: "model",
+      label: "Model",
+      title: "The idea you need.",
+      objective: "What's the idea?",
+      kicker: "One compact model — short enough to use while working.",
       body: (
         <div className="space-y-4">
-          <p className="text-base leading-relaxed text-ink">{shorten(concept.explanation, 520)}</p>
+          <p className="whitespace-pre-line text-base leading-relaxed text-ink">{concept.explanation}</p>
+          {concept.keyTerms?.length > 0 && (
+            <dl className="border-t border-slate-100 pt-2">
+              {concept.keyTerms.map((k, j) => (
+                <div key={j} className="py-0.5 text-xs">
+                  <dt className="inline font-semibold text-ink">{k.term}</dt>
+                  <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
+          {concept.misconceptionToAvoid && (
+            <p className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
+              <span className="font-medium">Common mistake:</span> {concept.misconceptionToAvoid}
+            </p>
+          )}
           {step.bridgeFromBackground && (
             <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm italic leading-relaxed text-brand-700">
               ↪ {step.bridgeFromBackground}
@@ -840,56 +889,64 @@ function buildMoments({
           )}
         </div>
       ),
-    },
-    {
+    });
+  }
+
+  // VISUAL — What does it look like? (worked example as a clean card)
+  if (example.setup) {
+    moments.push({
       key: "visual",
-      label: "Moment 4",
-      title: "See the work path.",
-      objective: "Connect inputs to the artifact.",
-      kicker: "A tiny map beats another paragraph.",
-      body: <WorkPath inputs={task.givenInputs} deliverable={task.deliverable || deliverableName(step, moduleIndex)} />,
-    },
-    {
-      key: "example",
-      label: "Moment 5",
-      title: "See how an analyst thinks.",
-      objective: "Watch one small example before practicing.",
-      kicker: example.setup ? shorten(example.setup, 160) : "Use a tiny example to avoid vague confidence.",
+      label: "Visual",
+      title: "See it on one tiny case.",
+      objective: "What does it look like?",
+      kicker: null,
       body: (
-        <div>
-          {example.walkThrough?.length > 0 ? (
+        <div className="space-y-3">
+          <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">The case</p>
+            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{example.setup}</p>
+          </div>
+          {example.walkThrough?.length > 0 && (
             <ol className="space-y-2">
-              {example.walkThrough.slice(0, 3).map((s, k) => (
-                <li key={k} className="flex gap-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink">
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-white text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+              {example.walkThrough.map((s, k) => (
+                <li
+                  key={k}
+                  className="flex gap-3 rounded-lg bg-white px-3 py-2 text-sm leading-relaxed text-ink ring-1 ring-slate-100"
+                >
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-50 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
                     {k + 1}
                   </span>
                   <span>{s}</span>
                 </li>
               ))}
             </ol>
-          ) : (
-            <p className="text-sm leading-relaxed text-ink-soft">No worked example was generated for this task.</p>
           )}
           {example.takeaway && (
-            <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink-soft">
-              <span className="font-medium text-ink">Takeaway:</span> {shorten(example.takeaway, 180)}
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink-soft">
+              <span className="font-medium text-ink">Takeaway:</span> {example.takeaway}
             </p>
           )}
         </div>
       ),
-    },
-    {
+    });
+  }
+
+  // PRACTICE — Can I do it myself? (only if steps exist)
+  if (task.steps?.length) {
+    moments.push({
       key: "practice",
-      label: "Moment 6",
-      title: "Try it yourself.",
-      objective: "Do the first working move.",
+      label: "Practice",
+      title: "Make the first move.",
+      objective: "Can I do it myself?",
       kicker: "Small action, real project.",
       body: (
         <div>
           <ol className="space-y-2">
-            {(task.steps || []).slice(0, 3).map((s, k) => (
-              <li key={k} className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink">
+            {task.steps.map((s, k) => (
+              <li
+                key={k}
+                className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink"
+              >
                 <span className="pt-0.5 text-brand-600">□</span>
                 <span>{s}</span>
               </li>
@@ -902,50 +959,124 @@ function buildMoments({
           )}
         </div>
       ),
-    },
-    {
-      key: "feedback",
-      label: "Moment 7",
-      title: "Get AI coaching.",
-      objective: "Check whether your answer is good enough.",
-      kicker: "LabBridge should respond like an onboarding manager.",
-      body: (
-        <div className="space-y-3">
-          <div className="rounded-lg border border-brand-100 bg-brand-50/60 px-4 py-3">
-            <p className="text-sm font-medium text-ink">Paste a draft sentence, then ask:</p>
-            <div className="mt-3 grid gap-2 sm:grid-cols-3">
-              {["Check my answer", "Give me a hint", "Explain simpler"].map((label) => (
-                <button key={label} type="button" className="rounded-md bg-white px-3 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-100">
-                  {label}
-                </button>
+    });
+  }
+
+  // COACH — Am I right? (honest self-check: the user ticks, nothing auto-responds)
+  moments.push({
+    key: "coach",
+    label: "Coach",
+    title: "Self-check first.",
+    objective: "Am I right?",
+    kicker: "Tick these against your own draft. It's ready for AI review when they all hold.",
+    body: (
+      <div className="space-y-3">
+        {criteria.length > 0 && (
+          <ul className="space-y-1.5">
+            {criteria.map((cr, k) => {
+              const on = checks.has(`c${k}`);
+              return (
+                <li key={k}>
+                  <button
+                    type="button"
+                    onClick={() => toggleCheck(`c${k}`)}
+                    className={`flex w-full items-start gap-2 rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      on ? "border-emerald-300 bg-emerald-50" : "border-slate-200 bg-white hover:border-brand-200"
+                    }`}
+                  >
+                    <span
+                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                        on ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent"
+                      }`}
+                    >
+                      ✓
+                    </span>
+                    <span className={on ? "text-emerald-800" : "text-ink"}>{cr}</span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {redFlags.length > 0 && (
+          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-600">Watch for</p>
+            <ul className="mt-1.5 space-y-1">
+              {redFlags.map((rf, k) => (
+                <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                  <span className="text-rose-500">△</span>
+                  <span>{rf}</span>
+                </li>
               ))}
-            </div>
+            </ul>
           </div>
-          {(selfCheck.criteria?.length > 0 || selfCheck.redFlags?.length > 0) && (
-            <CoachChecklist criteria={selfCheck.criteria} redFlags={selfCheck.redFlags} />
-          )}
+        )}
+        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-ink-faint">
+          AI review is coming — soon you'll be able to paste your draft and have LabBridge check it against these
+          criteria. For now, judge it yourself.
+        </p>
+      </div>
+    ),
+  });
+
+  // ARTIFACT — What did I produce?
+  moments.push({
+    key: "artifact",
+    label: "Artifact",
+    title: "Write your draft.",
+    objective: "What did I produce?",
+    kicker: "This is where it becomes yours — part of your final project.",
+    body: (
+      <div className="space-y-3">
+        <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+        {task.doneWhen && (
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
+            <span className="font-medium">Done when:</span> {task.doneWhen}
+          </p>
+        )}
+        <NodeResources resources={resources} done={resourcesDone} />
+      </div>
+    ),
+  });
+
+  // REWARD — What changed in my project? (reads live state)
+  const ticked = criteria.filter((_, k) => checks.has(`c${k}`)).length;
+  const hasDraft = (draft || "").trim().length > 0;
+  moments.push({
+    key: "reward",
+    label: "Reward",
+    title: isDone ? "Task complete." : "Add it to your project.",
+    objective: "What changed in my project?",
+    kicker: null,
+    body: (
+      <div className="space-y-3">
+        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Added to your project</p>
+          <p className="mt-1 font-mono text-sm font-medium text-ink">{artifact}</p>
+          <p className="mt-1 text-xs text-ink-soft">
+            {hasDraft ? "Draft saved." : "Draft still empty — you can add it any time."}
+          </p>
         </div>
-      ),
-    },
-    {
-      key: "apply",
-      label: "Moment 8",
-      title: "Add it to your project.",
-      objective: "Turn the learning into an artifact.",
-      kicker: "This is the moment it becomes yours.",
-      body: (
-        <div className="space-y-3">
-          <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
-          {task.doneWhen && (
-            <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
-              <span className="font-medium">Done when:</span> {task.doneWhen}
-            </p>
+        {criteria.length > 0 && (
+          <p className="text-sm text-ink-soft">
+            <span className="font-medium text-ink">Self-check:</span> {ticked}/{criteria.length} confirmed
+            {ticked < criteria.length ? " — a few still open, but you can move on." : " — all clear."}
+          </p>
+        )}
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
+          {nextLabel ? (
+            <>
+              <span className="font-medium">Next:</span> {nextLabel}
+            </>
+          ) : (
+            "That's the last task — your project is assembled. The readiness project below is where you own it end-to-end."
           )}
-          <NodeResources resources={resources} done={resourcesDone} />
-        </div>
-      ),
-    },
-  ];
+        </p>
+      </div>
+    ),
+  });
+
+  return moments;
 }
 
 function WorkPath({ inputs, deliverable }) {

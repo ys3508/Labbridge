@@ -154,6 +154,19 @@ The principle: the user is not completing a course. They are completing the arti
 
 ---
 
+## Phase 13 — Moments: a manager beside you, not a lesson
+
+**Q (Sissi, brainstormed with Codex): "Moments should feel less like pages of a lesson and more like a manager walking beside you while you produce one work artifact."**
+We turned that into a **Moment grammar** — a fixed rhythm with variable length: `Brief → Question → Model → Visual → Practice → Coach → Artifact → Reward`. Rules we agreed on (all three of us):
+- **Code assembles the flow, the model never chooses it.** Always-on beats (Brief, Coach, Artifact, Reward) plus conditional ones (Question/Model/Visual/Practice) that appear only when a task has that content — 4–8 moments per task, deterministically.
+- **Coach is honest by construction.** No fake AI: it's a self-check the user *ticks* against the criteria, with a "Watch for" list and a plain note that real AI review is coming later. The future `/api/coach` slots in above it without pretending now.
+- **Reward reads live state** — the ticked count and the saved draft feed the payoff ("Self-check: 2/3 confirmed · memo added · Next: …"), so progress is earned, not a canned banner.
+- Along the way: restored the personalized **hook** (generated but not shown), un-truncated the taught concept, added a per-task **comprehension question**, and cut the fake-AI mentor panel.
+
+Built and verified entirely **offline in mock mode** (`?mock=1`) — zero API — while the balance was unpaid. We also stood up that mock mode (a fetch interceptor + canned data) so the whole app runs without spending, and settled a working rhythm: **Claude specs + reviews, Codex implements.**
+
+---
+
 ## Where it stands
 
 Input (real extraction, honest job-link reading) → a **task-driven course** whose resources are real and scoped, whose plan is self-checked, and whose progress you can track. It degrades to honesty, never to fiction.

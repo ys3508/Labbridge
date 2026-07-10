@@ -40,6 +40,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
   • topic: a CAPABILITY phrased as an action the learner will be able to do — not a school subject. Weak: "Medical coding systems". Strong: "Use ICD/CPT/NDC codes to make a clinical concept computable".
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
+  • comprehensionCheck (optional but preferred): a ONE-question quick check the learner answers BEFORE the concept, so they try first — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
   • concept: a concise support layer for the task — not a blog post, not a mini textbook:
       · explanation: 80–150 words, like a strong Slack explanation from a senior teammate. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
       · misconceptionToAvoid: one common wrong mental model to head off.
@@ -108,6 +109,17 @@ const SCHEMA = {
           topic: { type: "string" },
           why: { type: "string" },
           bridgeFromBackground: { type: "string" },
+          comprehensionCheck: {
+            type: "object",
+            additionalProperties: false,
+            properties: {
+              question: { type: "string" },
+              options: { type: "array", items: { type: "string" } },
+              answerIndex: { type: "integer" },
+              explanation: { type: "string" },
+            },
+            required: ["question", "options", "answerIndex", "explanation"],
+          },
           concept: {
             type: "object",
             additionalProperties: false,
