@@ -163,7 +163,7 @@ We turned that into a **Moment grammar** — a fixed rhythm with variable length
 - **Reward reads live state** — the ticked count and the saved draft feed the payoff ("Self-check: 2/3 confirmed · memo added · Next: …"), so progress is earned, not a canned banner.
 - Along the way: restored the personalized **hook** (generated but not shown), un-truncated the taught concept, added a per-task **comprehension question**, and cut the fake-AI mentor panel.
 
-Built and verified entirely **offline in mock mode** (`?mock=1`) — zero API — while the balance was unpaid. We also stood up that mock mode (a fetch interceptor + canned data) so the whole app runs without spending, and settled a working rhythm: **Claude specs + reviews, Codex implements.**
+Built and verified entirely **offline in mock mode** (`?mock=1`) — zero API — while the balance was unpaid. We also stood up that mock mode (a fetch interceptor + canned data) so the whole app runs without spending, and settled a standing working rhythm: **Claude/CC writes specs, acceptance criteria, and reviews product fit; Codex executes code changes, verification, cleanup, and implementation tasks.** Codex should keep future implementation notes in `JOURNEY.md` so later agents can see what changed, why it changed, and how it was verified.
 
 ---
 
