@@ -165,6 +165,9 @@ We turned that into a **Moment grammar** — a fixed rhythm with variable length
 
 Built and verified entirely **offline in mock mode** (`?mock=1`) — zero API — while the balance was unpaid. We also stood up that mock mode (a fetch interceptor + canned data) so the whole app runs without spending, and settled a standing working rhythm: **Claude/CC writes specs, acceptance criteria, and reviews product fit; Codex executes code changes, verification, cleanup, and implementation tasks.** Codex should keep future implementation notes in `JOURNEY.md` so later agents can see what changed, why it changed, and how it was verified.
 
+**Codex cleanup pass from CC's handoff.**
+CC handed off `revise/handoff-to-codex.md`; Codex executed item A only: removed obsolete `PlanView` helpers left behind by earlier learning-layer iterations (`QuickWin`, `LearningLayer`, `CoachChecklist`, `WorkPath`, `FlowBox`, `FlowArrow`, `ModulePanel`, `SubLabel`). This was pure dead-code removal — no Moment behavior changed. Verified by grep (no definitions/references remain) and an offline browser smoke test at `?mock=1`: Brief → Question → Model → Visual → Practice → Coach → Artifact → Reward all rendered with no console errors.
+
 ---
 
 ## Where it stands
