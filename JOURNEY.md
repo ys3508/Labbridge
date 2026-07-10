@@ -186,6 +186,9 @@ Codex implemented `revise/progress-states-spec.md`: the workspace header no long
 **Completion rewards now say the earned state out loud.**
 Codex implemented `revise/completion-rewards-spec.md` items A–E only; item F remains parked with no socket, stub, or fake manager reaction. Reward now computes `doneAsIf = done ∪ currentTask` so it can show the exact moment a mapped knowledge gap closes, then the final task adds a before/after mirror built from `knowledgeGaps` and real deliverable filenames. Readiness now prepends a handoff memo only after all tasks are done, with real draft/file/gap counts and a shared zero-API Markdown download link. The project-folder export label now carries live draft/word counts, and workspace reloads can show a quiet welcome-back line derived from persisted moments/drafts/done state. Verified in mock mode without running `npm run build`: final mirror, handoff memo/download, heavy export label, no F/coach output, mobile no-overflow, and no console errors; fresh/early/fallback reward guards were verified by code path because the browser runtime does not expose localStorage reset.
 
+**Artifacts became individually portable.**
+Codex implemented `revise/artifact-experience-spec.md`: draft edits now write a plan-scoped `lb_draftmeta_<planKey>` timestamp, file cards append an honest "edited {date}" label only after a real edit, and file previews show the fuller last-edited date/time. Non-empty previews now expose a real zero-API Markdown download for that single artifact (`# filename` plus the user's draft); empty files still show the existing empty state and no per-file link. The whole-project export path was left untouched. Verified in `?mock=1`: data-URL per-file download decoded to the file header plus draft verbatim, empty files showed no link, edited labels survived refresh, a second edit updated the visible timestamp, and no console errors appeared.
+
 ---
 
 ## Where it stands

@@ -22,6 +22,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [done, setDone] = useState(() => new Set()); // completed module indices
   const [activeIndex, setActiveIndex] = useState(0);
   const [drafts, setDrafts] = useState({});
+  const [draftMeta, setDraftMeta] = useState({});
   const [momentsByTask, setMomentsByTask] = useState({});
   const [checksByTask, setChecksByTask] = useState({});
   const [futureOverrides, setFutureOverrides] = useState(() => new Set());
@@ -46,14 +47,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
       const rawMoments = localStorage.getItem(scopedPlanKey("lb_moments", seq));
       const rawChecks = localStorage.getItem(scopedPlanKey("lb_checks", seq));
       const rawDrafts = localStorage.getItem(scopedPlanKey("lb_drafts", seq));
+      const rawDraftMeta = localStorage.getItem(scopedPlanKey("lb_draftmeta", seq));
       const rawBriefed = localStorage.getItem(scopedPlanKey("lb_briefed", seq));
       const loadedMoments = rawMoments ? JSON.parse(rawMoments) : {};
       const loadedChecks = rawChecks ? JSON.parse(rawChecks) : {};
       const loadedDrafts = rawDrafts ? JSON.parse(rawDrafts) : {};
+      const loadedDraftMeta = rawDraftMeta ? JSON.parse(rawDraftMeta) : {};
       setDone(loadedDone);
       setMomentsByTask(loadedMoments);
       setChecksByTask(loadedChecks);
       setDrafts(loadedDrafts);
+      setDraftMeta(loadedDraftMeta);
       setFutureOverrides(new Set());
       setPendingFuture(null);
       setBriefingOpen(rawBriefed !== "1");
@@ -93,6 +97,13 @@ export default function PlanView({ form, isBeginner, onBack }) {
     } catch {}
   }, [drafts, plan, stateLoaded]);
 
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      localStorage.setItem(scopedPlanKey("lb_draftmeta", plan.learningSequence), JSON.stringify(draftMeta));
+    } catch {}
+  }, [draftMeta, plan, stateLoaded]);
+
   const markDone = (i) => {
     setDone((prev) => {
       if (prev.has(i)) return prev;
@@ -111,6 +122,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   const setTaskDraft = (taskIndex, draft) => {
     setDrafts((prev) => ({ ...prev, [taskIndex]: draft }));
+    setDraftMeta((prev) => ({ ...prev, [taskIndex]: Date.now() }));
   };
 
   const toggleTaskCheck = (taskIndex, key) => {
@@ -455,6 +467,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               activeIndex={activeIndex}
               done={done}
               drafts={drafts}
+              draftMeta={draftMeta}
               momentsByTask={momentsByTask}
               firstIncompleteIndex={firstIncompleteIndex}
               futureOverrides={futureOverrides}
@@ -654,6 +667,7 @@ function ProjectFolder({
   activeIndex,
   done,
   drafts,
+  draftMeta,
   momentsByTask,
   firstIncompleteIndex,
   futureOverrides,
@@ -676,6 +690,8 @@ function ProjectFolder({
     const meta = getMomentMeta(m);
     const savedMoment = Math.min(Number(momentsByTask[i] || 0), Math.max(0, meta.length - 1));
     const draft = drafts[i] || "";
+    const editedAt = Number(draftMeta?.[i] || 0);
+    const editedLabel = editedAt ? ` · edited ${formatShortDate(editedAt)}` : "";
     const cleanDraft = draft.trim();
     const hasDraft = !!cleanDraft;
     const isDone = done.has(i);
@@ -703,8 +719,9 @@ function ProjectFolder({
             line: "not yet created",
             tone: "outlined",
           };
-    const status = navStatus ? `${artifactState.mark} ${artifactState.label}, ${artifactState.line} · ${navStatus}` : `${artifactState.mark} ${artifactState.label}, ${artifactState.line}`;
-    return { meta, savedMoment, draft, cleanDraft, hasDraft, isDone, isFuture, status, artifactState, words };
+    const baseStatus = `${artifactState.mark} ${artifactState.label}, ${artifactState.line}${editedLabel}`;
+    const status = navStatus ? `${baseStatus} · ${navStatus}` : baseStatus;
+    return { meta, savedMoment, draft, cleanDraft, hasDraft, isDone, isFuture, status, artifactState, words, editedAt };
   };
 
   const openFilePreview = (i) => {
@@ -848,6 +865,7 @@ function ProjectFolder({
                   <FilePreview
                     file={file}
                     draft={state.cleanDraft}
+                    editedAt={state.editedAt}
                     isDone={state.isDone}
                     onContinue={() => continueFromPreview(i)}
                   />
@@ -906,21 +924,34 @@ function ProjectFolder({
   );
 }
 
-function FilePreview({ file, draft, isDone, onContinue }) {
+function FilePreview({ file, draft, editedAt, isDone, onContinue }) {
+  const fileHref = draft ? buildFileMarkdownHref(file, draft) : null;
   return (
     <div className="mt-2 rounded-lg border border-brand-100 bg-white px-3 py-3 text-xs shadow-sm">
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-all font-semibold text-ink">{file}</p>
           <p className="mt-0.5 text-[11px] text-ink-faint">{draft ? `${wordCount(draft)} word${wordCount(draft) === 1 ? "" : "s"}` : "empty draft"}</p>
+          {editedAt ? <p className="mt-0.5 text-[11px] text-ink-faint">Last edited {formatFullDateTime(editedAt)}</p> : null}
         </div>
-        <button
-          type="button"
-          onClick={onContinue}
-          className="shrink-0 rounded bg-brand-50 px-2 py-1 font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
-        >
-          {isDone ? "Reopen →" : "Continue →"}
-        </button>
+        <div className="flex shrink-0 flex-col gap-2">
+          <button
+            type="button"
+            onClick={onContinue}
+            className="rounded bg-brand-50 px-2 py-1 font-semibold text-brand-700 ring-1 ring-brand-100 hover:bg-brand-100"
+          >
+            {isDone ? "Reopen →" : "Continue →"}
+          </button>
+          {fileHref && (
+            <a
+              href={fileHref}
+              download={`${file}.md`}
+              className="rounded bg-white px-2 py-1 text-center font-semibold text-ink-soft ring-1 ring-slate-200 hover:ring-brand-200"
+            >
+              Download
+            </a>
+          )}
+        </div>
       </div>
       {draft ? (
         <div className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap rounded-md bg-slate-50 px-3 py-2 leading-relaxed text-ink-soft">
@@ -986,6 +1017,22 @@ function scopedPlanKey(prefix, seq) {
   return `${prefix}_${planKey(seq)}`;
 }
 
+function formatShortDate(epochMs) {
+  const date = new Date(epochMs);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+}
+
+function formatFullDateTime(epochMs) {
+  const date = new Date(epochMs);
+  if (Number.isNaN(date.getTime())) return "";
+  return `${date.toLocaleDateString(undefined, { month: "short", day: "numeric", year: "numeric" })}, ${date.toLocaleTimeString(undefined, {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+  })}`;
+}
+
 function getMomentMeta(step) {
   const task = step?.task || {};
   const concept = step?.concept || {};
@@ -1032,6 +1079,11 @@ function getDraftStats(modules, drafts) {
     },
     { drafted: 0, words: 0, files: [] }
   );
+}
+
+function buildFileMarkdownHref(file, draft) {
+  const markdown = `# ${file}\n\n${draft}`;
+  return `data:text/markdown;charset=utf-8,${encodeURIComponent(markdown)}`;
 }
 
 function getWelcomeBack(modules, done, drafts, momentsByTask) {
