@@ -174,6 +174,9 @@ Codex implemented CC's `revise/task-navigation-spec.md`: removed the competing T
 **Page hierarchy became weight-based instead of document-like.**
 Codex implemented CC's `revise/page-hierarchy-spec.md`: the top brief is now only the hook, a "Your mission" north-star sentence, compact strengths/gaps chips, and the existing quiet goal chips. The old two-column strengths/gaps and duplicated mission box left the opening, while the full strengths/gaps detail remains available inside the collapsed reasoning drawer. The workspace card now has the strongest visual treatment so it reads as the main product surface, and the timeline/pace note moved into "Your independent contribution" instead of floating as a standalone paragraph. Added optional `northStar` to the plan schema and mock mode, with a UI fallback to the first task when old plans do not include it.
 
+**The plan view became a single-surface workspace.**
+After Sissi rejected the remaining five stacked sections, Codex implemented `revise/single-surface-workspace-spec.md`: the briefing is now a first-arrival doorway keyed by `lb_briefed_<planKey>`, and the workspace becomes home after entry/refresh. The workspace no longer renders contribution, reasoning, self-check, or payload utilities as stacked sections below it. The readiness project now opens from the queue into the main stage, while "Why this plan?" opens a right-side drawer containing the full strengths/gaps reasoning plus the plan self-check result. Back-to-edit and payload inspection moved into the drawer footer, and blocked job-link honesty remains visible as full briefing copy plus a compact dismissible workspace banner. Verified by production build and mock-mode browser smoke test.
+
 ---
 
 ## Where it stands

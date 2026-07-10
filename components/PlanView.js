@@ -26,10 +26,12 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [checksByTask, setChecksByTask] = useState({});
   const [futureOverrides, setFutureOverrides] = useState(() => new Set());
   const [pendingFuture, setPendingFuture] = useState(null);
-  const [capstonePulse, setCapstonePulse] = useState(false);
+  const [briefingOpen, setBriefingOpen] = useState(true);
+  const [whyOpen, setWhyOpen] = useState(false);
+  const [activeSurface, setActiveSurface] = useState("task");
+  const [workspaceWarningDismissed, setWorkspaceWarningDismissed] = useState(false);
   const [stateLoaded, setStateLoaded] = useState(false);
   const taskPanelRef = useRef(null);
-  const capstoneRef = useRef(null);
 
   // Progress persists locally so checkpoints survive a refresh (the continuity
   // a one-shot chatbot can't give). Cross-session/account memory is a later step.
@@ -43,12 +45,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
       const rawMoments = localStorage.getItem(scopedPlanKey("lb_moments", seq));
       const rawChecks = localStorage.getItem(scopedPlanKey("lb_checks", seq));
       const rawDrafts = localStorage.getItem(scopedPlanKey("lb_drafts", seq));
+      const rawBriefed = localStorage.getItem(scopedPlanKey("lb_briefed", seq));
       setDone(loadedDone);
       setMomentsByTask(rawMoments ? JSON.parse(rawMoments) : {});
       setChecksByTask(rawChecks ? JSON.parse(rawChecks) : {});
       setDrafts(rawDrafts ? JSON.parse(rawDrafts) : {});
       setFutureOverrides(new Set());
       setPendingFuture(null);
+      setBriefingOpen(rawBriefed !== "1");
+      setWhyOpen(false);
+      setActiveSurface("task");
+      setWorkspaceWarningDismissed(false);
       const firstOpen = seq.findIndex((_, i) => !loadedDone.has(i));
       setActiveIndex(firstOpen === -1 ? Math.max(0, seq.length - 1) : firstOpen);
       setStateLoaded(true);
@@ -267,15 +274,22 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const firstIncompleteIndexRaw = modules.findIndex((_, i) => !done.has(i));
   const firstIncompleteIndex = firstIncompleteIndexRaw === -1 ? modules.length : firstIncompleteIndexRaw;
   const allTasksDone = modules.length > 0 && done.size >= modules.length;
+  const missionLine = plan.northStar?.trim() || plan.firstTask?.title || "Build the evidence package this role expects.";
+  const planTitle = roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Your onboarding workspace";
+  const deadline = payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : "";
+  const checkFailures = checkFailureCount(check);
+  const enterWorkspace = () => {
+    try {
+      localStorage.setItem(scopedPlanKey("lb_briefed", modules), "1");
+    } catch {}
+    setBriefingOpen(false);
+  };
+  const reopenBriefing = () => {
+    setWhyOpen(false);
+    setBriefingOpen(true);
+  };
   const scrollTaskIntoView = () => {
     setTimeout(() => taskPanelRef.current?.scrollIntoView({ behavior: "smooth", block: "start" }), 0);
-  };
-  const scrollCapstoneIntoView = () => {
-    setTimeout(() => {
-      capstoneRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
-      setCapstonePulse(true);
-      setTimeout(() => setCapstonePulse(false), 1200);
-    }, 0);
   };
   const openTask = (i) => {
     const isFuture = firstIncompleteIndex < modules.length && i > firstIncompleteIndex && !futureOverrides.has(i);
@@ -284,18 +298,21 @@ export default function PlanView({ form, isBeginner, onBack }) {
       return;
     }
     setPendingFuture(null);
+    setActiveSurface("task");
     setActiveIndex(i);
     scrollTaskIntoView();
   };
   const openFutureAnyway = (i) => {
     setFutureOverrides((prev) => new Set([...prev, i]));
     setPendingFuture(null);
+    setActiveSurface("task");
     setActiveIndex(i);
     scrollTaskIntoView();
   };
   const goToRecommendedTask = () => {
     if (firstIncompleteIndex < modules.length) {
       setPendingFuture(null);
+      setActiveSurface("task");
       setActiveIndex(firstIncompleteIndex);
       scrollTaskIntoView();
     }
@@ -305,9 +322,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
     if (i < modules.length - 1) {
       setActiveIndex(i + 1);
       setTaskMoment(i + 1, 0);
+      setActiveSurface("task");
       scrollTaskIntoView();
     } else {
-      scrollCapstoneIntoView();
+      setActiveSurface("capstone");
+      scrollTaskIntoView();
     }
   };
   const openCapstone = () => {
@@ -316,55 +335,115 @@ export default function PlanView({ form, isBeginner, onBack }) {
       return;
     }
     setPendingFuture(null);
-    scrollCapstoneIntoView();
+    setActiveSurface("capstone");
+    scrollTaskIntoView();
   };
   const openCapstoneAnyway = () => {
     setFutureOverrides((prev) => new Set([...prev, "capstone"]));
     setPendingFuture(null);
-    scrollCapstoneIntoView();
+    setActiveSurface("capstone");
+    scrollTaskIntoView();
   };
 
+  if (briefingOpen) {
+    return (
+      <div className="mx-auto flex min-h-[72vh] w-full max-w-3xl flex-col justify-center fade-up">
+        <header>
+          <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding briefing</p>
+          <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
+            {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
+          </h1>
+          {roleName && fromLabel && (
+            <p className="mt-1 text-sm text-ink-faint">
+              {fromLabel} → {roleName}
+            </p>
+          )}
+          <MissionBrief plan={plan} depthLabel={depthLabel} purposeLabel={purposeLabel} />
+        </header>
+
+        <div className="mt-6 space-y-3">
+          {isBeginner && (
+            <Note>
+              We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
+            </Note>
+          )}
+
+          {payload.target.unreadableLink && (
+            <Note tone="warn">
+              We couldn't read a job link you added — the site may block automated reading. This plan is built from your
+              background and any other materials, <strong>not</strong> that posting. Paste the job description text in
+              section 2 to target the exact role and company.
+            </Note>
+          )}
+        </div>
+
+        <div className="mt-6 flex flex-wrap items-center gap-3">
+          <button
+            type="button"
+            onClick={enterWorkspace}
+            className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
+          >
+            Enter your workspace →
+          </button>
+          <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+            ← Back to edit
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="w-full fade-up space-y-6">
-      <header>
-        <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding workspace</p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
-          {roleName ? `Toward ${roleName}${company ? ` at ${company}` : ""}` : "Where you're headed"}
-        </h1>
-        {roleName && fromLabel && (
-          <p className="mt-1 text-sm text-ink-faint">
-            {fromLabel} → {roleName}
-          </p>
-        )}
-        <MissionBrief
-          plan={plan}
-          depthLabel={depthLabel}
-          purposeLabel={purposeLabel}
-        />
-      </header>
+    <div className="w-full fade-up">
+      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm">
+        <header className="border-b border-brand-100 px-4 py-4 sm:px-6">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Workspace home</p>
+              <h1 className="mt-1 text-lg font-semibold leading-tight text-ink">{planTitle}</h1>
+              <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
+            </div>
+            <div className="shrink-0 space-y-2 lg:w-64">
+              <ProgressBar done={done.size} total={modules.length} label="tasks" compact />
+              <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+                <button
+                  type="button"
+                  onClick={reopenBriefing}
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+                >
+                  Briefing
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setWhyOpen(true)}
+                  className="relative rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+                >
+                  Why this plan?
+                  {checkFailures > 0 && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-amber-500" aria-label="Self-check needs review" />
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
 
-      {isBeginner && (
-        <Note>
-          We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
-        </Note>
-      )}
+          {payload.target.unreadableLink && !workspaceWarningDismissed && (
+            <div className="mt-3 flex items-start justify-between gap-3 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+              <p>
+                Job link unreadable — this workspace uses your background and provided materials, not that blocked page.
+              </p>
+              <button
+                type="button"
+                onClick={() => setWorkspaceWarningDismissed(true)}
+                className="shrink-0 font-semibold text-amber-800 hover:text-amber-950"
+              >
+                Dismiss
+              </button>
+            </div>
+          )}
+        </header>
 
-      {payload.target.unreadableLink && (
-        <Note tone="warn">
-          We couldn't read a job link you added — the site may block automated reading. This plan is built from your
-          background and any other materials, <strong>not</strong> that posting. Paste the job description text in
-          section 2 to target the exact role and company.
-        </Note>
-      )}
-
-      {/* VALUE FIRST — the workspace is the center of gravity. */}
-      <Card
-        title="Your project workspace"
-        subtitle="Everything you finish becomes part of your final project: the documents expected from a new analyst's first assignment."
-        emphasis="workspace"
-      >
-        <ProgressBar done={done.size} total={modules.length} label="tasks" />
-        <div className="mt-4 grid gap-4 lg:grid-cols-[280px_minmax(0,1fr)]">
+        <div className="grid gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
           <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start">
             <ProjectFolder
               modules={modules}
@@ -376,6 +455,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               futureOverrides={futureOverrides}
               pendingFuture={pendingFuture}
               allTasksDone={allTasksDone}
+              activeSurface={activeSurface}
               onSelect={openTask}
               onStartAnyway={openFutureAnyway}
               onGoRecommended={goToRecommendedTask}
@@ -384,94 +464,53 @@ export default function PlanView({ form, isBeginner, onBack }) {
             />
           </aside>
           <div ref={taskPanelRef} className="min-w-0 scroll-mt-4">
-            {activeModule && (
-              <Module
-                i={activeIndex}
-                total={modules.length}
-                step={activeModule}
-                resources={topicResources[activeIndex]}
-                resourcesDone={resourcesDone}
-                isDone={done.has(activeIndex)}
-                onToggle={() => toggleDone(activeIndex)}
-                onComplete={() => completeAndAdvance(activeIndex)}
-                draft={drafts[activeIndex] || ""}
-                onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
-                nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
-                momentIndex={momentsByTask[activeIndex] || 0}
-                onMomentChange={(momentIndex) => setTaskMoment(activeIndex, momentIndex)}
-                checks={checksByTask[activeIndex] || []}
-                onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
+            {activeSurface === "capstone" ? (
+              <ReadinessProject
+                firstTask={plan.firstTask}
+                hasRealTask={!!form.headed.realTask?.trim()}
+                deadline={deadline}
+                timelineNote={plan.timelineNote}
+                embedded
               />
+            ) : (
+              activeModule && (
+                <Module
+                  i={activeIndex}
+                  total={modules.length}
+                  step={activeModule}
+                  resources={topicResources[activeIndex]}
+                  resourcesDone={resourcesDone}
+                  isDone={done.has(activeIndex)}
+                  onToggle={() => toggleDone(activeIndex)}
+                  onComplete={() => completeAndAdvance(activeIndex)}
+                  draft={drafts[activeIndex] || ""}
+                  onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
+                  nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
+                  momentIndex={momentsByTask[activeIndex] || 0}
+                  onMomentChange={(momentIndex) => setTaskMoment(activeIndex, momentIndex)}
+                  checks={checksByTask[activeIndex] || []}
+                  onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
+                />
+              )
+            )}
+            {augmenting && (
+              <p className="mt-3 text-xs text-ink-faint">Adding optional explanations to thin tasks…</p>
             )}
           </div>
         </div>
-        {augmenting && (
-          <p className="mt-3 text-xs text-ink-faint">Adding optional explanations to thin tasks…</p>
-        )}
-        <p className="mt-4 text-xs text-ink-faint">
-          The project is the center. Learning appears only when it helps you complete the current deliverable.
-        </p>
-      </Card>
+      </section>
 
-      {/* The capstone — the culmination of the course, on a DERIVED horizon. */}
-      <div
-        ref={capstoneRef}
-        className={`scroll-mt-4 rounded-2xl transition ${capstonePulse ? "ring-2 ring-brand-300 ring-offset-2" : ""}`}
-      >
-        <ReadinessProject
-          firstTask={plan.firstTask}
-          hasRealTask={!!form.headed.realTask?.trim()}
-          deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""}
-          timelineNote={plan.timelineNote}
+      {whyOpen && (
+        <PlanDrawer
+          plan={plan}
+          check={check}
+          checking={checking}
+          payload={payload}
+          showPayload={showPayload}
+          onTogglePayload={() => setShowPayload((s) => !s)}
+          onBack={onBack}
+          onClose={() => setWhyOpen(false)}
         />
-      </div>
-
-      {/* VERIFICATION, DEFERRED — the reasoning and self-check are available, not front-and-center. */}
-      <Collapse
-        summary={`The reasoning — built on ${plan.transferableStrengths?.length || 0} transferable strength${
-          plan.transferableStrengths?.length === 1 ? "" : "s"
-        }, targeting ${plan.knowledgeGaps?.length || 0} job-critical gap${
-          plan.knowledgeGaps?.length === 1 ? "" : "s"
-        }`}
-        hint="why it picked these"
-      >
-        <div className="space-y-4">
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
-              What you already bring — and can skip
-            </h3>
-            <div className="mt-2">
-              <PointList items={plan.transferableStrengths} />
-            </div>
-          </div>
-          <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What's actually missing</h3>
-            <div className="mt-2">
-              <PointList items={plan.knowledgeGaps} />
-            </div>
-          </div>
-        </div>
-      </Collapse>
-
-      <CheckReview check={check} checking={checking} />
-
-      <div className="flex items-center justify-between border-t border-slate-200 pt-6">
-        <button onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
-          ← Back to edit
-        </button>
-        <button
-          type="button"
-          onClick={() => setShowPayload((s) => !s)}
-          className="text-xs text-ink-faint hover:text-ink-soft"
-        >
-          {showPayload ? "Hide" : "Show"} what the generator received
-        </button>
-      </div>
-
-      {showPayload && (
-        <pre className="overflow-x-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
-          {JSON.stringify(payload, null, 2)}
-        </pre>
       )}
     </div>
   );
@@ -590,6 +629,7 @@ function ProjectFolder({
   futureOverrides,
   pendingFuture,
   allTasksDone,
+  activeSurface,
   onSelect,
   onStartAnyway,
   onGoRecommended,
@@ -655,7 +695,7 @@ function ProjectFolder({
                 type="button"
                 onClick={() => onSelect(i)}
                 className={`flex h-10 min-w-10 items-center justify-center rounded-full border text-xs font-semibold transition ${
-                  activeIndex === i
+                  activeSurface === "task" && activeIndex === i
                     ? "border-brand-300 bg-white text-brand-700"
                     : "border-slate-200 bg-white/70 text-ink-soft"
                 } ${state.isFuture ? "opacity-45" : ""}`}
@@ -669,8 +709,10 @@ function ProjectFolder({
             type="button"
             onClick={onCapstone}
             className={`flex h-10 min-w-[4.5rem] items-center justify-center rounded-full border px-3 text-xs font-semibold transition ${
-              allTasksDone || futureOverrides.has("capstone")
-                ? "border-brand-200 bg-white text-brand-700"
+              activeSurface === "capstone"
+                ? "border-brand-300 bg-white text-brand-700"
+                : allTasksDone || futureOverrides.has("capstone")
+                  ? "border-brand-200 bg-white text-brand-700"
                 : "border-slate-200 bg-white/70 text-ink-soft opacity-45"
             }`}
             title="Readiness project"
@@ -702,6 +744,7 @@ function ProjectFolder({
                   onClick={() => onSelect(i)}
                   className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
                     activeIndex === i
+                    && activeSurface === "task"
                       ? "bg-white text-ink ring-brand-200"
                       : "bg-white/70 text-ink-soft ring-slate-100 hover:ring-brand-100"
                   } ${state.isFuture ? "opacity-50" : ""}`}
@@ -733,12 +776,14 @@ function ProjectFolder({
               type="button"
               onClick={onCapstone}
               className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
-                allTasksDone || futureOverrides.has("capstone")
-                  ? "bg-white/70 text-ink-soft ring-brand-100 hover:ring-brand-200"
+                activeSurface === "capstone"
+                  ? "bg-white text-ink ring-brand-200"
+                  : allTasksDone || futureOverrides.has("capstone")
+                    ? "bg-white/70 text-ink-soft ring-brand-100 hover:ring-brand-200"
                   : "bg-white/60 text-ink-soft opacity-50 ring-slate-100 hover:ring-brand-100"
               }`}
             >
-              <span className="mt-0.5 text-brand-500">◆</span>
+              <span className="mt-0.5 text-brand-500">★</span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">Readiness project</span>
                 <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
@@ -830,7 +875,7 @@ function dependencyName(modules, index) {
   return shorten(deliverableName(modules[index], index), 36);
 }
 
-function ProgressBar({ done, total, label = "modules" }) {
+function ProgressBar({ done, total, label = "modules", compact = false }) {
   const pct = total ? Math.round((done / total) * 100) : 0;
   return (
     <div>
@@ -840,7 +885,7 @@ function ProgressBar({ done, total, label = "modules" }) {
         </span>
         <span>{pct}%</span>
       </div>
-      <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-slate-100">
+      <div className={`${compact ? "mt-1 h-1.5" : "mt-1 h-2"} w-full overflow-hidden rounded-full bg-slate-100`}>
         <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${pct}%` }} />
       </div>
     </div>
@@ -1500,6 +1545,162 @@ function CheckReview({ check, checking }) {
   );
 }
 
+function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePayload, onBack, onClose }) {
+  return (
+    <div className="fixed inset-0 z-40">
+      <button
+        type="button"
+        aria-label="Close why this plan"
+        className="absolute inset-0 bg-ink/20"
+        onClick={onClose}
+      />
+      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
+          <div>
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Plan logic</p>
+            <h2 className="mt-1 text-lg font-semibold text-ink">Why this plan?</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-ink-soft hover:text-ink"
+          >
+            Close
+          </button>
+        </div>
+
+        <div className="flex-1 space-y-6 overflow-y-auto px-5 py-5">
+          <PlanReasoning plan={plan} />
+          <section className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-4">
+            <h3 className="text-sm font-semibold text-ink">Plan self-check</h3>
+            <div className="mt-3">
+              <PlanSelfCheckContent check={check} checking={checking} />
+            </div>
+          </section>
+        </div>
+
+        <div className="border-t border-slate-100 px-5 py-4">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+              ← Back to edit
+            </button>
+            <button type="button" onClick={onTogglePayload} className="text-xs text-ink-faint hover:text-ink-soft">
+              {showPayload ? "Hide" : "Show"} what the generator received
+            </button>
+          </div>
+          {showPayload && (
+            <pre className="mt-3 max-h-56 overflow-auto rounded-xl border border-slate-200 bg-slate-900 p-4 text-xs leading-relaxed text-slate-100">
+              {JSON.stringify(payload, null, 2)}
+            </pre>
+          )}
+        </div>
+      </aside>
+    </div>
+  );
+}
+
+function PlanReasoning({ plan }) {
+  return (
+    <section className="rounded-xl border border-slate-200 bg-white px-4 py-4">
+      <h3 className="text-sm font-semibold text-ink">
+        The reasoning — built on {plan.transferableStrengths?.length || 0} transferable strength
+        {plan.transferableStrengths?.length === 1 ? "" : "s"}, targeting {plan.knowledgeGaps?.length || 0} job-critical gap
+        {plan.knowledgeGaps?.length === 1 ? "" : "s"}
+      </h3>
+      <div className="mt-4 space-y-4">
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">
+            What you already bring — and can skip
+          </h4>
+          <div className="mt-2">
+            <PointList items={plan.transferableStrengths} />
+          </div>
+        </div>
+        <div>
+          <h4 className="text-xs font-semibold uppercase tracking-wide text-ink-faint">What's actually missing</h4>
+          <div className="mt-2">
+            <PointList items={plan.knowledgeGaps} />
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function PlanSelfCheckContent({ check, checking }) {
+  if (!check) {
+    return checking ? (
+      <p className="text-xs text-ink-faint">Running a background self-check on the plan…</p>
+    ) : (
+      <p className="text-xs text-ink-faint">Self-check has not returned yet.</p>
+    );
+  }
+  const ot = check.overteaching || {};
+  const ft = check.firstTask || {};
+  const known = ot.already_known || [];
+  const otReview = ot.needs_review || [];
+  const missing = ft.missing_prerequisites || [];
+  const vague = ft.vague_points || [];
+  const ftReview = ft.needs_review || [];
+  const scope = (ft.scope_concern || "").trim();
+  const failures = checkFailureCount(check);
+  return (
+    <div className="space-y-3 text-sm">
+      {failures === 0 && (
+        <p className="text-xs font-medium text-emerald-700">✓ Self-check passed — no blocking gaps found.</p>
+      )}
+      {missing.length > 0 && (
+        <Finding tone="amber" title="The readiness project may need skills the plan didn't cover:">
+          {missing.map((m, i) => (
+            <li key={i}>
+              <strong>{m.skill}</strong> — for “{m.task_part}”
+            </li>
+          ))}
+        </Finding>
+      )}
+      {scope && (
+        <Finding tone="amber" title="Scope concern:">
+          <li>{scope}</li>
+        </Finding>
+      )}
+      {vague.length > 0 && (
+        <Finding tone="slate" title="Could be more concrete:">
+          {vague.map((v, i) => (
+            <li key={i}>{v}</li>
+          ))}
+        </Finding>
+      )}
+      {known.length > 0 && (
+        <Finding tone="slate" title="You may already know these — consider trimming:">
+          {known.map((k, i) => (
+            <li key={i}>
+              <strong>{cleanTopic(k.node)}</strong> — <span className="text-ink-soft">{k.evidence}</span>
+            </li>
+          ))}
+        </Finding>
+      )}
+      {(otReview.length > 0 || ftReview.length > 0) && (
+        <Finding tone="slate" title="Worth a human glance:">
+          {otReview.map((r, i) => (
+            <li key={`o${i}`}>
+              <strong>{cleanTopic(r.node)}</strong> — {r.reason}
+            </li>
+          ))}
+          {ftReview.map((r, i) => (
+            <li key={`f${i}`}>{r}</li>
+          ))}
+        </Finding>
+      )}
+    </div>
+  );
+}
+
+function checkFailureCount(check) {
+  if (!check) return 0;
+  const ft = check.firstTask || {};
+  return (ft.missing_prerequisites || []).length + ((ft.scope_concern || "").trim() ? 1 : 0) + (ft.vague_points || []).length;
+}
+
 // A lightweight, default-collapsed drawer — used for verification surfaces
 // (the reasoning, the self-check) so the plan leads with value, not audit.
 function Collapse({ summary, hint, children, defaultOpen = false }) {
@@ -1523,11 +1724,11 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 }
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
-function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote }) {
+function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote, embedded = false }) {
   const ft = firstTask || {};
   const phases = ft.phases || [];
-  return (
-    <Card title="Your independent contribution" accent>
+  const content = (
+    <>
       <p className="text-xs text-ink-soft">
         Readiness is staged — you go from watching the work to owning a piece of it. This is where the modules add up.
       </p>
@@ -1581,6 +1782,19 @@ function ReadinessProject({ firstTask, hasRealTask, deadline, timelineNote }) {
           one.
         </p>
       )}
+    </>
+  );
+  if (embedded) {
+    return (
+      <section className="rounded-xl border border-brand-200 bg-white px-5 py-5">
+        <h2 className="text-base font-semibold text-ink">Your independent contribution</h2>
+        <div className="mt-3">{content}</div>
+      </section>
+    );
+  }
+  return (
+    <Card title="Your independent contribution" accent>
+      {content}
     </Card>
   );
 }
