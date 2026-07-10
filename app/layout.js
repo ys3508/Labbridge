@@ -1,4 +1,5 @@
 import "./globals.css";
+import MockGate from "@/components/MockGate";
 
 export const metadata = {
   title: "LabBridge — Build your onboarding plan",
@@ -9,7 +10,10 @@ export const metadata = {
 export default function RootLayout({ children }) {
   return (
     <html lang="en">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <MockGate />
+        {children}
+      </body>
     </html>
   );
 }
