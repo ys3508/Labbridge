@@ -145,7 +145,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
     document.body.scrollLeft = 0;
   }, []);
 
-  // 1) Generate the plan.
+  // 1) Generate the plan. `attempt` lets the error state offer an honest Retry
+  //    (a paid call each time — user-initiated only, never automatic).
+  const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     setError(null);
@@ -158,7 +160,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
       alive = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [attempt]);
 
   // 2) Retrieval-first resources: retrieve a verified candidate pool per topic,
   //    then let the model SELECT from it. The model never authors a shown
@@ -241,9 +243,18 @@ export default function PlanView({ form, isBeginner, onBack }) {
     return (
       <div className="fade-up">
         <Note tone="warn">{error}</Note>
-        <button onClick={onBack} className="mt-6 text-sm font-medium text-ink-soft hover:text-ink">
-          ← Back to edit
-        </button>
+        <div className="mt-6 flex items-center gap-4">
+          <button
+            type="button"
+            onClick={() => setAttempt((a) => a + 1)}
+            className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+          >
+            Retry
+          </button>
+          <button onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+            ← Back to edit
+          </button>
+        </div>
       </div>
     );
   }
@@ -427,6 +438,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
                 </button>
                 <button
                   type="button"
+                  id="why-this-plan-trigger"
+                  aria-expanded={whyOpen}
                   onClick={() => setWhyOpen(true)}
                   className="relative rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
                 >
@@ -539,7 +552,12 @@ export default function PlanView({ form, isBeginner, onBack }) {
           showPayload={showPayload}
           onTogglePayload={() => setShowPayload((s) => !s)}
           onBack={onBack}
-          onClose={() => setWhyOpen(false)}
+          onClose={() => {
+            setWhyOpen(false);
+            // a11y: return focus to the trigger that opened the dialog (after
+            // React has removed the dialog — rAF fires too early and loses the race).
+            setTimeout(() => document.getElementById("why-this-plan-trigger")?.focus(), 50);
+          }}
         />
       )}
     </div>
@@ -683,6 +701,20 @@ function ProjectFolder({
 }) {
   const [openPreview, setOpenPreview] = useState(null);
   const files = modules.map((m, i) => deliverableName(m, i));
+
+  // a11y: Escape closes an open file preview and returns focus to its file row.
+  useEffect(() => {
+    if (openPreview === null) return;
+    const onKey = (e) => {
+      if (e.key !== "Escape") return;
+      const i = openPreview;
+      setOpenPreview(null);
+      requestAnimationFrame(() => document.getElementById(`file-row-${i}`)?.focus());
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openPreview]);
+
   if (!files.length) return null;
   const firstOpenLabel =
     firstIncompleteIndex < modules.length ? `Task ${firstIncompleteIndex + 1}` : `Task ${modules.length}`;
@@ -831,6 +863,9 @@ function ProjectFolder({
               <div key={i}>
                 <button
                   type="button"
+                  id={`file-row-${i}`}
+                  aria-expanded={openPreview === i}
+                  aria-current={activeSurface === "task" && activeIndex === i ? "true" : undefined}
                   onClick={() => openFilePreview(i)}
                   className={`flex w-full items-start gap-2 rounded-md px-2.5 py-2 text-left text-xs ring-1 transition ${
                     activeIndex === i
@@ -1175,8 +1210,9 @@ function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
 function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false }) {
   const total = modules.length;
   const doneCount = done.size;
+  /* a11y: expose the earned count to assistive tech. */
   return (
-    <div>
+    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={doneCount} aria-label={`${doneCount} of ${total} project files built`}>
       <div className="text-xs text-ink-soft">
         {total > 0 && doneCount >= total ? (
           <span>All {total} files built — your readiness project is open ★</span>
@@ -1345,6 +1381,18 @@ function MomentFlow({
     else if (!isDone) onComplete();
   };
 
+  // a11y: ←/→ walk the moments. Skip while typing or when a dialog (drawer) is up.
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key !== "ArrowLeft" && e.key !== "ArrowRight") return;
+      if (e.target.closest?.("input, textarea, select, [role='dialog']")) return;
+      if (e.key === "ArrowLeft" && moment > 0) onMomentChange(moment - 1);
+      if (e.key === "ArrowRight" && moment < moments.length - 1) onMomentChange(moment + 1);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [moment, moments.length, onMomentChange]);
+
   return (
     <div className="bg-slate-50/60">
       <div className="border-b border-slate-100 bg-white px-5 py-3">
@@ -1364,6 +1412,7 @@ function MomentFlow({
               type="button"
               onClick={() => onMomentChange(idx)}
               aria-label={`Open ${m.label}`}
+              aria-current={idx === moment ? "step" : undefined}
               title={m.label}
               className={`h-1.5 rounded-full transition ${
                 idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
@@ -1683,6 +1732,8 @@ function buildMoments({
           AI review is coming — soon you'll be able to paste your draft and have LabBridge check it against these
           criteria. For now, judge it yourself.
         </p>
+        {/* Demo-only coaching prototype — renders nothing in the real flow. */}
+        <SampleCoaching draft={draft} criteria={criteria} checks={checks} redFlags={redFlags} concept={concept} task={task} />
       </div>
     ),
   });
@@ -1917,6 +1968,37 @@ function CheckReview({ check, checking }) {
 }
 
 function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePayload, onBack, onClose }) {
+  const panelRef = useRef(null);
+
+  // a11y: focus moves into the dialog on open, Escape closes, Tab stays inside;
+  // focus returns to the trigger (see onClose wiring in PlanView).
+  useEffect(() => {
+    panelRef.current?.focus();
+    const onKey = (e) => {
+      if (e.key === "Escape") {
+        e.stopPropagation();
+        onClose();
+        return;
+      }
+      if (e.key !== "Tab" || !panelRef.current) return;
+      const focusables = panelRef.current.querySelectorAll(
+        "button, a[href], input, textarea, select, [tabindex]:not([tabindex='-1'])"
+      );
+      if (!focusables.length) return;
+      const first = focusables[0];
+      const last = focusables[focusables.length - 1];
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+
   return (
     <div className="fixed inset-0 z-40">
       <button
@@ -1925,7 +2007,14 @@ function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePaylo
         className="absolute inset-0 bg-ink/20"
         onClick={onClose}
       />
-      <aside className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl">
+      <aside
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Why this plan?"
+        tabIndex={-1}
+        className="absolute right-0 top-0 flex h-full w-full max-w-xl flex-col overflow-hidden border-l border-slate-200 bg-white shadow-2xl outline-none"
+      >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Plan logic</p>
@@ -2080,6 +2169,7 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
     <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white">
       <button
         type="button"
+        aria-expanded={open}
         onClick={() => setOpen((o) => !o)}
         className="flex w-full items-center justify-between gap-3 px-6 py-4 text-left hover:bg-slate-50"
       >
@@ -2338,4 +2428,78 @@ function buildPayload(form, isBeginner) {
       weeklyHrs: form.timeline.weeklyHrs,
     },
   };
+}
+
+// §2 of remaining-before-visual-spec: the coaching UX prototype. DEMO MODE ONLY —
+// clearly labeled as canned, never rendered in the real flow (the fake-AI rule).
+// Replies are templates over REAL state (draft length, unticked criteria), so even
+// the canned version is honest about what it reads. This panel is the future
+// /api/coach socket: when funded, real calls replace the template layer.
+function SampleCoaching({ draft, criteria = [], checks, redFlags = [], concept = {}, task = {} }) {
+  const [demo] = useState(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem("lb_mock") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [exchange, setExchange] = useState(null); // { prompt, reply }
+  if (!demo) return null;
+
+  const words = (draft || "").trim() ? (draft || "").trim().split(/\s+/).length : 0;
+  const firstUnticked = criteria.find((_, k) => !(checks?.has ? checks.has(`c${k}`) : false));
+
+  const respond = (prompt) => {
+    let reply;
+    if (prompt === "Check my draft") {
+      if (!words) reply = "Nothing here yet — write a first pass in Draft and I'll look.";
+      else if (words < 30)
+        reply = `It's a start, but thin (${words} words). Before I'd sign off: ${firstUnticked || "flesh out the deliverable per the task steps."}`;
+      else
+        reply = `Solid length (${words} words). Next thing I'd check: ${firstUnticked || "all criteria look covered — reread once against the red flags."}${
+          redFlags[0] ? ` Watch for: ${redFlags[0]}` : ""
+        }`;
+    } else if (prompt === "Give me a hint") {
+      reply = firstUnticked
+        ? `Focus on this first: ${firstUnticked}`
+        : `Everything's ticked — measure your draft against the definition of done: ${task.doneWhen || "the deliverable as stated."}`;
+    } else {
+      const terms = concept.keyTerms || [];
+      reply = terms.length
+        ? `In plain words: ${terms.map((t) => `${t.term} = ${t.plainMeaning}`).join("; ")}.`
+        : (concept.explanation || "").split(". ")[0] + ".";
+    }
+    setExchange({ prompt, reply });
+  };
+
+  return (
+    <div className="rounded-lg border border-brand-100 bg-brand-50/40 px-3 py-2.5">
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Sample coaching (demo)</p>
+      <p className="mt-0.5 text-xs text-ink-faint">
+        Canned responses to show how coaching will work — not AI.
+      </p>
+      <div className="mt-2 flex flex-wrap gap-2">
+        {["Check my draft", "Give me a hint", "Explain simpler"].map((label) => (
+          <button
+            key={label}
+            type="button"
+            onClick={() => respond(label)}
+            className="rounded-md bg-white px-3 py-2 text-xs font-medium text-brand-700 ring-1 ring-brand-100 hover:ring-brand-300"
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      {exchange && (
+        <div className="mt-3 space-y-2">
+          <p className="ml-auto w-fit max-w-[85%] rounded-lg bg-brand-100 px-3 py-1.5 text-xs text-brand-800">
+            {exchange.prompt}
+          </p>
+          <p className="w-fit max-w-[90%] rounded-lg bg-white px-3 py-2 text-xs leading-relaxed text-ink ring-1 ring-slate-100">
+            {exchange.reply}
+          </p>
+        </div>
+      )}
+    </div>
+  );
 }

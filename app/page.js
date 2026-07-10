@@ -151,8 +151,17 @@ export default function Page() {
           Review &amp; build my plan →
         </button>
       </div>
-      <p className="mt-4 pb-10 text-center text-xs text-ink-faint">
+      <p className="mt-4 text-center text-xs text-ink-faint">
         Every field is optional. An empty form still produces a plan — the full path from zero.
+      </p>
+      {/* Demo mode: the sample plan runs entirely on canned data — zero API. */}
+      <p className="mt-2 pb-10 text-center text-xs">
+        <a
+          href="/?mock=1"
+          className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-500"
+        >
+          Or explore a sample plan →
+        </a>
       </p>
     </Shell>
   );

@@ -189,6 +189,14 @@ Codex implemented `revise/completion-rewards-spec.md` items A–E only; item F r
 **Artifacts became individually portable.**
 Codex implemented `revise/artifact-experience-spec.md`: draft edits now write a plan-scoped `lb_draftmeta_<planKey>` timestamp, file cards append an honest "edited {date}" label only after a real edit, and file previews show the fuller last-edited date/time. Non-empty previews now expose a real zero-API Markdown download for that single artifact (`# filename` plus the user's draft); empty files still show the existing empty state and no per-file link. The whole-project export path was left untouched. Verified in `?mock=1`: data-URL per-file download decoded to the file header plus draft verbatim, empty files showed no link, edited labels survived refresh, a second edit updated the visible timestamp, and no console errors appeared.
 
+**Claude stepped into the implementation seat (Codex hit its rate limit).**
+With Codex rate-limited, Claude implemented §1–3 + §5 of `revise/remaining-before-visual-spec.md` (Codex had gotten one uncommitted edit in — the banner copy — which is included):
+- **Demo mode is now a product feature** — "Or explore a sample plan →" on the input page; the banner reads "Sample plan — explore freely · exit sample" instead of dev-speak. Zero API end-to-end.
+- **Sample coaching (demo-gated)** — the Coach beat gains a labeled "not AI" canned-coaching panel, replies templated over real state (draft length, first unticked criterion, key terms). Renders nothing in the real flow; it's the `/api/coach` UX socket.
+- **A11y semantics** — ←/→ walk the moments (skipping inputs/dialogs), Escape closes drawer and file preview with focus returned to the trigger, focus trap in the drawer, `aria-current`/`aria-expanded`/`role="progressbar"` where they belong. (One catch during verification: focus-return via rAF lost the race with React's re-render — fixed with a small timeout.)
+- **Honest Retry** — plan-generation failure now offers a Retry button (user-initiated, never automatic — each retry is a paid call).
+Roles reverse for review: Codex reviews this when its limit resets.
+
 ---
 
 ## Where it stands

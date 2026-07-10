@@ -1,9 +1,8 @@
 "use client";
 
-// Dev-only "mock mode": when enabled, intercepts every /api/* request and
-// returns canned data from lib/mockResponses.js — so the whole app runs with
-// ZERO Anthropic API calls (useful when the balance is unpaid). Enable by
-// visiting `?mock=1`; leave with `?mock=0`. Off by default; ships inert.
+// Sample-plan mode: when enabled, intercepts every /api/* request and returns
+// canned data from lib/mockResponses.js so the whole demo runs with zero API.
+// Enable by visiting `?mock=1` or the sample-plan link; leave with `?mock=0`.
 
 import { useEffect, useState } from "react";
 import { resolveMock } from "@/lib/mockResponses";
@@ -54,9 +53,9 @@ export default function MockGate() {
   if (!on) return null;
   return (
     <div className="fixed bottom-3 left-1/2 z-50 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
-      🔧 Mock mode — no API calls ·{" "}
+      Sample plan — explore freely ·{" "}
       <a href="?mock=0" className="underline">
-        exit
+        exit sample
       </a>
     </div>
   );
