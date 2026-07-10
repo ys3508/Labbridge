@@ -1,0 +1,65 @@
+{
+  "background": {
+    "field": ["Business", "Management Consulting"],
+    "sector": ["Strategy consulting"],
+    "skills": [
+      "market sizing",
+      "financial modeling basics",
+      "client presentations",
+      "Excel",
+      "competitive analysis",
+      "stakeholder interviews"
+    ],
+    "skillEvidence": [
+      {
+        "skill": "market sizing",
+        "evidence": "built top-down and bottom-up market sizings for three retainer clients"
+      },
+      {
+        "skill": "client presentations",
+        "evidence": "presented findings to C-level clients monthly"
+      }
+    ],
+    "resume": "Three years as a strategy consultant at a mid-size firm. I scope market opportunities, build Excel models for sizing and unit economics, run competitive teardowns, and present recommendations to executives. I have not worked in investing: I don't know deal sourcing, diligence processes, cap tables beyond the basics, or how a growth fund evaluates SaaS metrics like net revenue retention in practice.",
+    "isBeginner": false
+  },
+  "target": {
+    "role": "Growth Equity Analyst",
+    "artifacts": [
+      {
+        "type": "job_posting",
+        "text": "Role: Growth Equity Analyst\nCompany: Alder Ridge Capital\nSector: Growth equity / B2B software\n\nResponsibilities:\n- Source and screen growth-stage B2B software companies\n- Build financial models and analyze SaaS metrics (ARR, NRR, CAC payback, burn)\n- Support diligence: market maps, customer calls, competitive analysis\n- Draft investment memos for partner review\n\nRequired:\n- Strong analytical and modeling skills\n- Clear written communication\n- Curiosity about software business models"
+      }
+    ],
+    "realTask": "",
+    "instructions": "I care most about learning how funds actually evaluate SaaS metrics and write memos — not generic finance theory.",
+    "jobFields": {
+      "company": "Alder Ridge Capital",
+      "role": "Growth Equity Analyst",
+      "sector": "Growth equity / B2B software",
+      "seniority": "Analyst",
+      "responsibilities": [
+        "Source and screen growth-stage B2B software companies",
+        "Build financial models and analyze SaaS metrics (ARR, NRR, CAC payback, burn)",
+        "Support diligence: market maps, customer calls, competitive analysis",
+        "Draft investment memos for partner review"
+      ],
+      "requiredSkills": [
+        "Strong analytical and modeling skills",
+        "Clear written communication",
+        "Curiosity about software business models"
+      ]
+    },
+    "unreadableLink": false,
+    "hasTarget": true
+  },
+  "goals": {
+    "depth": "functional",
+    "purpose": "interview"
+  },
+  "timeline": {
+    "mode": "pace",
+    "deadline": "",
+    "weeklyHrs": "8"
+  }
+}

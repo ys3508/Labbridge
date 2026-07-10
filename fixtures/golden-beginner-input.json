@@ -1,0 +1,28 @@
+{
+  "background": {
+    "field": [],
+    "sector": [],
+    "skills": [],
+    "skillEvidence": [],
+    "resume": "",
+    "isBeginner": true
+  },
+  "target": {
+    "role": "Data Analysis",
+    "artifacts": [],
+    "realTask": "",
+    "instructions": "",
+    "jobFields": null,
+    "unreadableLink": false,
+    "hasTarget": true
+  },
+  "goals": {
+    "depth": "landscape",
+    "purpose": "curious"
+  },
+  "timeline": {
+    "mode": null,
+    "deadline": "",
+    "weeklyHrs": ""
+  }
+}
