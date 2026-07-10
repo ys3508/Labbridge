@@ -15,12 +15,17 @@ body {
 }
 
 body {
-  background:
-    radial-gradient(1200px 600px at 50% -10%, #eef6f6 0%, rgba(238, 246, 246, 0) 60%),
-    #fbfcfd;
+  /* visual-design: flat warm off-white ground — no gradients anywhere */
+  background: #faf9f7;
   color: #1c2530;
   /* layout-foundation: counters never jiggle */
   font-variant-numeric: tabular-nums;
+}
+
+/* visual-design: one visible focus ring, everywhere, keyboard-only */
+:focus-visible {
+  outline: 2px solid #2f7d80;
+  outline-offset: 2px;
 }
 
 /* layout-foundation: the 6 type roles. Text takes exactly one role;

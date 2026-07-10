@@ -418,7 +418,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   return (
     <div className="w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col">
-      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         <header className="border-b border-brand-100 px-4 py-4 sm:px-6 lg:shrink-0">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
@@ -629,7 +629,7 @@ function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purpos
   const northStar = plan.northStar?.trim() || plan.firstTask?.title || "";
   return (
     <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-      <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
+      <p className="max-w-prose font-letter text-lg leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
       {northStar && (
         <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
           <p className="t-label text-brand-600">Your mission</p>
@@ -1074,15 +1074,15 @@ function getMomentMeta(step) {
   const example = step?.workedExample || {};
   const moments = [{ key: "brief", label: "Brief", objective: "Why am I here?" }];
   if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
-    moments.push({ key: "question", label: "Question", objective: "Can I try first?" });
+    moments.push({ key: "question", label: "Check", objective: "Can I try first?" });
   }
   if (concept.explanation) moments.push({ key: "model", label: "Model", objective: "What's the idea?" });
-  if (example.setup) moments.push({ key: "visual", label: "Visual", objective: "What does it look like?" });
-  if (task.steps?.length) moments.push({ key: "practice", label: "Practice", objective: "Can I do it myself?" });
+  if (example.setup) moments.push({ key: "visual", label: "Example", objective: "What does it look like?" });
+  if (task.steps?.length) moments.push({ key: "practice", label: "Try", objective: "Can I do it myself?" });
   moments.push(
     { key: "coach", label: "Coach", objective: "Am I right?" },
-    { key: "artifact", label: "Artifact", objective: "What did I produce?" },
-    { key: "reward", label: "Reward", objective: "What changed in my project?" }
+    { key: "artifact", label: "Draft", objective: "What did I produce?" },
+    { key: "reward", label: "Wrap", objective: "What changed in my project?" }
   );
   return moments;
 }
@@ -1456,7 +1456,7 @@ function MomentFlow({
               ? nextLabel
                 ? `Start Task ${moduleIndex + 2} →`
                 : "Finish — review your project →"
-              : "Next moment"}
+              : "Next"}
           </button>
         </div>
       </div>
@@ -1532,7 +1532,7 @@ function buildMoments({
   if (comprehension?.question && comprehension.options?.length) {
     moments.push({
       key: "question",
-      label: "Question",
+      label: "Check",
       title: comprehension.question,
       objective: "Can I try first?",
       kicker: "Take a guess before the model — the first try is what makes it stick.",
@@ -1616,7 +1616,7 @@ function buildMoments({
   if (example.setup) {
     moments.push({
       key: "visual",
-      label: "Visual",
+      label: "Example",
       title: "See it on one tiny case.",
       objective: "What does it look like?",
       kicker: null,
@@ -1655,7 +1655,7 @@ function buildMoments({
   if (task.steps?.length) {
     moments.push({
       key: "practice",
-      label: "Practice",
+      label: "Try",
       title: "Make the first move.",
       objective: "Can I do it myself?",
       kicker: "Small action, real project.",
@@ -1744,7 +1744,7 @@ function buildMoments({
   // ARTIFACT — What did I produce?
   moments.push({
     key: "artifact",
-    label: "Artifact",
+    label: "Draft",
     title: "Write your draft.",
     objective: "What did I produce?",
     kicker: "This is where it becomes yours — part of your final project.",
@@ -1772,26 +1772,29 @@ function buildMoments({
     : null;
   moments.push({
     key: "reward",
-    label: "Reward",
+    label: "Wrap",
     title: isDone ? "Task complete." : "Add it to your project.",
     objective: "What changed in my project?",
     kicker: null,
     body: (
       <div className="space-y-3">
         {gapReward && <GapClosedReward reward={gapReward} />}
-        <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-          <p className="t-label text-brand-600">Added to your project</p>
-          <p className="mt-1 font-mono text-sm font-medium text-ink">{artifact}</p>
-          <p className="mt-1 text-xs text-ink-soft">
-            {hasDraft ? "Draft saved." : "Draft still empty — you can add it any time."}
-          </p>
+        {/* Visual-design spec §5: the Wrap is a work RECEIPT — line items, no banner energy. */}
+        <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+          <div className="px-4 py-3">
+            <p className="t-label text-ink-faint">Added to your project</p>
+            <p className="mt-1 t-mono font-medium text-ink">{artifact}</p>
+            <p className="mt-1 text-xs text-ink-soft">
+              {hasDraft ? "Draft saved." : "Draft still empty — you can add it any time."}
+            </p>
+          </div>
+          {criteria.length > 0 && (
+            <p className="px-4 py-3 text-sm text-ink-soft">
+              <span className="font-medium text-ink">Self-check:</span> {ticked}/{criteria.length} confirmed
+              {ticked < criteria.length ? " — a few still open, but you can move on." : " — all clear."}
+            </p>
+          )}
         </div>
-        {criteria.length > 0 && (
-          <p className="text-sm text-ink-soft">
-            <span className="font-medium text-ink">Self-check:</span> {ticked}/{criteria.length} confirmed
-            {ticked < criteria.length ? " — a few still open, but you can move on." : " — all clear."}
-          </p>
-        )}
         <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
           {nextLabel ? (
             <>
@@ -1809,61 +1812,35 @@ function buildMoments({
   return moments;
 }
 
+// Visual-design spec §5: the draft area is a small DOCUMENT, not a form field —
+// mono filename strip, paper body, meta derived from real state. (This restyle
+// also removed two unearned-state relics: a dead "Open →" button and a hardcoded
+// checklist whose first item was always ✓.)
 function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
   const file = deliverableName(step, moduleIndex);
-  const checklist = [
-    "Notes",
-    "Draft",
-    "Checklist",
-    "Deliverable",
-  ];
+  const words = wordCount(draft);
   return (
-    <div className="mt-2 rounded-lg border border-brand-100 bg-white/70 px-3 py-2">
-      <div className="flex flex-wrap items-center justify-between gap-2">
-        <div className="min-w-0">
-          <p className="t-label text-brand-600">Your deliverable</p>
-          <p className="mt-1 break-all text-sm font-semibold text-ink">{file}</p>
-        </div>
-        <button
-          type="button"
-          className="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700"
-        >
-          Open →
-        </button>
+    <div className="mt-2 overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+        <p className="t-mono min-w-0 break-all text-xs font-medium text-ink">{file}</p>
+        <p className="shrink-0 text-xs text-ink-faint">
+          {words ? `Saved · ${words} word${words === 1 ? "" : "s"}` : "Not started"}
+        </p>
       </div>
-      <div className="mt-2 grid grid-cols-2 gap-1.5 sm:grid-cols-4">
-        {checklist.map((item, i) => (
-          <div key={item} className="rounded-md bg-slate-50 px-2 py-1.5 text-xs text-ink-soft">
-            <span className={i === 0 ? "text-emerald-600" : "text-ink-faint"}>{i === 0 ? "✓" : "□"}</span>{" "}
-            {item}
-          </div>
-        ))}
-      </div>
-      <label className="mt-3 block">
-        <span className="t-label text-ink-faint">Draft notes</span>
+      <label className="block">
+        <span className="sr-only">Draft for {file}</span>
         <textarea
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
-          rows={3}
+          rows={4}
           placeholder="Start writing the artifact here. What did you notice first?"
-          className="mt-1 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none focus:ring-1 focus:ring-brand-200"
+          className="w-full resize-y border-0 bg-white px-3 py-2 t-body text-ink focus:outline-none focus:ring-0"
         />
       </label>
     </div>
   );
 }
 
-function DoneReward({ step, moduleIndex }) {
-  return (
-    <div className="rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3">
-      <p className="text-sm font-semibold text-emerald-800">Great work. Artifact added to your project.</p>
-      <p className="mt-1 text-xs leading-relaxed text-emerald-700">
-        Your RWE lead can now review <span className="break-all font-medium">{deliverableName(step, moduleIndex)}</span>. You are
-        building the project, not just checking off a lesson.
-      </p>
-    </div>
-  );
-}
 
 function GapClosedReward({ reward }) {
   return (
@@ -2353,7 +2330,7 @@ function Finding({ tone, title, children }) {
 function Card({ title, subtitle, accent, emphasis, children }) {
   const shell =
     emphasis === "workspace"
-      ? "border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm"
+      ? "border-slate-200 bg-white shadow-sm"
       : accent
         ? "border-brand-200 bg-brand-50/50"
         : "border-slate-200 bg-white";
