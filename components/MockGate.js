@@ -19,12 +19,17 @@ const wait = (ms) => new Promise((r) => setTimeout(r, ms));
 
 export default function MockGate() {
   const [on, setOn] = useState(false);
+  const [persona, setPersona] = useState("rwe");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     const q = params.get("mock");
     if (q === "1") localStorage.setItem("lb_mock", "1");
     if (q === "0") localStorage.removeItem("lb_mock");
+    // Two demo personas (RWE analyst / growth equity) — switchable from the banner.
+    const p = params.get("persona");
+    if (p) localStorage.setItem("lb_persona", p === "growth" ? "growth" : "rwe");
+    setPersona(localStorage.getItem("lb_persona") === "growth" ? "growth" : "rwe");
 
     const enabled = localStorage.getItem("lb_mock") === "1";
     setOn(enabled);
@@ -53,8 +58,12 @@ export default function MockGate() {
   if (!on) return null;
   return (
     <div className="fixed bottom-3 left-1/2 z-50 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
-      Sample plan — explore freely ·{" "}
-      <a href="?mock=0" className="underline">
+      Sample plan ({persona === "growth" ? "growth equity" : "RWE analyst"}) — explore freely ·{" "}
+      <a href={`/?mock=1&persona=${persona === "growth" ? "rwe" : "growth"}`} className="underline">
+        switch sample
+      </a>{" "}
+      ·{" "}
+      <a href="/?mock=0" className="underline">
         exit sample
       </a>
     </div>

@@ -197,17 +197,22 @@ With Codex rate-limited, Claude implemented §1–3 + §5 of `revise/remaining-b
 - **Honest Retry** — plan-generation failure now offers a Retry button (user-initiated, never automatic — each retry is a paid call).
 Roles reverse for review: Codex reviews this when its limit resets.
 
+**Housekeeping before the paint: lint, honest docs, and a second persona.**
+Three closers before the layout/visual passes: (1) **ESLint** configured (`next/core-web-vitals`; the one purely stylistic rule off) — the codebase was already clean. (2) **The docs stopped lying** — README rewritten from the Phase-1 proposal era to the actual product (workspace, moments, demo mode, principles), AGENTS.md's architecture refreshed, TASKS.md board rebuilt, this diary's tail updated. (3) **A second demo persona** — consultant → growth equity, switchable from the demo banner — whose third task is deliberately *thin*: it proved the variable-inclusion path live for the first time (6 moments instead of 8, no resources, honest hands-on state). Codex review waived by Sissi (out of credits); merged on her authority.
+
 ---
 
 ## Where it stands
 
-Input (real extraction, honest job-link reading) → a **task-driven course** whose resources are real and scoped, whose plan is self-checked, and whose progress you can track. It degrades to honesty, never to fiction.
+Input (real extraction, honest job-link reading) → a **single-surface onboarding workspace**: a briefing doorway, manager-assigned tasks walked as Moments, drafts accumulating as real files (states, timestamps, downloads), earned-only progress, and a derived-horizon readiness arc. A zero-API **demo mode** shows the whole thing to anyone. It degrades to honesty, never to fiction — and the palette spec now literally encodes that rule.
 
 ## What's still ahead
 
-- **Cross-session memory** — so the course *remembers* completed work and deliverables across visits (needs accounts + a backend). This is what makes it sticky.
-- **The skill graph** — make prerequisite *ordering* code-verified, not model-judged.
-- **Deploy** — ship a shareable link (rotate the key, set a spend cap first).
+- **Layout foundation → visual design** — the two specced passes that dress the finished skeleton (`revise/layout-foundation-spec.md`, `revise/visual-design-spec.md`).
+- **When the API balance returns** — verify the model actually writes good `northStar` / `comprehensionCheck` / `closesGapIndex`; build `/api/coach` into the waiting sockets (the Coach panel and the parked manager's-reaction reward).
+- **Cross-session memory** — accounts + a backend, so the workspace remembers you across devices. The stickiness play.
+- **The skill graph** — code-verified prerequisite ordering.
+- **Deploy** — rotate the key, set a spend cap, ship a link.
 
 ## Architecture at a glance
 
@@ -229,6 +234,8 @@ input  → /api/plan         structure only: strengths, gaps, task-modules, caps
 - `components/` — `BackgroundSection`, `HeadedSection`, `GoalsSection`, `TimelineSection`, `ReviewScreen`, `PlanView`
 - `lib/ai.js` — Anthropic client + model constants (`MODEL` = Haiku for cheap calls, `PLAN_MODEL` = Opus for plan/select)
 - `lib/verify.js` — resource verification (Open Library, OpenAlex, web search)
+- `components/MockGate.js` + `lib/mockResponses.js` — demo mode (zero API)
+- `lib/moduleCheck.js` + `fixtures/` — static plan-quality checker + golden inputs
 - `lib/constants.js` — pools, options, and the `WEB_AUGMENT` toggle
 
 **Knobs:** `WEB_AUGMENT = false` (in `lib/constants.js`) for fast/cheap runs · swap `MODEL`/`PLAN_MODEL` to trade cost vs. quality · `ANTHROPIC_API_KEY` lives in `.env.local` (gitignored).

@@ -49,49 +49,45 @@ is what keeps well-meaning edits from becoming merge conflicts.
 
 ## Open work
 
-### Codex — start here (low collision, high value)
+*(Board refreshed 2026-07-10 — everything through "remaining-before-visual" is
+implemented; see JOURNEY.md for the story.)*
 
-- [ ] **Static module-quality checker** (`lib/moduleCheck.js`, pure JS, no AI).
-      Per module, flag: `concept.explanation` < ~500 chars; `workedExample.setup`
-      < ~120 chars; `task.givenInputs.length < 1`; `task.managerRequest` missing a
-      stakeholder-like phrase; `selfCheck.criteria.length < 3`; `task.steps.length
-      < 3`; banned phrases anywhere ("find a dataset", "search online", "read
-      about", "learn about", "simulate your own"). Return **specific findings, not
-      a score**. Expose via `app/api/module-check/route.js` returning findings for
-      a posted plan. (Claude will wire an optional dev-only display into PlanView
-      once the shape is stable — leave the render to the Claude lane.)
-- [ ] **Golden fixtures** (`fixtures/golden-rwe-input.json`,
-      `golden-growth-equity-input.json`, `golden-beginner-input.json`) — the exact
-      `payload` shape `/api/plan` receives (see `buildPayload` in
-      `components/PlanView.js`). Used to re-test header/role/deadline fidelity,
-      module richness, no fake resources, no "go find a dataset".
-- [ ] **Grounding hardening** — occasional catalog title-match lands on an
-      adjacent record; tighten `overlap()` / verification in `lib/verify.js`.
+### Shipped & merged to main
+- [x] Moments grammar (honest Coach, live-state Reward) · task navigation ·
+      page hierarchy · single-surface workspace · sidebar workspace (file states,
+      previews, export) · progress states (files-not-percent, gap chips) ·
+      completion rewards (gap-closed, mirror, handoff memo, welcome-back) ·
+      artifact experience (per-file downloads, last-edited).
 
-### Claude — in progress / owned
+### Ready to merge (implemented, review waived by Sissi — Codex out of credits)
+- [ ] `codex/planview-density-polish` @ demo mode + sample coaching + a11y +
+      Retry (Claude implemented remaining-before-visual §1-3 + §5).
+- [ ] `codex/module-quality-checker` @ assignment-scoped banned phrases + all
+      three golden fixtures (rebased on main).
 
-- [x] Shift 1: modules are teaching containers (concept/worked-example/self-check).
-- [ ] PlanView workspace/session polish: Codex picked this up at Sissi's request on
-      `codex/planview-density-polish` despite PlanView normally being Claude's
-      lane. It now makes the result feel more like one-task-at-a-time project
-      work than an all-on-one-page course. Latest pass also touches
-      `app/api/plan/route.js` to align generation with the project-first learning
-      engine. Review for product-rule alignment before merge.
-- [ ] Wire the static checker's findings into PlanView (dev-only), once Codex's
-      `module-check` route shape is stable.
-- [ ] Prompt tuning from golden-fixture results (horizon math on a real deadline;
-      "functional" → 3–4 tight modules).
+### Next up (in order)
+- [ ] **`revise/layout-foundation-spec.md`** — type roles, 3-gap rhythm,
+      app-shell scroll, touch targets. Zero behavior changes.
+- [ ] **`revise/visual-design-spec.md`** — the paint. Last.
 
-### Unassigned / later
-
-- [ ] Cross-session memory (accounts + backend) — the stickiness play.
-- [ ] Code-verified skill graph (prerequisite ordering, not model-judged).
+### Parked (needs API funding)
+- [ ] Verify `northStar` / `comprehensionCheck` / `closesGapIndex` against the
+      live model; tune prompts from golden-fixture runs.
+- [ ] `/api/coach` — real AI review + manager's-reaction reward (sockets exist:
+      the Coach beat panel and the parked reward slot F).
 - [ ] Deploy (rotate the API key, set a spend cap first).
+
+### Parked (needs definition or backend)
+- [ ] "Progressive reveal" — dropped from scope until Sissi defines it.
+- [ ] Cross-session memory (accounts + backend) — the stickiness play.
+- [ ] Code-verified skill graph (prerequisite ordering).
 
 ---
 
 ## Handoff notes
 
-- Generating a plan is a **paid Opus call** (~1–2 min). Prefer testing checker/
-  fixture work against **saved fixtures**, not fresh generations.
-- When you finish an item, check it off here and add a one-line `JOURNEY.md` entry.
+- Generating a plan is a **paid Opus call** (~1-2 min). Test against demo mode
+  (`?mock=1` / "explore a sample plan") or the `fixtures/`, not fresh generations.
+- `npx next lint` is configured (`next/core-web-vitals`,
+  `react/no-unescaped-entities` off) — run it before pushing.
+- When you finish an item, check it off here and add a `JOURNEY.md` entry.

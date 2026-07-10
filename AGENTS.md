@@ -11,10 +11,13 @@ right now, and **`JOURNEY.md`** for the running story of how we got here.
 
 A personalized **enterprise-onboarding plan generator** for career-changers. You
 give it a background (resume), a target (role / job posting), goals, and a
-timeline; it generates a **task-driven training course** where each module is a
-self-contained *learning container* (concept → worked example → manager-assigned
-assignment → self-check → optional verified resource), plus a staged
-"independent contribution" capstone on a derived horizon.
+timeline; it generates a **single-surface onboarding workspace**: a full-screen
+briefing (the doorway), then a workspace where 3-4 manager-assigned tasks are
+each walked as **Moments** (Brief → Question → Model → Example → Practice →
+Coach → Draft → Reward), drafts accumulate as files in a project folder
+(honest states, timestamps, Markdown export), and a staged Observe→Assist→Own
+capstone lands on a derived horizon. A zero-API **demo mode** (`?mock=1`, or
+the "explore a sample plan" link) runs the whole app on canned data.
 
 Positioning: **career transition + enterprise onboarding**, not "AI learning-path
 generator." That framing is intentional — keep output in that voice.
@@ -90,7 +93,9 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 |---|---|
 | `app/page.js` | Input flow + form state (`background`, `headed`, `goals`, `timeline`) |
 | `components/BackgroundSection.js` `HeadedSection.js` `GoalsSection.js` `TimelineSection.js` `ReviewScreen.js` | The 4-section input + review |
-| `components/PlanView.js` | The generated course UI + client orchestration of the pipeline |
+| `components/PlanView.js` | The workspace (briefing, moments, folder, drawer) + client orchestration of the pipeline |
+| `components/MockGate.js` + `lib/mockResponses.js` | Demo mode — fetch interceptor + canned data (zero API) |
+| `lib/moduleCheck.js` + `fixtures/` | Static plan-quality checker + golden regression inputs |
 | `app/api/*/route.js` | Server routes (above) |
 | `lib/ai.js` | Anthropic client + `MODEL` / `PLAN_MODEL` |
 | `lib/verify.js` | Resource verification (Open Library, OpenAlex, web search) |

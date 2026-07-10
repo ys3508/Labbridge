@@ -2,60 +2,87 @@
 
 **From "I'm new here" to "I can contribute" — in days, not months.**
 
-LabBridge is an onboarding system for people making an interdisciplinary leap into biotech and AI. It turns a new hire's first week from *"read these 15 papers and ask questions in Slack"* into a concrete, scoped, background-aware task they can actually finish.
+LabBridge is a personalized **enterprise-onboarding workspace** for career-changers.
+Give it your background (a resume, a few lines) and where you're headed (a role, a
+job posting), and it builds not a course but a **first assignment**: a sequence of
+manager-style tasks that each produce a real work artifact, with just enough
+teaching wrapped around the work.
+
+Works for any field — an epidemiologist moving into pharma RWE, a consultant
+moving into growth equity, an engineer moving into biotech.
 
 ---
 
-## The Problem
+## Try it in 30 seconds (no API key needed)
 
-Life sciences is now interdisciplinary by default. Software engineers, MPH graduates, and clinicians are constantly moving into biotech and AI roles — but onboarding hasn't caught up.
+```bash
+npm install
+npm run dev
+```
 
-New hires get handed papers and documentation and told to *"figure it out."* The result: slow ramp-up, repeated confusion, and a heavy mentoring tax on the team.
+Open http://localhost:3000 and click **"Or explore a sample plan →"** at the
+bottom of the input page. The demo runs entirely on canned data — zero API calls —
+and shows the full experience: briefing → workspace → tasks → your project folder.
 
-> The gap isn't access to information. It's knowing what to do with it.
+To generate *real* plans, put an Anthropic key in `.env.local`:
 
-## The Insight
+```
+ANTHROPIC_API_KEY=sk-ant-...
+```
 
-Three questions define every interdisciplinary transition — and no tool answers all three together:
+## What you get
 
-1. **Who is this person?** — their real, transferable background
-2. **What role are they entering?**
-3. **What are they actually expected to do first?**
+Onboarding, not a syllabus:
 
-LabBridge is built at the intersection of all three. Not a search engine. Not a course. **An onboarding system.**
+- **A mission briefing** — how close you already are, what to *skip* because you
+  already have it, and the gaps that actually stand between you and the role.
+- **A project workspace** — 3–4 manager-assigned tasks ("Your RWE lead says: …"),
+  each walked as short **Moments**: Brief → Question → Model → Example → Practice
+  → Coach → Draft → Reward. You're handed named inputs, you write real drafts,
+  you check your own work against concrete criteria.
+- **A project folder** — your drafts become files with honest states (outlined →
+  draft → final), real timestamps, and one-click Markdown export. The folder is
+  the product: visible proof of work.
+- **A readiness arc** — an Observe → Assist → Own capstone sized to *your*
+  timeline (a 3-week runway is a 3-week arc, never a hard-coded "90 days").
+- **Progress that can't lie** — only completing a task moves any counter; gap
+  chips close only when the tasks that close them are done.
 
-## How It Works
+## The principles (what makes it trustworthy)
 
-**Input** — your background (skills, education, experience) + target role/project + constraints (time, depth, goals).
+1. **Grounded resources or none.** Every recommended resource is verified against
+   real catalogs (Open Library, OpenAlex) or official pages — retrieval-first;
+   the model selects from verified candidates and can never invent a citation.
+2. **Facts vs. fluency.** Generated teaching prose may frame and bridge, but may
+   not assert precise source-dependent specifics (clinical codes, regulations,
+   thresholds) it wasn't given.
+3. **Fidelity.** Your role is named verbatim, never re-categorized. Dates are
+   never invented or transformed — the UI owns your deadline.
+4. **No fake AI.** Nothing pretends to be intelligence that didn't run. The demo's
+   sample coaching is labeled canned; real AI review arrives only when it's real.
+5. **Degrade to honesty.** An unreadable job link warns you up front and the plan
+   says what it's built from.
 
-**Output** — a personalized onboarding plan:
+## Stack
 
-| Component | What it does |
-| --- | --- |
-| **Transferable strengths** | What you already bring that applies here |
-| **Knowledge gaps** | What's *actually* missing — not everything you don't know |
-| **Learning sequence** | What to learn first, and why, in order |
-| **Curated resources** | Papers, datasets, tools — grounded in real literature, not guesses |
-| **Background-aware starting point** | Where you already are on the path, so you start from what you bring — not a generic zero |
-| **First contribution plan** | A real, scoped task you could finish in week one |
+Next.js 14 (App Router) · React 18 · Tailwind 3 · Anthropic Claude API
+(`claude-haiku-4-5` for high-frequency extraction, `claude-opus-4-8` for plan
+generation) · plain JavaScript, no TypeScript. All AI calls are server-side; the
+key never reaches the browser. Progress persists in localStorage.
 
-## Why It's Different
+## Repo map
 
-Most AI tools help you **understand information**. LabBridge helps you **become productive on a real team**.
+- `app/page.js` — input flow (background, target, goals, timeline)
+- `components/PlanView.js` — the workspace (briefing, moments, folder, drawer)
+- `app/api/*` — plan generation + retrieval-first resource pipeline + checkers
+- `lib/mockResponses.js` + `components/MockGate.js` — the zero-API demo mode
+- `lib/moduleCheck.js` + `fixtures/` — static plan-quality checker + golden inputs
+- `revise/` — design specs (the product's paper trail)
+- `JOURNEY.md` — the working diary: every question raised and how it was fixed
+- `AGENTS.md` — conventions for the AI agents that build this (yes, really)
 
-The differentiator isn't the explanations — it's that every step is anchored to *your specific background* and *this specific first task*. That combination is hard to fake and hard to copy with a generic chatbot.
+## Status
 
-## Who It's For
-
-**Wedge:** Individuals making an interdisciplinary leap into biotech/AI — engineers, MPH grads, clinicians. People living the exact problem this was built from.
-
-Organizations and research labs are the natural expansion: once individuals are getting real value, teams will want it as an onboarding tool for new hires. But the individual wedge comes first — sharper product, faster feedback, easier to sell.
-
-## Why Now
-
-- Interdisciplinary hiring in life sciences/biotech is accelerating faster than onboarding practices can adapt.
-- AI makes it possible to generate a *personalized path* instead of a generic reading list — **but only if resource curation is grounded in real retrieval, not hallucinated citations.** Trust here is non-negotiable.
-
-## What Success Looks Like
-
-A new hire's first week stops looking like *"read these 15 papers and ask questions in Slack"* and starts looking like a concrete, scoped, background-aware task they can actually finish — with the reading list that got them there.
+Actively built by a human product owner working with two AI agents (Claude +
+Codex) in a spec → implement → review loop. Current phase: structure and
+behavior complete; visual design pass next. See `JOURNEY.md` for the story.
