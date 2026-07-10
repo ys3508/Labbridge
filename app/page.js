@@ -111,7 +111,7 @@ export default function Page() {
   return (
     <Shell>
       <Hero />
-      <div className="mt-8 space-y-5">
+      <div className="mt-8 space-y-6">
         <BackgroundSection value={form.background} onChange={setPart("background")} />
         <HeadedSection
           value={form.headed}

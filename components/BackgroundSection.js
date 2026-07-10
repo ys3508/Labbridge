@@ -154,7 +154,7 @@ export default function BackgroundSection({ value, onChange }) {
       <button
         type="button"
         onClick={() => setShowFallback((s) => !s)}
-        className="mt-5 text-sm font-medium text-brand-600 hover:text-brand-700"
+        className="mt-6 text-sm font-medium text-brand-600 hover:text-brand-700"
       >
         {showFallback ? "− Hide" : "+ Add more by hand — field, skills, anything the resume missed"}
       </button>
@@ -249,8 +249,8 @@ export default function BackgroundSection({ value, onChange }) {
 function ChipGroup({ label, items, onRemove }) {
   return (
     <div>
-      <p className="text-[11px] font-semibold uppercase tracking-wide text-ink-faint">{label}</p>
-      <div className="mt-1.5 flex flex-wrap gap-2">
+      <p className="t-label text-ink-faint">{label}</p>
+      <div className="mt-2 flex flex-wrap gap-2">
         {items.map((it) => (
           <Chip key={it} tone="active" active onRemove={() => onRemove(it)}>
             {it}

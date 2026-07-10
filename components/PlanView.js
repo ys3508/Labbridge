@@ -370,7 +370,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   if (briefingOpen) {
     return (
-      <div className="mx-auto flex min-h-[72vh] w-full max-w-3xl flex-col justify-center fade-up">
+      <div className="mx-auto flex min-h-[72vh] w-full max-w-2xl flex-col justify-center fade-up">
         <header>
           <p className="text-sm font-medium uppercase tracking-wide text-brand-500">Your onboarding briefing</p>
           <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
@@ -417,12 +417,12 @@ export default function PlanView({ form, isBeginner, onBack }) {
   }
 
   return (
-    <div className="w-full fade-up">
-      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm">
-        <header className="border-b border-brand-100 px-4 py-4 sm:px-6">
+    <div className="w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col">
+      <section className="overflow-hidden rounded-2xl border border-brand-200 bg-gradient-to-b from-brand-50/80 to-white shadow-sm lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
+        <header className="border-b border-brand-100 px-4 py-4 sm:px-6 lg:shrink-0">
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Workspace home</p>
+              <p className="t-label text-brand-600">Workspace home</p>
               <h1 className="mt-1 text-lg font-semibold leading-tight text-ink">{planTitle}</h1>
               <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
             </div>
@@ -473,8 +473,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
           )}
         </header>
 
-        <div className="grid gap-4 p-4 lg:grid-cols-[280px_minmax(0,1fr)] lg:p-6">
-          <aside className="min-w-0 space-y-3 lg:sticky lg:top-4 lg:self-start">
+        <div className="grid gap-4 p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden lg:p-6">
+          <aside className="min-w-0 space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <ProjectFolder
               modules={modules}
               activeIndex={activeIndex}
@@ -495,7 +495,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               onCapstoneAnyway={openCapstoneAnyway}
             />
           </aside>
-          <div ref={taskPanelRef} className="min-w-0 scroll-mt-4">
+          <div ref={taskPanelRef} className="min-w-0 scroll-mt-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             {activeSurface === "capstone" ? (
               <ReadinessProject
                 firstTask={plan.firstTask}
@@ -590,7 +590,7 @@ function NodeResources({ resources, done }) {
         {resources.map((r, k) => (
           <li key={k} className="text-sm">
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
-              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-ink-faint">
+              <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-ink-faint">
                 {r.kind || "resource"}
               </span>
               <a
@@ -601,7 +601,7 @@ function NodeResources({ resources, done }) {
               >
                 {r.title}
               </a>
-              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+              <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-xs font-medium text-emerald-700">
                 ✓ {r.source}
               </span>
             </div>
@@ -632,7 +632,7 @@ function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purpos
       <p className="text-base font-medium leading-relaxed text-ink">{plan.hook || "You're closer than you think."}</p>
       {northStar && (
         <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your mission</p>
+          <p className="t-label text-brand-600">Your mission</p>
           <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(northStar, 180)}</p>
         </div>
       )}
@@ -850,13 +850,13 @@ function ProjectFolder({
         <div className="flex items-baseline justify-between gap-3">
           <div className="min-w-0">
             <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Project workspace</p>
-            <p className="mt-0.5 text-sm text-ink-soft">Your first-assignment files.</p>
+            <p className="mt-1 text-sm text-ink-soft">Your first-assignment files.</p>
           </div>
-          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-[11px] text-ink-faint ring-1 ring-slate-200">
+          <span className="shrink-0 rounded-full bg-white px-2 py-1 text-xs text-ink-faint ring-1 ring-slate-200">
             {files.length} files
           </span>
         </div>
-        <div className="mt-3 space-y-1.5">
+        <div className="mt-3 space-y-2">
           {files.map((file, i) => {
             const state = taskState(modules[i], i);
             return (
@@ -877,19 +877,19 @@ function ProjectFolder({
                   <span
                     className={
                       state.artifactState.tone === "final"
-                        ? "mt-0.5 text-emerald-600"
+                        ? "mt-1 text-emerald-600"
                         : state.artifactState.tone === "draft"
-                          ? "mt-0.5 text-amber-500"
-                          : "mt-0.5 text-ink-faint"
+                          ? "mt-1 text-amber-500"
+                          : "mt-1 text-ink-faint"
                     }
                   >
                     {state.artifactState.mark}
                   </span>
                   <span className="min-w-0 flex-1">
                     <span className="block truncate font-medium">{file}</span>
-                    <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">{state.status}</span>
+                    <span className="mt-1 block text-xs leading-snug text-ink-faint">{state.status}</span>
                     {state.isFuture && (
-                      <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                      <span className="mt-1 block text-xs leading-snug text-ink-faint">
                         Builds on Task {firstIncompleteIndex + 1}'s {dependencyName(modules, firstIncompleteIndex)}
                       </span>
                     )}
@@ -921,10 +921,10 @@ function ProjectFolder({
                   : "bg-white/60 text-ink-soft opacity-50 ring-slate-100 hover:ring-brand-100"
               }`}
             >
-              <span className="mt-0.5 text-brand-500">★</span>
+              <span className="mt-1 text-brand-500">★</span>
               <span className="min-w-0 flex-1">
                 <span className="block font-medium">Readiness project</span>
-                <span className="mt-0.5 block text-[11px] leading-snug text-ink-faint">
+                <span className="mt-1 block text-xs leading-snug text-ink-faint">
                   {allTasksDone ? "Ready to review" : `Builds on all ${modules.length} tasks`}
                 </span>
               </span>
@@ -952,7 +952,7 @@ function ProjectFolder({
               {downloadLabel}
             </button>
           )}
-          <p className="mt-2 text-[11px] leading-snug text-ink-faint">These files become your readiness project.</p>
+          <p className="mt-2 text-xs leading-snug text-ink-faint">These files become your readiness project.</p>
         </div>
       </div>
     </>
@@ -966,8 +966,8 @@ function FilePreview({ file, draft, editedAt, isDone, onContinue }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <p className="break-all font-semibold text-ink">{file}</p>
-          <p className="mt-0.5 text-[11px] text-ink-faint">{draft ? `${wordCount(draft)} word${wordCount(draft) === 1 ? "" : "s"}` : "empty draft"}</p>
-          {editedAt ? <p className="mt-0.5 text-[11px] text-ink-faint">Last edited {formatFullDateTime(editedAt)}</p> : null}
+          <p className="mt-1 text-xs text-ink-faint">{draft ? `${wordCount(draft)} word${wordCount(draft) === 1 ? "" : "s"}` : "empty draft"}</p>
+          {editedAt ? <p className="mt-1 text-xs text-ink-faint">Last edited {formatFullDateTime(editedAt)}</p> : null}
         </div>
         <div className="flex shrink-0 flex-col gap-2">
           <button
@@ -1278,14 +1278,14 @@ function Module({
     >
       <div className="flex items-start gap-3 border-b border-slate-100 px-5 py-4">
         <span
-          className={`mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
+          className={`mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-full border text-xs font-semibold transition ${
             isDone ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-ink-faint"
           }`}
         >
             {isDone ? "✓" : i + 1}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="mb-1 text-[10px] font-semibold uppercase tracking-wide text-brand-600">
+          <div className="mb-1 t-label text-brand-600">
             Task {i + 1}{total ? ` of ${total}` : ""}
           </div>
           <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
@@ -1414,20 +1414,23 @@ function MomentFlow({
               aria-label={`Open ${m.label}`}
               aria-current={idx === moment ? "step" : undefined}
               title={m.label}
-              className={`h-1.5 rounded-full transition ${
-                idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
-              }`}
-            />
+              className="flex h-10 -my-3 items-center"
+            >
+              <span
+                className={`h-1.5 w-full rounded-full transition ${
+                  idx === moment ? "bg-brand-500" : idx < moment ? "bg-brand-200" : "bg-slate-200"
+                }`}
+              />
+            </button>
           ))}
         </div>
       </div>
 
       <div className="px-5 py-5">
         <div className="min-h-[360px] rounded-xl border border-slate-200 bg-white p-5 shadow-sm shadow-slate-200/40">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">{current.label}</p>
           <h3 className="mt-1 text-xl font-semibold tracking-tight text-ink">{current.title}</h3>
           {current.kicker && <p className="mt-2 text-sm leading-relaxed text-ink-soft">{current.kicker}</p>}
-          <div className="mt-5">{current.body}</div>
+          <div className="mt-6">{current.body}</div>
         </div>
 
         <div className="mt-4 flex items-center justify-between gap-3">
@@ -1503,12 +1506,12 @@ function buildMoments({
     body: (
       <div className="space-y-4">
         {task.managerRequest && (
-          <blockquote className="border-l-2 border-brand-300 pl-4 text-base italic leading-relaxed text-ink">
+          <blockquote className="max-w-prose border-l-2 border-brand-300 pl-4 t-body italic text-ink">
             “{task.managerRequest}”
           </blockquote>
         )}
         <div className="rounded-lg bg-brand-50 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your goal</p>
+          <p className="t-label text-brand-600">Your goal</p>
           <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{task.deliverable || artifact}</p>
         </div>
         {task.givenInputs?.length > 0 && (
@@ -1583,7 +1586,7 @@ function buildMoments({
       kicker: "One compact model — short enough to use while working.",
       body: (
         <div className="space-y-4">
-          <p className="whitespace-pre-line text-base leading-relaxed text-ink">{concept.explanation}</p>
+          <p className="max-w-prose whitespace-pre-line t-body text-ink">{concept.explanation}</p>
           {concept.keyTerms?.length > 0 && (
             <dl className="border-t border-slate-100 pt-2">
               {concept.keyTerms.map((k, j) => (
@@ -1620,17 +1623,17 @@ function buildMoments({
       body: (
         <div className="space-y-3">
           <div className="rounded-xl border border-slate-200 bg-slate-50 px-4 py-3">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">The case</p>
-            <p className="mt-1 whitespace-pre-line text-sm leading-relaxed text-ink">{example.setup}</p>
+            <p className="t-label text-ink-faint">The case</p>
+            <p className="mt-1 max-w-prose whitespace-pre-line t-body text-ink">{example.setup}</p>
           </div>
           {example.walkThrough?.length > 0 && (
             <ol className="space-y-2">
               {example.walkThrough.map((s, k) => (
                 <li
                   key={k}
-                  className="flex gap-3 rounded-lg bg-white px-3 py-2 text-sm leading-relaxed text-ink ring-1 ring-slate-100"
+                  className="flex max-w-prose gap-3 rounded-lg bg-white px-3 py-2 t-body text-ink ring-1 ring-slate-100"
                 >
-                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-50 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-100">
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-50 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">
                     {k + 1}
                   </span>
                   <span>{s}</span>
@@ -1662,7 +1665,7 @@ function buildMoments({
             {task.steps.map((s, k) => (
               <li
                 key={k}
-                className="flex gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink"
+                className="flex max-w-prose gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink"
               >
                 <span className="pt-0.5 text-brand-600">□</span>
                 <span>{s}</span>
@@ -1689,7 +1692,7 @@ function buildMoments({
     body: (
       <div className="space-y-3">
         {criteria.length > 0 && (
-          <ul className="space-y-1.5">
+          <ul className="space-y-2">
             {criteria.map((cr, k) => {
               const on = checks.has(`c${k}`);
               return (
@@ -1702,7 +1705,7 @@ function buildMoments({
                     }`}
                   >
                     <span
-                      className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-[10px] ${
+                      className={`mt-1 flex h-4 w-4 shrink-0 items-center justify-center rounded border text-xs ${
                         on ? "border-emerald-500 bg-emerald-500 text-white" : "border-slate-300 text-transparent"
                       }`}
                     >
@@ -1717,8 +1720,8 @@ function buildMoments({
         )}
         {redFlags.length > 0 && (
           <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-rose-600">Watch for</p>
-            <ul className="mt-1.5 space-y-1">
+            <p className="t-label text-rose-600">Watch for</p>
+            <ul className="mt-2 space-y-1">
               {redFlags.map((rf, k) => (
                 <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
                   <span className="text-rose-500">△</span>
@@ -1777,7 +1780,7 @@ function buildMoments({
       <div className="space-y-3">
         {gapReward && <GapClosedReward reward={gapReward} />}
         <div className="rounded-xl border border-brand-200 bg-brand-50 px-4 py-3">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Added to your project</p>
+          <p className="t-label text-brand-600">Added to your project</p>
           <p className="mt-1 font-mono text-sm font-medium text-ink">{artifact}</p>
           <p className="mt-1 text-xs text-ink-soft">
             {hasDraft ? "Draft saved." : "Draft still empty — you can add it any time."}
@@ -1818,12 +1821,12 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
     <div className="mt-2 rounded-lg border border-brand-100 bg-white/70 px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <div className="min-w-0">
-          <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Your deliverable</p>
-          <p className="mt-0.5 break-all text-sm font-semibold text-ink">{file}</p>
+          <p className="t-label text-brand-600">Your deliverable</p>
+          <p className="mt-1 break-all text-sm font-semibold text-ink">{file}</p>
         </div>
         <button
           type="button"
-          className="rounded-full bg-brand-50 px-2 py-1 text-[11px] font-medium text-brand-700"
+          className="rounded-full bg-brand-50 px-2 py-1 text-xs font-medium text-brand-700"
         >
           Open →
         </button>
@@ -1837,13 +1840,13 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
         ))}
       </div>
       <label className="mt-3 block">
-        <span className="text-[10px] font-semibold uppercase tracking-wide text-ink-faint">Draft notes</span>
+        <span className="t-label text-ink-faint">Draft notes</span>
         <textarea
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           rows={3}
           placeholder="Start writing the artifact here. What did you notice first?"
-          className="mt-1 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 text-sm leading-relaxed text-ink focus:border-brand-300 focus:outline-none focus:ring-1 focus:ring-brand-200"
+          className="mt-1 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none focus:ring-1 focus:ring-brand-200"
         />
       </label>
     </div>
@@ -2017,7 +2020,6 @@ function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePaylo
       >
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4">
           <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Plan logic</p>
             <h2 className="mt-1 text-lg font-semibold text-ink">Why this plan?</h2>
           </div>
           <button
@@ -2221,13 +2223,13 @@ function ReadinessProject({
       <div className="mt-2 flex flex-wrap items-baseline gap-x-2 gap-y-1">
         <span className="font-medium text-ink">{ft.title}</span>
         {ft.horizon && (
-          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-[11px] font-semibold text-brand-700">
+          <span className="rounded-full bg-brand-100 px-2 py-0.5 text-xs font-semibold text-brand-700">
             {ft.horizon}
           </span>
         )}
         {/* The UI owns the factual deadline — the model never restates or transforms it. */}
         {deadline && (
-          <span className="rounded-full bg-ink/5 px-2 py-0.5 text-[11px] font-medium text-ink-soft">
+          <span className="rounded-full bg-ink/5 px-2 py-0.5 text-xs font-medium text-ink-soft">
             due {deadline}
           </span>
         )}
@@ -2241,10 +2243,10 @@ function ReadinessProject({
               className="flex flex-col gap-0.5 rounded-lg bg-slate-50 px-3 py-2 sm:flex-row sm:items-baseline sm:gap-3"
             >
               <span className="flex shrink-0 items-baseline gap-1.5">
-                <span className="rounded-full bg-white px-2 py-0.5 text-[11px] font-semibold text-brand-700 ring-1 ring-brand-200">
+                <span className="rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-brand-700 ring-1 ring-brand-200">
                   {p.stage}
                 </span>
-                {p.timing && <span className="text-[11px] text-ink-faint">{p.timing}</span>}
+                {p.timing && <span className="text-xs text-ink-faint">{p.timing}</span>}
               </span>
               <span className="min-w-0 text-sm text-ink">{p.goal}</span>
             </li>
@@ -2343,7 +2345,7 @@ function Finding({ tone, title, children }) {
   return (
     <div className={`rounded-xl ${bg} px-4 py-3`}>
       <div className={`font-medium ${tc}`}>{title}</div>
-      <ul className="mt-1.5 list-disc space-y-1 pl-5 text-ink">{children}</ul>
+      <ul className="mt-2 list-disc space-y-1 pl-5 text-ink">{children}</ul>
     </div>
   );
 }
@@ -2361,7 +2363,7 @@ function Card({ title, subtitle, accent, emphasis, children }) {
         {title}
       </h2>
       {subtitle && (
-        <p className={emphasis === "workspace" ? "mt-1 max-w-2xl text-sm text-ink-soft" : "mt-0.5 text-xs text-ink-soft"}>
+        <p className={emphasis === "workspace" ? "mt-1 max-w-2xl text-sm text-ink-soft" : "mt-1 text-xs text-ink-soft"}>
           {subtitle}
         </p>
       )}
@@ -2474,8 +2476,8 @@ function SampleCoaching({ draft, criteria = [], checks, redFlags = [], concept =
 
   return (
     <div className="rounded-lg border border-brand-100 bg-brand-50/40 px-3 py-2.5">
-      <p className="text-[10px] font-semibold uppercase tracking-wide text-brand-600">Sample coaching (demo)</p>
-      <p className="mt-0.5 text-xs text-ink-faint">
+      <p className="t-label text-brand-600">Sample coaching (demo)</p>
+      <p className="mt-1 text-xs text-ink-faint">
         Canned responses to show how coaching will work — not AI.
       </p>
       <div className="mt-2 flex flex-wrap gap-2">

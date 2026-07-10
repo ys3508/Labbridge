@@ -19,6 +19,41 @@ body {
     radial-gradient(1200px 600px at 50% -10%, #eef6f6 0%, rgba(238, 246, 246, 0) 60%),
     #fbfcfd;
   color: #1c2530;
+  /* layout-foundation: counters never jiggle */
+  font-variant-numeric: tabular-nums;
+}
+
+/* layout-foundation: the 6 type roles. Text takes exactly one role;
+   arbitrary bracket sizes (text-[10px] etc.) are banned outside these. */
+@layer components {
+  .t-display {
+    @apply text-xl font-semibold tracking-tight sm:text-2xl;
+  }
+  .t-title {
+    @apply text-base font-semibold;
+  }
+  .t-body {
+    @apply text-base leading-relaxed; /* reading content speaks at 16px */
+  }
+  .t-support {
+    @apply text-sm;
+  }
+  .t-label {
+    @apply text-[11px] font-semibold uppercase tracking-wide;
+  }
+  .t-mono {
+    @apply font-mono text-sm;
+  }
+}
+
+/* layout-foundation: respect reduced motion — kill transitions/animations. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation: none !important;
+    transition: none !important;
+  }
 }
 
 /* subtle entrance for revealed blocks */
@@ -34,5 +69,8 @@ body {
 }
 
 .fade-up {
-  animation: fadeUp 0.28s ease both;
+  /* `backwards`, not `both`: a retained transform (even translateY(0)) makes this
+     element the containing block for position:fixed children — which clipped the
+     drawer to the padded page container instead of the viewport. */
+  animation: fadeUp 0.28s ease backwards;
 }
