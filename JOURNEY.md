@@ -212,6 +212,15 @@ She was right at the impression level — the first token values were too timid 
 **Deploy-ready morning: CI, a no-key story, and a green production build.**
 Zero-API closers for shipping a public demo: a GitHub Action now runs lint + the checker/fixture smoke (`npm run check`) + a production build on every push — a safety net for both agents. When plan generation fails (e.g. a deploy with no API key on purpose), the error now offers "explore a sample plan →" so a public visitor lands somewhere real instead of a dead end. `npm run build` verified clean (87 kB first load). The play: deploy to Vercel with NO `ANTHROPIC_API_KEY` set — the demo works fully for anyone, real generation degrades honestly, and the spend risk is exactly zero.
 
+**Q (Sissi, annotated screenshot): "The briefing wording loses people. I want a roadmap — show users they can do whatever they want as long as they follow it. And 'tell us what you already know' has nowhere to tell us anything."**
+Three catches in one review — including a genuine honesty bug (copy inviting an action the UI didn't offer) that both agents had missed. The briefing was rebuilt around her confidence framing — *confidence is a conclusion the user draws when the road looks short, walkable, and already begun*:
+- **The road starts behind you**: a green "You today" node listing real transferable strengths — you're partway down the road before reading a word.
+- **The whole road, priced**: "3 stops · ~9–12 hrs of hands-on work · your ~4-week runway" — all real numbers (timeboxes summed honestly; if any timebox can't parse, the hour math is omitted rather than faked).
+- **Stops are capabilities with receipts**: each shows its price chip, its bridge line ("same instinct as…"), and the mono filename you'll walk away holding. The ★ destination is the role itself.
+- **"I already know this" trims the road live** — totals shrink on click, trims persist, and the note stays honest: the leaner plan regenerates only when the live model is funded; nothing is silently dropped from the workspace meanwhile.
+- **The CTA got priced**: "Enter your workspace →" became "Start your first stop — 3–4 hours →". You don't ask for a journey; you ask for one small, priced step.
+The serif letter demoted to a small supporting line (her font critique), and the dead invitation now points at the real toggles. MissionBrief/BriefChip retired. Verified live in the demo, zero API.
+
 ---
 
 ## Where it stands

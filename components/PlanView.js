@@ -23,6 +23,25 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [drafts, setDrafts] = useState({});
   const [draftMeta, setDraftMeta] = useState({});
+  // Roadmap trims: "I already know this" markers. Persisted; the leaner plan
+  // regenerates only when the live model is funded — until then trims are saved
+  // and the workspace keeps every task (we never silently drop content).
+  const [trims, setTrims] = useState([]);
+  useEffect(() => {
+    if (!plan?.learningSequence) return;
+    try {
+      const raw = localStorage.getItem(scopedPlanKey("lb_trims", plan.learningSequence));
+      if (raw) setTrims(JSON.parse(raw));
+    } catch {}
+  }, [plan]);
+  const toggleTrim = (i) =>
+    setTrims((prev) => {
+      const next = prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i];
+      try {
+        localStorage.setItem(scopedPlanKey("lb_trims", plan.learningSequence), JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   const [momentsByTask, setMomentsByTask] = useState({});
   const [checksByTask, setChecksByTask] = useState({});
   const [futureOverrides, setFutureOverrides] = useState(() => new Set());
@@ -387,13 +406,22 @@ export default function PlanView({ form, isBeginner, onBack }) {
               {fromLabel} → {roleName}
             </p>
           )}
-          <MissionBrief plan={plan} modules={modules} done={done} depthLabel={depthLabel} purposeLabel={purposeLabel} />
+          {(plan.northStar?.trim() || plan.firstTask?.title) && (
+            <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
+              <p className="t-label text-brand-600">Your mission</p>
+              <p className="mt-1 text-sm font-medium leading-relaxed text-ink">
+                {shorten(plan.northStar?.trim() || plan.firstTask.title, 180)}
+              </p>
+            </div>
+          )}
+          {plan.hook && <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{plan.hook}</p>}
+          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} />
         </header>
 
         <div className="mt-6 space-y-3">
           {isBeginner && (
             <Note>
-              We built this assuming you're <strong>starting fresh</strong> — tell us what you already know to trim it.
+              We built this assuming you're <strong>starting fresh</strong> — mark any stop below \u201cI already know this\u201d to trim the road.
             </Note>
           )}
 
@@ -412,7 +440,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
             onClick={enterWorkspace}
             className="rounded-full bg-brand-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-700"
           >
-            Enter your workspace →
+            {(() => {
+              const next = modules.find((m, i) => !done.has(i) && !trims.includes(i));
+              return next?.task?.timebox ? `Start your first stop — ${next.task.timebox} →` : "Enter your workspace →";
+            })()}
           </button>
           <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
             ← Back to edit
@@ -618,71 +649,6 @@ function NodeResources({ resources, done }) {
         ))}
       </ul>
     </details>
-  );
-}
-
-function MissionBrief({ plan, modules = [], done = new Set(), depthLabel, purposeLabel }) {
-  const strengths = (plan.transferableStrengths || []).slice(0, 3).map((s) => cleanPoint(s.point));
-  const gapItems = (plan.knowledgeGaps || []).slice(0, 3);
-  const gapMappings = getGapMappings(modules, gapItems.length);
-  const hasGapMappings = gapMappings.length > 0;
-  const closedGaps = hasGapMappings
-    ? gapItems.filter((_, gapIndex) => isGapClosed(gapIndex, gapMappings, done)).length
-    : 0;
-  // Fallback = the readiness project's title (schema field `firstTask`), NOT task 1's
-  // title — the mission is the whole arc, not the first assignment. Duplicating the
-  // readiness title in a degraded state beats mislabeling task 1 as "your mission".
-  const northStar = plan.northStar?.trim() || plan.firstTask?.title || "";
-  return (
-    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
-      <p className="max-w-prose font-letter text-xl leading-relaxed text-ink sm:text-2xl sm:leading-relaxed">{plan.hook || "You're closer than you think."}</p>
-      {northStar && (
-        <div className="mt-4 rounded-lg bg-brand-50 px-3 py-2">
-          <p className="t-label text-brand-600">Your mission</p>
-          <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{shorten(northStar, 180)}</p>
-        </div>
-      )}
-      {hasGapMappings && closedGaps > 0 && (
-        <p className="mt-3 text-xs font-medium text-emerald-700">
-          {closedGaps} of {gapItems.length} gap{gapItems.length === 1 ? "" : "s"} closed.
-        </p>
-      )}
-      <div className="mt-3 flex flex-wrap gap-2">
-        {strengths.map((item, i) => (
-          <BriefChip key={`strength-${i}`} mark="✓" tone="emerald">
-            {item}
-          </BriefChip>
-        ))}
-        {gapItems.map((gap, i) => {
-          const closed = hasGapMappings && isGapClosed(i, gapMappings, done);
-          return (
-            <BriefChip key={`gap-${i}`} mark={closed ? "✓" : "□"} tone={closed ? "emerald" : "slate"}>
-              {cleanPoint(gap.point)}
-            </BriefChip>
-          );
-        })}
-      </div>
-      {(depthLabel || purposeLabel) && (
-        <div className="mt-3 flex flex-wrap gap-2 text-xs">
-          {depthLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{depthLabel}</span>}
-          {purposeLabel && <span className="rounded-full bg-slate-100 px-2.5 py-1 text-ink-soft">{purposeLabel}</span>}
-        </div>
-      )}
-    </section>
-  );
-}
-
-function BriefChip({ children, mark, tone }) {
-  const styles =
-    tone === "emerald"
-      ? "bg-emerald-50 text-emerald-800 ring-emerald-100"
-      : "bg-slate-100 text-ink-soft ring-slate-200";
-  const markColor = tone === "emerald" ? "text-emerald-600" : "text-ink-faint";
-  return (
-    <span className={`inline-flex max-w-full items-center gap-1.5 rounded-full px-2.5 py-1 text-xs ring-1 ${styles}`}>
-      <span className={markColor}>{mark}</span>
-      <span className="min-w-0 truncate">{shorten(children, 28)}</span>
-    </span>
   );
 }
 
@@ -2486,5 +2452,139 @@ function SampleCoaching({ draft, criteria = [], checks, redFlags = [], concept =
         </div>
       )}
     </div>
+  );
+}
+
+
+// The Roadmap (Sissi's confidence reframe of the briefing): the road starts
+// BEHIND you (green "You today" from real strengths), shows every stop priced
+// in hours with the file you'll walk away holding, and ends at the role. Every
+// number derives from plan data — no invented percentages, no motivational
+// filler. Trims shrink the visible road; regeneration stays honestly gated.
+function timeboxHours(tb) {
+  const t = (tb || "").toLowerCase();
+  let m = t.match(/(\d+)\s*[-\u2013]\s*(\d+)\s*h/);
+  if (m) return [Number(m[1]), Number(m[2])];
+  m = t.match(/(\d+)\s*h/);
+  if (m) return [Number(m[1]), Number(m[1])];
+  if (/half a day/.test(t)) return [3, 4];
+  m = t.match(/(\d+)\s*[-\u2013]?\s*(\d+)?\s*day/);
+  if (m) return [Number(m[1]) * 6, Number(m[2] || m[1]) * 8];
+  return null;
+}
+
+function totalHoursLabel(timeboxes) {
+  let lo = 0, hi = 0;
+  for (const tb of timeboxes) {
+    const h = timeboxHours(tb);
+    if (!h) return null; // one unparseable timebox → no hour math, stay honest
+    lo += h[0]; hi += h[1];
+  }
+  if (!hi) return null;
+  return lo === hi ? `~${hi} hrs` : `~${lo}\u2013${hi} hrs`;
+}
+
+function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTrim, roleName }) {
+  const strengths = (plan.transferableStrengths || []).slice(0, 4).map((x) => cleanPoint(x.point));
+  const ft = plan.firstTask || {};
+  const stops = modules.map((m, i) => ({
+    i,
+    capability: m.topic,
+    bridge: m.bridgeFromBackground,
+    timebox: m.task?.timebox || "",
+    file: deliverableName(m, i),
+    isDone: done.has(i),
+    isTrimmed: trims.includes(i) && !done.has(i),
+  }));
+  const remaining = stops.filter((x) => !x.isTrimmed && !x.isDone);
+  const hours = totalHoursLabel(remaining.map((x) => x.timebox));
+  const trimmedCount = stops.filter((x) => x.isTrimmed).length;
+
+  return (
+    <section className="mt-4 rounded-2xl border border-slate-200 bg-white p-4 sm:p-5">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <p className="t-label text-ink-faint">The whole road</p>
+        <p className="text-xs font-medium text-ink-soft">
+          {remaining.length} stop{remaining.length === 1 ? "" : "s"}
+          {hours ? ` \u00b7 ${hours} of hands-on work` : ""}
+          {ft.horizon ? ` \u00b7 ${ft.horizon}` : ""}
+        </p>
+      </div>
+
+      <ol className="relative mt-4 ml-2 space-y-5 border-l-2 border-slate-200 pl-6">
+        <li className="relative">
+          <span className="absolute -left-[31px] top-0.5 h-4 w-4 rounded-full bg-emerald-500 ring-4 ring-emerald-100" />
+          <p className="text-sm font-semibold text-ink">You today</p>
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
+            {strengths.map((st, k) => (
+              <span key={k} className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs text-emerald-800">
+                ✓ {st}
+              </span>
+            ))}
+          </div>
+        </li>
+
+        {stops.map((stop) => (
+          <li key={stop.i} className={`relative ${stop.isTrimmed ? "opacity-50" : ""}`}>
+            <span
+              className={`absolute -left-[29px] top-0.5 flex h-3.5 w-3.5 items-center justify-center rounded-full text-[9px] font-bold ${
+                stop.isDone ? "bg-emerald-500 text-white" : "bg-white text-ink-faint ring-2 ring-slate-300"
+              }`}
+            >
+              {stop.isDone ? "\u2713" : ""}
+            </span>
+            <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+              <p className={`text-sm font-medium ${stop.isTrimmed ? "text-ink-faint line-through" : "text-ink"}`}>
+                {stop.capability}
+              </p>
+              {stop.timebox && !stop.isDone && !stop.isTrimmed && (
+                <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-ink-soft">{stop.timebox}</span>
+              )}
+              {stop.isDone && <span className="text-xs font-medium text-emerald-700">done</span>}
+            </div>
+            {stop.bridge && !stop.isTrimmed && (
+              <p className="mt-0.5 text-xs italic text-ink-faint">↪ {stop.bridge}</p>
+            )}
+            <div className="mt-1.5 flex flex-wrap items-center gap-2">
+              <span className="t-mono rounded bg-slate-50 px-1.5 py-0.5 text-xs text-ink-soft ring-1 ring-slate-100">
+                {shorten(stop.file, 34)}
+              </span>
+              {!stop.isDone && (
+                <button
+                  type="button"
+                  onClick={() => onToggleTrim(stop.i)}
+                  aria-pressed={stop.isTrimmed}
+                  className={`rounded-full px-2 py-0.5 text-xs transition ${
+                    stop.isTrimmed
+                      ? "bg-slate-100 font-medium text-ink"
+                      : "text-ink-faint ring-1 ring-slate-200 hover:text-ink"
+                  }`}
+                >
+                  {stop.isTrimmed ? "keep it after all" : "I already know this"}
+                </button>
+              )}
+            </div>
+          </li>
+        ))}
+
+        <li className="relative">
+          <span className="absolute -left-[31px] top-0.5 flex h-4 w-4 items-center justify-center rounded-full bg-brand-600 text-[9px] text-white ring-4 ring-brand-100">
+            ★
+          </span>
+          <p className="text-sm font-semibold text-ink">{roleName || "The role"}</p>
+          {ft.title && <p className="mt-0.5 text-xs text-ink-soft">{ft.title}</p>}
+        </li>
+      </ol>
+
+      {trimmedCount > 0 && (
+        <p className="mt-4 rounded-lg bg-slate-50 px-3 py-2 text-xs text-ink-soft">
+          {trimmedCount} stop{trimmedCount === 1 ? "" : "s"} marked as already known — saved. A leaner roadmap
+          regenerates when the live model is connected; until then those stops stay available in your workspace.
+        </p>
+      )}
+      <p className="mt-3 text-xs text-ink-faint">
+        Nothing on this road assumes anything you don't already have — each stop is built from the one before it.
+      </p>
+    </section>
   );
 }
