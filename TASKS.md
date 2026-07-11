@@ -59,16 +59,13 @@ implemented; see JOURNEY.md for the story.)*
       completion rewards (gap-closed, mirror, handoff memo, welcome-back) ·
       artifact experience (per-file downloads, last-edited).
 
-### Ready to merge (implemented, review waived by Sissi — Codex out of credits)
-- [ ] `codex/planview-density-polish` @ demo mode + sample coaching + a11y +
-      Retry (Claude implemented remaining-before-visual §1-3 + §5).
-- [ ] `codex/module-quality-checker` @ assignment-scoped banned phrases + all
-      three golden fixtures (rebased on main).
+### Merged (review waived by Sissi — Codex out of credits; Codex may back-review)
+- [x] remaining-before-visual §1-5 · checker branch · layout foundation ·
+      visual design (+ amplification after Sissi's squint-test review).
 
-### Next up (in order)
-- [ ] **`revise/layout-foundation-spec.md`** — type roles, 3-gap rhythm,
-      app-shell scroll, touch targets. Zero behavior changes.
-- [ ] **`revise/visual-design-spec.md`** — the paint. Last.
+### Next up
+- [ ] **Deploy the public demo** — Vercel, NO ANTHROPIC_API_KEY set (zero spend
+      risk; demo fully works, generation degrades honestly). CI is in place.
 
 ### Parked (needs API funding)
 - [ ] Verify `northStar` / `comprehensionCheck` / `closesGapIndex` against the

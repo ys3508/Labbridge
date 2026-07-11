@@ -209,6 +209,9 @@ Claude implemented `revise/visual-design-spec.md` — the final pass. The ground
 **Q (Sissi): "You sure you finished visual design? It's all the same."**
 She was right at the impression level — the first token values were too timid (#faf9f7 ground vs the old #fbfcfd is a difference of nothing). Amplified: the ground went to a genuinely warm paper (#f4f1ea, all text tiers re-measured AA on it), and the briefing letter got display size. Now the white workspace visibly floats on warm paper and the page reads as designed, not just re-tokened. Lesson recorded: a visual pass must pass the squint test, not just the acceptance criteria.
 
+**Deploy-ready morning: CI, a no-key story, and a green production build.**
+Zero-API closers for shipping a public demo: a GitHub Action now runs lint + the checker/fixture smoke (`npm run check`) + a production build on every push — a safety net for both agents. When plan generation fails (e.g. a deploy with no API key on purpose), the error now offers "explore a sample plan →" so a public visitor lands somewhere real instead of a dead end. `npm run build` verified clean (87 kB first load). The play: deploy to Vercel with NO `ANTHROPIC_API_KEY` set — the demo works fully for anyone, real generation degrades honestly, and the spend risk is exactly zero.
+
 ---
 
 ## Where it stands

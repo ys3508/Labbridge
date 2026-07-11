@@ -255,6 +255,12 @@ export default function PlanView({ form, isBeginner, onBack }) {
             ← Back to edit
           </button>
         </div>
+        <p className="mt-4 text-xs text-ink-faint">
+          Or see the product without generating:{" "}
+          <a href="/?mock=1" className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2">
+            explore a sample plan →
+          </a>
+        </p>
       </div>
     );
   }
