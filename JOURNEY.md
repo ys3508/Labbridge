@@ -223,6 +223,7 @@ The serif letter demoted to a small supporting line (her font critique), and the
 
 **Q (Sissi, second annotated pass): "Too many words still. The filenames — no one can read 01_a_one_page. And write down everything we talked about but never did."**
 Plus she caught a shipped bug: literal `\u201c` rendering in the beginner note (an escaping slip). All fixed: filenames now slug the task TITLE's meaningful words (`01_data_orientation_memo.pdf`, not `01_a_one_page_memo_tables_present_grain_of_ea.csv`), extensions key off the title only, the hook shows one sentence, per-stop bridge lines left the roadmap (it's a map, not prose), and TASKS.md gained **the honest ledger** — every discussed-but-never-built item with dates, split by what blocks it. She also brought the first real validation source (IQVIA's RWE getting-started primer); the coverage triangulation lives in `revise/validation-notes.md` — two real findings (lifecycle context thin, common-data-model absent), both queued for live-model validation.
+**Third pass: "why do you need to show filenames here???"** — right again. The file chips on the roadmap (Claude's "receipt" idea) read as technical noise to someone who hasn't met the workspace folder yet. Removed; each stop is now one scannable line (capability · price · trim toggle), and the file metaphor stays where it's taught — inside the workspace.
 
 ---
 
