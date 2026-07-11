@@ -91,8 +91,8 @@ implemented; see JOURNEY.md for the story.)*
       official docs in candidates/select; label each resource "free" in the UI. (Jul 11)
 - [ ] Resource `difficulty` + `confidence` fields & labels (shift-1 §7 — only
       `use` was implemented). (Jul 9)
-- [ ] Structured workedExample rows → real Visual table ("card now, table
-      later" from the moments spec). (Jul 10)
+- [ ] Structured workedExample rows → real Visual table AND the toolbox 模拟
+      (interactive example table) — both blocked on the same schema addition. (Jul 10/11)
 - [ ] Progressive reveal — STILL undefined by Sissi; my proposed default
       (sequential first pass, free after Wrap) awaiting yes/no. (Jul 10)
 - [ ] Expert 30-min validation + curricula triangulation as a repeatable

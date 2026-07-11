@@ -23,6 +23,28 @@ export default function PlanView({ form, isBeginner, onBack }) {
   const [activeIndex, setActiveIndex] = useState(0);
   const [drafts, setDrafts] = useState({});
   const [draftMeta, setDraftMeta] = useState({});
+  // Focus mode (Sissi: 沉浸式学习 — the workspace goes quiet while you work).
+  // Automatic: inside a task's moments everything non-essential collapses;
+  // Wrap and the folder restore the full workspace. zen=false = user opted out.
+  const [zen, setZen] = useState(true);
+  // Toolbox notes: thinking space, separate from the Draft (the deliverable).
+  const [notes, setNotes] = useState({});
+  const [openTool, setOpenTool] = useState(null);
+  useEffect(() => {
+    if (!plan?.learningSequence) return;
+    try {
+      const raw = localStorage.getItem(scopedPlanKey("lb_notes", plan.learningSequence));
+      if (raw) setNotes(JSON.parse(raw));
+    } catch {}
+  }, [plan]);
+  const setTaskNotes = (i, text) =>
+    setNotes((prev) => {
+      const next = { ...prev, [i]: text };
+      try {
+        localStorage.setItem(scopedPlanKey("lb_notes", plan.learningSequence), JSON.stringify(next));
+      } catch {}
+      return next;
+    });
   // Roadmap trims: "I already know this" markers. Persisted; the leaner plan
   // regenerates only when the live model is funded — until then trims are saved
   // and the workspace keeps every task (we never silently drop content).
@@ -313,6 +335,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
     "";
   const modules = plan.learningSequence || [];
   const activeModule = modules[activeIndex] || modules[0];
+  const activeMeta = activeModule ? getMomentMeta(activeModule) : [];
+  const activeMomentKey = activeMeta.length
+    ? activeMeta[Math.min(Number(momentsByTask[activeIndex] || 0), activeMeta.length - 1)]?.key
+    : null;
+  const focused = zen && activeSurface === "task" && !!activeModule && activeMomentKey !== "reward";
   const firstIncompleteIndexRaw = modules.findIndex((_, i) => !done.has(i));
   const firstIncompleteIndex = firstIncompleteIndexRaw === -1 ? modules.length : firstIncompleteIndexRaw;
   const allTasksDone = modules.length > 0 && done.size >= modules.length;
@@ -459,6 +486,22 @@ export default function PlanView({ form, isBeginner, onBack }) {
     <div className="w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col">
       <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
         <header className="border-b border-brand-100 px-4 py-4 sm:px-6 lg:shrink-0">
+          {focused ? (
+            <div className="flex items-center justify-between gap-3 py-0.5">
+              <button
+                type="button"
+                onClick={() => setZen(false)}
+                className="rounded-full px-2.5 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+              >
+                ☰ Workspace
+              </button>
+              <p className="min-w-0 truncate text-sm font-medium text-ink">{activeModule?.task?.title || activeModule?.topic}</p>
+              <p className="shrink-0 text-xs text-ink-faint">
+                Task {activeIndex + 1}/{modules.length}
+              </p>
+            </div>
+          ) : (
+            <>
           <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
             <div className="min-w-0">
               <p className="t-label text-brand-600">Workspace home</p>
@@ -468,6 +511,14 @@ export default function PlanView({ form, isBeginner, onBack }) {
             <div className="shrink-0 space-y-2 lg:w-64">
               <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact />
               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
+                <button
+                  type="button"
+                  onClick={() => setZen(true)}
+                  title="Focus — hide everything but the work"
+                  className="rounded-full bg-white px-3 py-1 text-xs font-medium text-ink-soft ring-1 ring-slate-200 hover:text-ink"
+                >
+                  ⛶ Focus
+                </button>
                 <button
                   type="button"
                   onClick={reopenBriefing}
@@ -510,11 +561,15 @@ export default function PlanView({ form, isBeginner, onBack }) {
               {welcomeBack}
             </p>
           )}
+        </>
+          )}
         </header>
 
-        <div className="grid gap-4 p-4 lg:min-h-0 lg:flex-1 lg:grid-cols-[280px_minmax(0,1fr)] lg:overflow-hidden lg:p-6">
+        <div className={`grid gap-4 p-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:p-6 ${focused ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
+          {!focused && (
           <aside className="min-w-0 space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <ProjectFolder
+              notes={notes}
               modules={modules}
               activeIndex={activeIndex}
               done={done}
@@ -534,9 +589,11 @@ export default function PlanView({ form, isBeginner, onBack }) {
               onCapstoneAnyway={openCapstoneAnyway}
             />
           </aside>
-          <div ref={taskPanelRef} className="min-w-0 scroll-mt-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
+          )}
+          <div ref={taskPanelRef} className={`min-w-0 scroll-mt-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 ${focused ? "lg:mx-auto lg:w-full lg:max-w-3xl" : ""}`}>
             {activeSurface === "capstone" ? (
               <ReadinessProject
+                notes={notes}
                 firstTask={plan.firstTask}
                 hasRealTask={!!form.headed.realTask?.trim()}
                 deadline={deadline}
@@ -565,6 +622,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   draft={drafts[activeIndex] || ""}
                   onDraftChange={(draft) => setTaskDraft(activeIndex, draft)}
                   nextLabel={modules[activeIndex + 1]?.task?.title || modules[activeIndex + 1]?.topic || ""}
+                  focus={focused}
                   momentIndex={momentsByTask[activeIndex] || 0}
                   onMomentChange={(momentIndex) => {
                     setWelcomeBack(null);
@@ -581,6 +639,19 @@ export default function PlanView({ form, isBeginner, onBack }) {
           </div>
         </div>
       </section>
+
+      <Toolbox
+        modules={modules}
+        activeIndex={activeIndex}
+        activeModule={activeModule}
+        activeMomentKey={activeMomentKey}
+        notes={notes}
+        onNotes={setTaskNotes}
+        drafts={drafts}
+        checksByTask={checksByTask}
+        openTool={openTool}
+        setOpenTool={setOpenTool}
+      />
 
       {whyOpen && (
         <PlanDrawer
@@ -655,6 +726,7 @@ function NodeResources({ resources, done }) {
 }
 
 function ProjectFolder({
+  notes = {},
   modules,
   activeIndex,
   done,
@@ -745,7 +817,7 @@ function ProjectFolder({
     onSelect(i);
   };
 
-  const projectMarkdown = buildProjectMarkdown(projectTitle, modules, files, drafts, done);
+  const projectMarkdown = buildProjectMarkdown(projectTitle, modules, files, drafts, done, notes);
   const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(projectMarkdown)}`;
   const canDownload = hasAnyDraft(drafts);
   const draftStats = getDraftStats(modules, drafts);
@@ -1165,7 +1237,7 @@ function getFinalMirrorReward(plan, modules, roleName) {
   };
 }
 
-function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
+function buildProjectMarkdown(projectTitle, modules, files, drafts, done, notes = {}) {
   const lines = [
     `# ${projectTitle || "LabBridge project"}`,
     "",
@@ -1177,6 +1249,8 @@ function buildProjectMarkdown(projectTitle, modules, files, drafts, done) {
     const status = done.has(i) ? "final" : draft ? "draft" : "outlined";
     const title = m.task?.title || m.topic || `Task ${i + 1}`;
     lines.push(`# ${files[i]}`, "", title, "", `Status: ${status}`, "", draft || "_Not written yet._", "");
+    const note = (notes[i] || "").trim();
+    if (note) lines.push("### Notes", "", note, "");
   });
   return lines.join("\n");
 }
@@ -1269,6 +1343,7 @@ function Module({
         </div>
       </div>
       <MomentFlow
+        focus={focus}
         moduleIndex={i}
         step={step}
         plan={plan}
@@ -1296,6 +1371,7 @@ function Module({
 }
 
 function MomentFlow({
+  focus,
   moduleIndex,
   step,
   plan,
@@ -1379,6 +1455,7 @@ function MomentFlow({
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-slate-100">
           <div className="h-full rounded-full bg-brand-500 transition-all" style={{ width: `${((moment + 1) / moments.length) * 100}%` }} />
         </div>
+        {!focus && (
         <div className="mt-3 grid grid-cols-4 gap-1.5 sm:grid-cols-8">
           {moments.map((m, idx) => (
             <button
@@ -1398,6 +1475,7 @@ function MomentFlow({
             </button>
           ))}
         </div>
+        )}
       </div>
 
       <div className="px-5 py-5">
@@ -1755,8 +1833,6 @@ function buildMoments({
           AI review is coming — soon you'll be able to paste your draft and have LabBridge check it against these
           criteria. For now, judge it yourself.
         </p>
-        {/* Demo-only coaching prototype — renders nothing in the real flow. */}
-        <SampleCoaching draft={draft} criteria={criteria} checks={checks} redFlags={redFlags} concept={concept} task={task} />
       </div>
     ),
   });
@@ -2185,6 +2261,7 @@ function Collapse({ summary, hint, children, defaultOpen = false }) {
 
 // The independent-contribution capstone, on a DERIVED horizon (observe→assist→own).
 function ReadinessProject({
+  notes = {},
   firstTask,
   hasRealTask,
   deadline,
@@ -2201,7 +2278,7 @@ function ReadinessProject({
   const allDone = modules.length > 0 && done.size >= modules.length;
   const draftStats = getDraftStats(modules, drafts);
   const fileNames = modules.map((m, i) => deliverableName(m, i));
-  const markdown = buildProjectMarkdown(projectTitle, modules, fileNames, drafts, done);
+  const markdown = buildProjectMarkdown(projectTitle, modules, fileNames, drafts, done, notes);
   const projectHref = `data:text/markdown;charset=utf-8,${encodeURIComponent(markdown)}`;
   const content = (
     <>
@@ -2653,4 +2730,159 @@ function deadlineSpan(deadline) {
   const weeks = Math.max(1, Math.round(days / 7));
   const fmt = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
   return `${fmt(now)} → ${fmt(end)} · ~${weeks} week${weeks === 1 ? "" : "s"}`;
+}
+
+
+// ——— The Toolbox (Sissi's 沉浸式 learning tools): quiet help at the screen's
+// edge — Notes (thinking space, separate from the Draft, exports with the
+// project), Glossary (every key term in the plan, searchable), Snapshot (capture
+// the current moment into notes), and — in the demo only — the sample Coach.
+// The rail is the one piece of chrome that survives focus mode.
+function momentSnapshotText(step, key) {
+  const t = step?.task || {};
+  const c = step?.concept || {};
+  const ex = step?.workedExample || {};
+  if (key === "model")
+    return [c.explanation, ...(c.keyTerms || []).map((k) => `${k.term} — ${k.plainMeaning}`)].filter(Boolean).join("\n");
+  if (key === "visual") return [ex.setup, ...(ex.walkThrough || []), ex.takeaway].filter(Boolean).join("\n");
+  if (key === "question")
+    return [step?.comprehensionCheck?.question, step?.comprehensionCheck?.explanation].filter(Boolean).join("\n");
+  if (key === "practice") return (t.steps || []).join("\n");
+  if (key === "coach") return [...(step?.selfCheck?.criteria || []), ...(step?.selfCheck?.redFlags || [])].join("\n");
+  return [step?.context, t.managerRequest, t.deliverable].filter(Boolean).join("\n");
+}
+
+function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, onNotes, drafts, checksByTask, openTool, setOpenTool }) {
+  const [demo] = useState(() => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem("lb_mock") === "1";
+    } catch {
+      return false;
+    }
+  });
+  const [snapped, setSnapped] = useState(false);
+  const [query, setQuery] = useState("");
+
+  useEffect(() => {
+    if (!openTool) return;
+    const onKey = (e) => e.key === "Escape" && setOpenTool(null);
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [openTool, setOpenTool]);
+
+  const snapshot = () => {
+    const label = getMomentMeta(activeModule)[0] ? activeMomentKey : "";
+    const text = momentSnapshotText(activeModule, activeMomentKey);
+    if (!text) return;
+    const stamp = `\n\n📌 ${deliverableName(activeModule, activeIndex)} · ${label}\n${text}\n`;
+    onNotes(activeIndex, ((notes[activeIndex] || "") + stamp).trimStart());
+    setSnapped(true);
+    setTimeout(() => setSnapped(false), 1500);
+    setOpenTool("notes");
+  };
+
+  const allTerms = (modules || []).flatMap((m, i) =>
+    (m.concept?.keyTerms || []).map((k) => ({ ...k, from: m.topic, i }))
+  );
+  const q = query.trim().toLowerCase();
+  const terms = q ? allTerms.filter((t) => `${t.term} ${t.plainMeaning}`.toLowerCase().includes(q)) : allTerms;
+
+  const tools = [
+    { key: "notes", glyph: "✎", label: "Notes" },
+    { key: "glossary", glyph: "≔", label: "Glossary" },
+    { key: "snapshot", glyph: "⌗", label: snapped ? "Saved ✓" : "Snapshot this moment" },
+    ...(demo ? [{ key: "coach", glyph: "◉", label: "Coach (sample)" }] : []),
+  ];
+
+  return (
+    <>
+      <div className="fixed right-3 top-1/2 z-30 -translate-y-1/2 flex flex-col gap-1.5 rounded-full border border-slate-200 bg-white p-1.5 shadow-sm">
+        {tools.map((t) => (
+          <button
+            key={t.key}
+            type="button"
+            title={t.label}
+            aria-label={t.label}
+            onClick={() => (t.key === "snapshot" ? snapshot() : setOpenTool(openTool === t.key ? null : t.key))}
+            className={`flex h-9 w-9 items-center justify-center rounded-full text-sm transition ${
+              openTool === t.key ? "bg-brand-600 text-white" : "text-ink-soft hover:bg-slate-100 hover:text-ink"
+            }`}
+          >
+            {t.key === "snapshot" && snapped ? "✓" : t.glyph}
+          </button>
+        ))}
+      </div>
+
+      {openTool && (
+        <div className="fixed right-16 top-1/2 z-30 w-[min(360px,85vw)] max-h-[72vh] -translate-y-1/2 overflow-y-auto rounded-xl border border-slate-200 bg-white p-4 shadow-xl">
+          <div className="flex items-center justify-between gap-3">
+            <p className="t-label text-ink-faint">
+              {openTool === "notes" ? "Notes" : openTool === "glossary" ? "Glossary" : "Coach — sample (demo)"}
+            </p>
+            <button type="button" onClick={() => setOpenTool(null)} className="text-xs text-ink-faint hover:text-ink">
+              Esc ✕
+            </button>
+          </div>
+
+          {openTool === "notes" && (
+            <div className="mt-2">
+              <p className="t-mono text-xs text-ink-soft">{deliverableName(activeModule, activeIndex)}</p>
+              <textarea
+                value={notes[activeIndex] || ""}
+                onChange={(e) => onNotes(activeIndex, e.target.value)}
+                rows={10}
+                placeholder="Your thinking space — separate from the draft. Exports with your project."
+                className="mt-2 w-full resize-y rounded-md border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:outline-none"
+              />
+              {Object.entries(notes).filter(([k, v]) => Number(k) !== activeIndex && (v || "").trim()).length > 0 && (
+                <div className="mt-3 border-t border-slate-100 pt-2">
+                  <p className="text-xs text-ink-faint">Other tasks</p>
+                  {Object.entries(notes)
+                    .filter(([k, v]) => Number(k) !== activeIndex && (v || "").trim())
+                    .map(([k, v]) => (
+                      <p key={k} className="mt-1 truncate text-xs text-ink-soft">
+                        <span className="t-mono">{deliverableName(modules[Number(k)], Number(k))}</span> — {v.slice(0, 60)}
+                      </p>
+                    ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {openTool === "glossary" && (
+            <div className="mt-2">
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search every term in your plan…"
+                className="w-full rounded-md border border-slate-200 px-3 py-2 t-body text-ink focus:outline-none"
+              />
+              <dl className="mt-3 space-y-2">
+                {terms.map((t, k) => (
+                  <div key={k}>
+                    <dt className="text-sm font-semibold text-ink">{t.term}</dt>
+                    <dd className="text-sm leading-relaxed text-ink-soft">{t.plainMeaning}</dd>
+                  </div>
+                ))}
+                {!terms.length && <p className="text-sm text-ink-faint">No term matches.</p>}
+              </dl>
+            </div>
+          )}
+
+          {openTool === "coach" && activeModule && (
+            <div className="mt-2">
+              <SampleCoaching
+                draft={drafts[activeIndex] || ""}
+                criteria={activeModule.selfCheck?.criteria || []}
+                checks={new Set(checksByTask?.[activeIndex] || [])}
+                redFlags={activeModule.selfCheck?.redFlags || []}
+                concept={activeModule.concept || {}}
+                task={activeModule.task || {}}
+              />
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  );
 }
