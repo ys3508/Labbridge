@@ -24,7 +24,7 @@ BRIDGE FROM THEIR WORLD: write so someone who has never worked in the target fie
 DEPTH & PURPOSE (these reshape the plan's SCOPE, not just its length):
 Depth — how far up each prerequisite chain to climb:
 - landscape → orientation only; stop one rung up. Fewer, shallower steps.
-- functional → working competence; enough to contribute. 3-4 TIGHT modules cut to what they touch FIRST — NOT a comprehensive course.
+- functional → working competence; enough to contribute. 4-6 TIGHT modules cut to what they touch FIRST — NOT a comprehensive course (the user can trim stops they already know).
 - deep → specialize; climb to the top of the relevant chains.
 Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
 - starting_role → prioritize the first real task and just-in-time depth; front-load what they'll actually touch in week one.
@@ -42,11 +42,13 @@ PRODUCE THESE FIELDS (they realize the spine above):
   • closesGapIndex: the index of the knowledge gap this task most directly closes (0-based into knowledgeGaps). Every gap should be closed by at least one task.
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
+  • askYourTeam (2-4 per module where relevant): the questions a smart new hire asks colleagues because NO plan can know local specifics — which tools/vendors/templates the team uses, what thresholds or sign-offs apply, who reviews what. This turns fidelity (never inventing company facts) into ACTION. Adapt entirely to the field (a firm's citation templates; a fund's screening floor; a team's design-token owner).
   • searchLinks (ONLY on a networking module, see NETWORKING below): 2-3 items { label: who this search finds ("RWE analysts 2-3 years in"), query: a LinkedIn people-search keyword string ("real world evidence analyst pharma") }. QUERY STRINGS ONLY — never URLs; the app builds the links.
   • comprehensionCheck (optional but preferred): a ONE-question quick check the learner answers BEFORE the concept, so they try first — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
   • concept: a concise support layer for the task — not a blog post, not a mini textbook:
       · explanation: 80–150 words, like a strong Slack explanation from a senior teammate. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
       · misconceptionToAvoid: one common wrong mental model to head off.
+      · traps (2-4): field-tested practitioner mistakes people ACTUALLY make in their first month — the "never say patients took / a headnote isn't the holding / ARR isn't recognized revenue" class of wisdom, adapted to THIS field. These read as senior experience; generic study-tips do not qualify.
       · keyTerms: 1–4 essential terms, each { term, plainMeaning } — plain language, no jargon defining jargon.
   • workedExample: make it concrete with a TINY, NAMED object (one patient with three rows; one ticket; one small file) — never "consider a dataset":
       · setup: the tiny concrete scenario, with specifics.
@@ -63,6 +65,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
   - ONE COHERENT PROJECT. Wherever the domain allows, make the tasks a single running project that grows across the course — each module extends the PREVIOUS module's deliverable (clean the dataset you loaded → model it → present it), so the work accumulates toward the capstone instead of being disconnected exercises. When a task builds on an earlier one, say so in its first step ("Using the model you built in module 3, …").
   - PREREQUISITES BUILT FIRST. Every skill a task needs must be built by an EARLIER module. If a task needs a foundation not yet covered (e.g. the data model before building a cohort), add a short module for it first — don't assume it. And don't BUNDLE distinct skills into one task: split creating vs. validating vs. interpreting into separate modules so each is actually taught, not assumed (e.g. build the score → check balance → interpret the estimate = three modules, not one).
   - ANCHORED. Frame the task in terms of what they already know where you can.
+  - SELF-TEST (later modules): include one step that attacks the learner's own work — re-run the deliverable under a changed assumption and note what moves, argue the other side, stress the edge case. Adapt to field ("re-run with the 12-month window", "test the layout at 320px", "argue the counterparty's best case"). Self-falsification is the craft.
   Every module MUST center on such a task — the task is the point; the learning layer exists only to unblock the task. If you cannot define a real, doable task for a would-be module, MERGE it into an adjacent module or DROP it. No passive "read about X" modules. Order so each task builds on the ones before. Length and depth follow DEPTH; emphasis follows PURPOSE.
 - firstTask: the INDEPENDENT-CONTRIBUTION readiness project — NOT a week-one deliverable. It is the staged arc where they go from watching to owning, and it comes AFTER the modules (so it MAY assemble their earlier module deliverables — this is expected, not a bug). Give:
   • title — name it as a readiness project / independent contribution, not "first task".
@@ -77,6 +80,10 @@ HORIZON (derive it; never assume a fixed length):
 - else WEEKLY PACE given → horizon ≈ total plan effort ÷ that pace; size the phases from it.
 - else (open / self-paced) → a GOAL-BASED default, never a constant: curious/landscape → a short taste (days to ~2 weeks), NOT a long commitment arc; functional/starting a role → ~30-60-90 days; deep/career move → longer. Set horizonAssumed=true and say in the horizon phrase that it's an assumption they can change.
 
+CANONICAL ARTIFACT REVIEW (optional pattern): where the field has canonical public artifacts (published studies, public filings, landmark rulings, design systems), ONE module's task may be a critical read of ONE such artifact producing a structured extraction (its question/claims/method/limitations — field-equivalent). Phrase the task so the SPECIFIC artifact comes from the verified resources attached in a later step — never name one yourself.
+
+ORIENTATION: unless the background clearly covers it, the plan's early content must situate the role inside the organization's larger machine — who consumes this function's work, where it sits in the lifecycle, and any professional ground rules of the field (e.g. separations, sign-offs, confidentiality norms — flagged as orientation, adapted to field). A module or the first module's concept may carry this.
+
 NETWORKING (purpose-gated): When PURPOSE is career_move or curious, include EXACTLY ONE module early in the sequence (second-ish) titled around talking to people doing the job. Explorers need evidence from humans before investing hours: concept = informational interviews as evidence-gathering (the 20-minute structure, why practitioners say yes); workedExample = one real-shaped outreach message and the reply it earns; task = shortlist 3 people via the searchLinks, send 2 personalized messages (drafts written in THEIR voice from THEIR real background), hold 2 calls, capture notes; doneWhen = two conversations held and the notes answer "is the day-to-day what I imagined?". Include searchLinks (label + query only). No closesGapIndex on this module. For all OTHER purposes, do NOT include a networking module.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
@@ -85,7 +92,7 @@ ROLE FIDELITY (critical): Refer to the target role EXACTLY as given (the "Target
 
 DATE FIDELITY (critical): NEVER state or invent a concrete date or deadline unless one is explicitly given in TIMELINE. If no date was provided, speak only in relative terms (weeks, months, "your first 90 days") — do not name a month or year. Never transform a given deadline into a different date.
 
-FACTS vs FLUENCY (critical — the taught concept must not hallucinate specifics): You may freely generate workflow framing, prerequisite order, analogies from their background, manager-task wording, self-check criteria, and "what to notice" in a tiny example. You must NOT assert precise, checkable specifics that depend on a source — exact clinical/coding definitions, regulatory rules, thresholds, statutes, citations, or company-specific workflow — unless they came from the input. Teach the general shape safely (e.g. "claims data records billable events, not a full clinical narrative"), but do NOT invent a precise rule (e.g. "two E11 codes 30 days apart is THE definition of diabetes"). When a concrete threshold would help but you're not certain, say it's an example convention to confirm, not a fact.
+FACTS vs FLUENCY (critical — the taught concept must not hallucinate specifics): You may freely generate workflow framing, prerequisite order, analogies from their background, manager-task wording, self-check criteria, and "what to notice" in a tiny example. You must NOT assert precise, checkable specifics that depend on a source — exact clinical/coding definitions, regulatory rules, thresholds, statutes, citations, or company-specific workflow — unless they came from the input. Teach the general shape safely (e.g. "claims data records billable events, not a full clinical narrative"), but do NOT invent a precise rule (e.g. "two E11 codes 30 days apart is THE definition of diabetes"). IMPORTANT NUANCE — flagged conventions: when a standard-practice convention would materially help (a common default window, threshold, floor, or format), TEACH IT, explicitly flagged as a convention to confirm locally ("commonly X — confirm your team's value"), rather than omitting it. A flagged convention is more useful than silence; an unflagged one presented as universal fact is forbidden.
 
 VOICE & HONESTY: Write in the person's own vocabulary where you can — translate unfamiliar target-field concepts into terms from their background. When you are not sure a step or resource truly applies to THIS person, say so plainly (e.g. "if you already know X, skip this") rather than asserting it. Flag uncertainty; never smooth over a gap with confident filler.
 
@@ -116,6 +123,10 @@ const SCHEMA = {
           closesGapIndex: { type: "integer" },
           why: { type: "string" },
           bridgeFromBackground: { type: "string" },
+          askYourTeam: {
+            type: "array",
+            items: { type: "string" },
+          },
           searchLinks: {
             type: "array",
             items: {
@@ -142,6 +153,7 @@ const SCHEMA = {
             properties: {
               explanation: { type: "string" },
               misconceptionToAvoid: { type: "string" },
+              traps: { type: "array", items: { type: "string" } },
               keyTerms: {
                 type: "array",
                 items: {

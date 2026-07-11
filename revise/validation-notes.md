@@ -38,3 +38,37 @@ burden, trial design, HTA/payers, rare-disease comparator arms), post-launch
 **On "content too short":** the article's depth is orientation breadth, not task
 depth. Our fix remains opt-in depth (go-deeper expansions, depth-scaled
 concepts) + richer free resources — not longer default prose.
+
+
+## #2 — Claude one-shot plan (same Persona-1 input, chatbot generation) — 2026-07-11
+
+Sissi generated an onboarding plan by giving raw Claude the same persona input.
+**Honest verdict: better teaching density than our sample.** A practitioner-voice
+plan: week-by-week against the real deadline dates, an honest gap table,
+claims-specific traps ("a fill is dispensing, not ingestion"), a Medical-vs-
+Commercial compliance rule, sensitivity analyses ("attack your own numbers"), a
+QC checklist. Notably ZERO resources (smart dodge — nothing to hallucinate) and
+zero interactivity/state/verification. It also asserts standard-practice
+thresholds our facts-vs-fluency rule would have suppressed — but often correctly
+flagged ("assume until told otherwise"), which taught us the flagged-convention
+upgrade.
+
+**Absorbed into the contract (all as universal patterns):** askYourTeam ·
+traps[] · flagged conventions · UI calendar weeks · self-falsification step ·
+richer capstone QC (via selfCheck guidance) · functional cap 3-4 → 4-6.
+
+## #3 — ChatGPT plan (same input, PDF) — 2026-07-11
+
+A curriculum: 8 modules + capstone with named deliverables. Broader coverage
+(RWE landscape module — CONFIRMS the IQVIA lifecycle finding, now a requirement;
+RxNorm/LOINC; covariate balance; an evidence-review module) but: no timeline
+math for a 4-week window, no teaching inside modules, thin personalization, no
+resources/verification/state.
+
+**Absorbed:** ORIENTATION requirement (2 independent confirmations) ·
+canonical-artifact review pattern (read ONE verified public artifact, structured
+extraction — connects our resource layer to a task).
+
+**What both lack (the moat, twice confirmed):** verification, state/artifacts,
+progress, user control (trims), honesty guarantees across runs, and (ChatGPT)
+personalization. Their content depth + our contract and workspace = the target.

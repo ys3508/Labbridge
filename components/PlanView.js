@@ -417,7 +417,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           {plan.hook && (
             <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{firstSentence(plan.hook)}</p>
           )}
-          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} />
+          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""} />
         </header>
 
         <div className="mt-6 space-y-3">
@@ -1498,6 +1498,20 @@ function buildMoments({
             <span className="font-medium text-ink">Who uses it:</span> {task.stakeholders}
           </p>
         )}
+        {step.askYourTeam?.length > 0 && (
+          <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+            <p className="t-label text-ink-faint">Ask your team</p>
+            <p className="mt-0.5 text-xs text-ink-faint">No plan can know your team's specifics — these questions get them.</p>
+            <ul className="mt-2 space-y-1">
+              {step.askYourTeam.map((q, k) => (
+                <li key={k} className="flex gap-1.5 text-sm leading-relaxed text-ink">
+                  <span className="text-brand-600">?</span>
+                  <span>{q}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
       </div>
     ),
   });
@@ -1571,10 +1585,18 @@ function buildMoments({
               ))}
             </dl>
           )}
-          {concept.misconceptionToAvoid && (
-            <p className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2 text-xs leading-relaxed text-amber-800">
-              <span className="font-medium">Common mistake:</span> {concept.misconceptionToAvoid}
-            </p>
+          {(concept.traps?.length > 0 || concept.misconceptionToAvoid) && (
+            <div className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2">
+              <p className="text-xs font-medium text-amber-800">Field-tested traps</p>
+              <ul className="mt-1 space-y-1">
+                {(concept.traps?.length ? concept.traps : [concept.misconceptionToAvoid]).map((t, k) => (
+                  <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-amber-800">
+                    <span>△</span>
+                    <span>{t}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {step.bridgeFromBackground && (
             <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm italic leading-relaxed text-brand-700">
@@ -2513,7 +2535,7 @@ function totalHoursLabel(timeboxes) {
   return lo === hi ? `~${hi} hrs` : `~${lo}\u2013${hi} hrs`;
 }
 
-function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTrim, roleName }) {
+function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTrim, roleName, deadline }) {
   const strengths = (plan.transferableStrengths || []).slice(0, 4).map((x) => cleanPoint(x.point));
   const ft = plan.firstTask || {};
   const stops = modules.map((m, i) => ({
@@ -2534,7 +2556,7 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
         <p className="text-xs font-medium text-ink-soft">
           {remaining.length} stop{remaining.length === 1 ? "" : "s"}
           {hours ? ` \u00b7 ${hours} of hands-on work` : ""}
-          {ft.horizon ? ` \u00b7 ${ft.horizon}` : ""}
+          {(deadlineSpan(deadline) || ft.horizon) ? ` · ${deadlineSpan(deadline) || ft.horizon}` : ""}
         </p>
       </div>
 
@@ -2613,4 +2635,19 @@ function firstSentence(text) {
   const t = (text || "").trim();
   const m = t.match(/^[^.!?]*[.!?]/);
   return m ? m[0] : t;
+}
+
+
+// UI owns the calendar (date-fidelity: the model speaks in relative windows; the
+// app renders the user's real dates). "Jul 11 → Aug 7 · ~4 weeks", or null.
+function deadlineSpan(deadline) {
+  if (!deadline) return null;
+  const end = new Date(`${deadline}T00:00:00`);
+  if (isNaN(end)) return null;
+  const now = new Date();
+  const days = Math.ceil((end - now) / 86400000);
+  if (days <= 0) return null;
+  const weeks = Math.max(1, Math.round(days / 7));
+  const fmt = (d) => d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+  return `${fmt(now)} → ${fmt(end)} · ~${weeks} week${weeks === 1 ? "" : "s"}`;
 }
