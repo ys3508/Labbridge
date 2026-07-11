@@ -699,6 +699,18 @@ function NodeResources({ resources, done }) {
       <ul className="mt-3 space-y-3 border-t border-slate-100 pt-3">
         {resources.map((r, k) => (
           <li key={k} className="text-sm">
+            {r.kind === "video" && youtubeId(r.url) && (
+              <div className="mb-2 overflow-hidden rounded-lg border border-slate-200">
+                <iframe
+                  className="aspect-video w-full"
+                  src={`https://www.youtube-nocookie.com/embed/${youtubeId(r.url)}`}
+                  title={r.title}
+                  allow="accelerometer; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                  referrerPolicy="strict-origin-when-cross-origin"
+                  allowFullScreen
+                />
+              </div>
+            )}
             <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
               <span className="rounded bg-slate-100 px-1.5 py-0.5 text-xs uppercase tracking-wide text-ink-faint">
                 {r.kind || "resource"}
@@ -2885,4 +2897,12 @@ function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, o
       )}
     </>
   );
+}
+
+
+// Official YouTube embed only (sanctioned by YouTube ToS; verified via oEmbed
+// before a video ever enters the demo/pipeline). nocookie domain = privacy mode.
+function youtubeId(url) {
+  const m = (url || "").match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
+  return m ? m[1] : null;
 }
