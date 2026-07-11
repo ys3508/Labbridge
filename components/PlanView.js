@@ -730,6 +730,12 @@ function NodeResources({ resources, done }) {
             {(r.use || r.why) && (
               <div className="mt-1 text-xs leading-relaxed text-ink-soft">{r.use || r.why}</div>
             )}
+            {r.keyPoint && (
+              <blockquote className="mt-2 border-l-2 border-slate-200 pl-2 text-xs leading-relaxed text-ink-soft">
+                “{r.keyPoint}”
+                <span className="ml-1 text-ink-faint">— from the abstract</span>
+              </blockquote>
+            )}
           </li>
         ))}
       </ul>
