@@ -67,6 +67,42 @@ implemented; see JOURNEY.md for the story.)*
 - [ ] **Deploy the public demo** — Vercel, NO ANTHROPIC_API_KEY set (zero spend
       risk; demo fully works, generation degrades honestly). CI is in place.
 
+### Talked about, never done (the honest ledger — Sissi asked for this)
+*Everything discussed in sessions that never became code. Date = when discussed.*
+
+**Needs API funding:**
+- [ ] Live-model content validation — run the 3 golden fixtures, judge real
+      output; verify `northStar` / `comprehensionCheck` / `closesGapIndex` land. (Jul 10)
+- [ ] Trim-loop regeneration — roadmap "I already know this" trims feed a
+      regenerated leaner plan (UI + persistence built Jul 11; the generation call is the gap).
+- [ ] `/api/coach` — real AI review of drafts (socket built: Coach beat panel). (Jul 10)
+- [ ] Manager's-reaction reward (rewards spec item F; deliberately parked). (Jul 10)
+- [ ] "Go deeper" opt-in depth expansion in the Model beat + depth-scaled
+      concept length — the answer to "content feels too short". (Jul 11)
+- [ ] AI checker for module substance (shift-1 §4 "later": does the concept
+      actually teach? is the example concrete?). (Jul 9)
+
+**Zero API, never built:**
+- [ ] **Free-resource bias** — prefer open-access (OpenAlex OA flag), .gov/.edu,
+      official docs in candidates/select; label each resource "free" in the UI. (Jul 11)
+- [ ] Resource `difficulty` + `confidence` fields & labels (shift-1 §7 — only
+      `use` was implemented). (Jul 9)
+- [ ] Structured workedExample rows → real Visual table ("card now, table
+      later" from the moments spec). (Jul 10)
+- [ ] Progressive reveal — STILL undefined by Sissi; my proposed default
+      (sequential first pass, free after Wrap) awaiting yes/no. (Jul 10)
+- [ ] Expert 30-min validation + curricula triangulation as a repeatable
+      practice (first comparison done Jul 11 vs IQVIA getting-started). (Jul 11)
+- [ ] Codex back-review of Claude's merged implementations (when credits). (Jul 10)
+
+**Waiting on Sissi (minutes each):**
+- [ ] Keyless Vercel deploy — import repo, set NO api key. (Jul 11)
+- [ ] README screenshot → `docs/`, Claude embeds. (Jul 11)
+
+**Long-parked (needs backend/design):**
+- [ ] Cross-session memory / accounts. (Jul 8)
+- [ ] Code-verified skill graph for prerequisite ordering. (Jul 8)
+
 ### Parked (needs API funding)
 - [ ] Verify `northStar` / `comprehensionCheck` / `closesGapIndex` against the
       live model; tune prompts from golden-fixture runs.

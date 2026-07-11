@@ -221,6 +221,9 @@ Three catches in one review — including a genuine honesty bug (copy inviting a
 - **The CTA got priced**: "Enter your workspace →" became "Start your first stop — 3–4 hours →". You don't ask for a journey; you ask for one small, priced step.
 The serif letter demoted to a small supporting line (her font critique), and the dead invitation now points at the real toggles. MissionBrief/BriefChip retired. Verified live in the demo, zero API.
 
+**Q (Sissi, second annotated pass): "Too many words still. The filenames — no one can read 01_a_one_page. And write down everything we talked about but never did."**
+Plus she caught a shipped bug: literal `\u201c` rendering in the beginner note (an escaping slip). All fixed: filenames now slug the task TITLE's meaningful words (`01_data_orientation_memo.pdf`, not `01_a_one_page_memo_tables_present_grain_of_ea.csv`), extensions key off the title only, the hook shows one sentence, per-stop bridge lines left the roadmap (it's a map, not prose), and TASKS.md gained **the honest ledger** — every discussed-but-never-built item with dates, split by what blocks it. She also brought the first real validation source (IQVIA's RWE getting-started primer); the coverage triangulation lives in `revise/validation-notes.md` — two real findings (lifecycle context thin, common-data-model absent), both queued for live-model validation.
+
 ---
 
 ## Where it stands

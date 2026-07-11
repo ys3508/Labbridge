@@ -414,14 +414,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
               </p>
             </div>
           )}
-          {plan.hook && <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{plan.hook}</p>}
+          {plan.hook && (
+            <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{firstSentence(plan.hook)}</p>
+          )}
           <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} />
         </header>
 
         <div className="mt-6 space-y-3">
           {isBeginner && (
             <Note>
-              We built this assuming you're <strong>starting fresh</strong> — mark any stop below \u201cI already know this\u201d to trim the road.
+              We built this assuming you're <strong>starting fresh</strong> — mark any stop below “I already know this” to trim the road.
             </Note>
           )}
 
@@ -2269,9 +2271,13 @@ function shorten(s, max = 160) {
   return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
 }
 
+// Filenames must read like something a human named (Sissi: "01_a_one_page:
+// bad title, no one can read and understand it"). Slug the TASK TITLE's first
+// few meaningful words, not the whole deliverable sentence.
+const FILE_STOPWORDS = new Set(["a","an","the","for","of","to","in","on","with","your","new","that","and","or","from","one","two","three","page","plus","draft","write","produce","build","create","make"]);
 function deliverableName(step, index) {
-  const deliverable = step?.task?.deliverable || step?.task?.title || step?.topic || `task-${index + 1}`;
-  const lower = deliverable.toLowerCase();
+  const title = step?.task?.title || step?.topic || `task-${index + 1}`;
+  const lower = title.toLowerCase(); // ext from the TITLE only — deliverable sentences false-positive ("code lists" -> .sql)
   const ext =
     lower.includes("table") || lower.includes("csv") || lower.includes("spreadsheet")
       ? ".csv"
@@ -2280,11 +2286,13 @@ function deliverableName(step, index) {
         : lower.includes("code") || lower.includes("sql") || lower.includes("script")
           ? ".sql"
           : ".md";
-  const base = cleanPoint(deliverable)
+  const words = cleanPoint(title)
     .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "_")
-    .replace(/^_+|_+$/g, "")
-    .slice(0, 42);
+    .replace(/[^a-z0-9\s-]+/g, "")
+    .split(/[\s-]+/)
+    .filter((w) => w && !FILE_STOPWORDS.has(w))
+    .slice(0, 3);
+  const base = words.join("_");
   return `${String(index + 1).padStart(2, "0")}_${base || "deliverable"}${ext}`;
 }
 
@@ -2490,7 +2498,6 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
   const stops = modules.map((m, i) => ({
     i,
     capability: m.topic,
-    bridge: m.bridgeFromBackground,
     timebox: m.task?.timebox || "",
     file: deliverableName(m, i),
     isDone: done.has(i),
@@ -2542,9 +2549,6 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
               )}
               {stop.isDone && <span className="text-xs font-medium text-emerald-700">done</span>}
             </div>
-            {stop.bridge && !stop.isTrimmed && (
-              <p className="mt-0.5 text-xs italic text-ink-faint">↪ {stop.bridge}</p>
-            )}
             <div className="mt-1.5 flex flex-wrap items-center gap-2">
               <span className="t-mono rounded bg-slate-50 px-1.5 py-0.5 text-xs text-ink-soft ring-1 ring-slate-100">
                 {shorten(stop.file, 34)}
@@ -2587,4 +2591,11 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
       </p>
     </section>
   );
+}
+
+
+function firstSentence(text) {
+  const t = (text || "").trim();
+  const m = t.match(/^[^.!?]*[.!?]/);
+  return m ? m[0] : t;
 }
