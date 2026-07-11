@@ -83,6 +83,10 @@ implemented; see JOURNEY.md for the story.)*
       actually teach? is the example concrete?). (Jul 9)
 
 **Zero API, never built:**
+- [x] "Talk to humans" networking stop — specced (`revise/talk-to-humans-spec.md`),
+      schema + prompt + search-link rendering built, mocked in the growth persona.
+      Live-model behavior (purpose-gating, personalized archetypes) verifies at
+      validation day. (Jul 11)
 - [ ] **Free-resource bias** — prefer open-access (OpenAlex OA flag), .gov/.edu,
       official docs in candidates/select; label each resource "free" in the UI. (Jul 11)
 - [ ] Resource `difficulty` + `confidence` fields & labels (shift-1 §7 — only

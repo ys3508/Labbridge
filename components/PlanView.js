@@ -1651,6 +1651,27 @@ function buildMoments({
               <span className="font-medium text-ink">Use:</span> {task.givenInputs.join(", ")}
             </p>
           )}
+          {step.searchLinks?.length > 0 && (
+            <div className="mt-3">
+              <p className="t-label text-ink-faint">Start your search</p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {step.searchLinks.map((l, k) => (
+                  <a
+                    key={k}
+                    href={`https://www.linkedin.com/search/results/people/?keywords=${encodeURIComponent(l.query)}`}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="rounded-full bg-white px-3 py-1.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200 hover:ring-brand-400"
+                  >
+                    {l.label} ↗
+                  </a>
+                ))}
+              </div>
+              <p className="mt-2 text-xs text-ink-faint">
+                Opens LinkedIn search in your own account — you choose who to contact; nothing is sent for you.
+              </p>
+            </div>
+          )}
         </div>
       ),
     });
@@ -2274,7 +2295,7 @@ function shorten(s, max = 160) {
 // Filenames must read like something a human named (Sissi: "01_a_one_page:
 // bad title, no one can read and understand it"). Slug the TASK TITLE's first
 // few meaningful words, not the whole deliverable sentence.
-const FILE_STOPWORDS = new Set(["a","an","the","for","of","to","in","on","with","your","new","that","and","or","from","one","two","three","page","plus","draft","write","produce","build","create","make"]);
+const FILE_STOPWORDS = new Set(["a","an","the","for","of","to","in","on","with","your","new","that","and","or","from","one","two","three","page","plus","draft","write","produce","build","create","make","hold","against"]);
 function deliverableName(step, index) {
   const title = step?.task?.title || step?.topic || `task-${index + 1}`;
   const lower = title.toLowerCase(); // ext from the TITLE only — deliverable sentences false-positive ("code lists" -> .sql)
@@ -2290,7 +2311,7 @@ function deliverableName(step, index) {
     .toLowerCase()
     .replace(/[^a-z0-9\s-]+/g, "")
     .split(/[\s-]+/)
-    .filter((w) => w && !FILE_STOPWORDS.has(w))
+    .filter((w) => w && !FILE_STOPWORDS.has(w) && !/^\d/.test(w))
     .slice(0, 3);
   const base = words.join("_");
   return `${String(index + 1).padStart(2, "0")}_${base || "deliverable"}${ext}`;

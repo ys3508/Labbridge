@@ -42,6 +42,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
   • closesGapIndex: the index of the knowledge gap this task most directly closes (0-based into knowledgeGaps). Every gap should be closed by at least one task.
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
+  • searchLinks (ONLY on a networking module, see NETWORKING below): 2-3 items { label: who this search finds ("RWE analysts 2-3 years in"), query: a LinkedIn people-search keyword string ("real world evidence analyst pharma") }. QUERY STRINGS ONLY — never URLs; the app builds the links.
   • comprehensionCheck (optional but preferred): a ONE-question quick check the learner answers BEFORE the concept, so they try first — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
   • concept: a concise support layer for the task — not a blog post, not a mini textbook:
       · explanation: 80–150 words, like a strong Slack explanation from a senior teammate. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
@@ -75,6 +76,8 @@ HORIZON (derive it; never assume a fixed length):
 - DEADLINE given → the horizon IS that deadline. Compress or stretch the observe→assist→own phases to fit — a 3-week runway is a 3-week arc, not 90 days. Use TODAY'S DATE (given in the input) to size the phase labels.
 - else WEEKLY PACE given → horizon ≈ total plan effort ÷ that pace; size the phases from it.
 - else (open / self-paced) → a GOAL-BASED default, never a constant: curious/landscape → a short taste (days to ~2 weeks), NOT a long commitment arc; functional/starting a role → ~30-60-90 days; deep/career move → longer. Set horizonAssumed=true and say in the horizon phrase that it's an assumption they can change.
+
+NETWORKING (purpose-gated): When PURPOSE is career_move or curious, include EXACTLY ONE module early in the sequence (second-ish) titled around talking to people doing the job. Explorers need evidence from humans before investing hours: concept = informational interviews as evidence-gathering (the 20-minute structure, why practitioners say yes); workedExample = one real-shaped outreach message and the reply it earns; task = shortlist 3 people via the searchLinks, send 2 personalized messages (drafts written in THEIR voice from THEIR real background), hold 2 calls, capture notes; doneWhen = two conversations held and the notes answer "is the day-to-day what I imagined?". Include searchLinks (label + query only). No closesGapIndex on this module. For all OTHER purposes, do NOT include a networking module.
 
 TARGET GROUNDING (critical): When a "READ JOB POSTING" block with real extracted fields is provided, name the real company, role, sector, and responsibilities SPECIFICALLY in the summary, the firm/target node, and the first task. When no readable target is provided (background-only), stay generic about the destination and INVITE the user to add the job description to target a specific role and company. NEVER invent a company, role, sector, or responsibility you weren't given. Field present → specific; field absent → honest and inviting; never a confident guess in between.
 
@@ -113,6 +116,15 @@ const SCHEMA = {
           closesGapIndex: { type: "integer" },
           why: { type: "string" },
           bridgeFromBackground: { type: "string" },
+          searchLinks: {
+            type: "array",
+            items: {
+              type: "object",
+              additionalProperties: false,
+              properties: { label: { type: "string" }, query: { type: "string" } },
+              required: ["label", "query"],
+            },
+          },
           comprehensionCheck: {
             type: "object",
             additionalProperties: false,
