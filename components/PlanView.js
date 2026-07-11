@@ -1047,11 +1047,11 @@ function getMomentMeta(step) {
   const concept = step?.concept || {};
   const example = step?.workedExample || {};
   const moments = [{ key: "brief", label: "Brief", objective: "Why am I here?" }];
-  if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
-    moments.push({ key: "question", label: "Check", objective: "Can I try first?" });
-  }
   if (concept.explanation) moments.push({ key: "model", label: "Model", objective: "What's the idea?" });
   if (example.setup) moments.push({ key: "visual", label: "Example", objective: "What does it look like?" });
+  if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
+    moments.push({ key: "question", label: "Check", objective: "Did it land?" });
+  }
   if (task.steps?.length) moments.push({ key: "practice", label: "Try", objective: "Can I do it myself?" });
   moments.push(
     { key: "coach", label: "Coach", objective: "Am I right?" },
@@ -1479,6 +1479,9 @@ function buildMoments({
     kicker: "Start with the job, not the lesson.",
     body: (
       <div className="space-y-4">
+        {step.context && (
+          <p className="max-w-prose t-body text-ink">{step.context}</p>
+        )}
         {task.managerRequest && (
           <blockquote className="max-w-prose border-l-2 border-brand-300 pl-4 t-body italic text-ink">
             “{task.managerRequest}”
@@ -1515,54 +1518,6 @@ function buildMoments({
       </div>
     ),
   });
-
-  // QUESTION — Can I try first? (only if a real check exists)
-  if (comprehension?.question && comprehension.options?.length) {
-    moments.push({
-      key: "question",
-      label: "Check",
-      title: comprehension.question,
-      objective: "Can I try first?",
-      kicker: "Take a guess before the model — the first try is what makes it stick.",
-      body: (
-        <div className="space-y-3">
-          <div className="grid gap-2">
-            {comprehension.options.map((o, idx) => {
-              const isSel = choice === idx;
-              const isCorrect = idx === comprehension.answerIndex;
-              const cls = !answered
-                ? "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
-                : isCorrect
-                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
-                  : isSel
-                    ? "border-amber-300 bg-amber-50 text-amber-900"
-                    : "border-slate-200 bg-white text-ink-faint";
-              return (
-                <button
-                  key={idx}
-                  type="button"
-                  onClick={() => setChoice(idx)}
-                  className={`rounded-lg border px-4 py-3 text-left text-sm transition ${cls}`}
-                >
-                  {o}
-                </button>
-              );
-            })}
-          </div>
-          {answered && (
-            <p
-              className={`rounded-lg px-3 py-2 text-sm ${
-                choice === comprehension.answerIndex ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"
-              }`}
-            >
-              {choice === comprehension.answerIndex ? "Correct. " : "Not quite. "}
-              {comprehension.explanation}
-            </p>
-          )}
-        </div>
-      ),
-    });
-  }
 
   // MODEL — What's the idea? (full concept, no truncation)
   if (concept.explanation) {
@@ -1640,6 +1595,54 @@ function buildMoments({
           {example.takeaway && (
             <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink-soft">
               <span className="font-medium text-ink">Takeaway:</span> {example.takeaway}
+            </p>
+          )}
+        </div>
+      ),
+    });
+  }
+
+  // CHECK — Did the idea land? (after Model + Example — restoring the original order)
+  if (comprehension?.question && comprehension.options?.length) {
+    moments.push({
+      key: "question",
+      label: "Check",
+      title: comprehension.question,
+      objective: "Did it land?",
+      kicker: "Answer from what you just learned — retrieving it is what makes it stick.",
+      body: (
+        <div className="space-y-3">
+          <div className="grid gap-2">
+            {comprehension.options.map((o, idx) => {
+              const isSel = choice === idx;
+              const isCorrect = idx === comprehension.answerIndex;
+              const cls = !answered
+                ? "border-slate-200 bg-white text-ink-soft hover:border-brand-200 hover:text-ink"
+                : isCorrect
+                  ? "border-emerald-300 bg-emerald-50 text-emerald-800"
+                  : isSel
+                    ? "border-amber-300 bg-amber-50 text-amber-900"
+                    : "border-slate-200 bg-white text-ink-faint";
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => setChoice(idx)}
+                  className={`rounded-lg border px-4 py-3 text-left text-sm transition ${cls}`}
+                >
+                  {o}
+                </button>
+              );
+            })}
+          </div>
+          {answered && (
+            <p
+              className={`rounded-lg px-3 py-2 text-sm ${
+                choice === comprehension.answerIndex ? "bg-emerald-50 text-emerald-800" : "bg-amber-50 text-amber-900"
+              }`}
+            >
+              {choice === comprehension.answerIndex ? "Correct. " : "Not quite. "}
+              {comprehension.explanation}
             </p>
           )}
         </div>

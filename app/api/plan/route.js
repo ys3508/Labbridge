@@ -41,12 +41,13 @@ PRODUCE THESE FIELDS (they realize the spine above):
   • topic: a CAPABILITY phrased as an action the learner will be able to do — not a school subject. Weak: "Medical coding systems". Strong: "Use ICD/CPT/NDC codes to make a clinical concept computable".
   • closesGapIndex: the index of the knowledge gap this task most directly closes (0-based into knowledgeGaps). Every gap should be closed by at least one task.
   • why: "why this, why now" in the prerequisite order, tied to their background and the modules around it.
+  • context (60-120 words, REQUIRED in spirit): the scene-setting a TOTAL NEWCOMER needs before the assignment — what this kind of work is, why it exists in this field, and what the key unfamiliar words mean in passing, anchored to their background (this is bridgeFromBackground expanded into a welcoming paragraph). A real manager gives this speech before handing anyone a task. No undefined jargon survives this paragraph.
   • bridgeFromBackground: one line connecting this capability to something they ALREADY know (their world → this new thing).
   • askYourTeam (2-4 per module where relevant): the questions a smart new hire asks colleagues because NO plan can know local specifics — which tools/vendors/templates the team uses, what thresholds or sign-offs apply, who reviews what. This turns fidelity (never inventing company facts) into ACTION. Adapt entirely to the field (a firm's citation templates; a fund's screening floor; a team's design-token owner).
   • searchLinks (ONLY on a networking module, see NETWORKING below): 2-3 items { label: who this search finds ("RWE analysts 2-3 years in"), query: a LinkedIn people-search keyword string ("real world evidence analyst pharma") }. QUERY STRINGS ONLY — never URLs; the app builds the links.
-  • comprehensionCheck (optional but preferred): a ONE-question quick check the learner answers BEFORE the concept, so they try first — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
+  • comprehensionCheck (optional but preferred): a ONE-question check the learner answers AFTER the concept and example, testing whether the idea landed — answerable from what was just taught — { question, options (3–4, with plausible wrong ones), answerIndex (0-based), explanation (why the right answer is right) }. Tie it to the concept this module teaches.
   • concept: a concise support layer for the task — not a blog post, not a mini textbook:
-      · explanation: 80–150 words, like a strong Slack explanation from a senior teammate. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
+      · explanation: 150–250 words, like a strong senior teammate actually TEACHING the idea — definitions in plain words, the why, and the shape of how it's used. Bridge from their background; not a generic textbook definition. One task, one concept. If it gets long, cut it.
       · misconceptionToAvoid: one common wrong mental model to head off.
       · traps (2-4): field-tested practitioner mistakes people ACTUALLY make in their first month — the "never say patients took / a headnote isn't the holding / ARR isn't recognized revenue" class of wisdom, adapted to THIS field. These read as senior experience; generic study-tips do not qualify.
       · keyTerms: 1–4 essential terms, each { term, plainMeaning } — plain language, no jargon defining jargon.
@@ -123,6 +124,7 @@ const SCHEMA = {
           closesGapIndex: { type: "integer" },
           why: { type: "string" },
           bridgeFromBackground: { type: "string" },
+          context: { type: "string" },
           askYourTeam: {
             type: "array",
             items: { type: "string" },
