@@ -71,9 +71,10 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **Needs API funding:**
-- [ ] Video resources in the live pipeline — model proposes candidates (web-search
-      augment or free YouTube Data API key), keyless oEmbed verifies, model
-      selects. Embed player + demo entry shipped Jul 11. (Jul 11)
+- [ ] Video resources in the live pipeline — full design in
+      `revise/video-pipeline-spec.md` (queries → Data API → verify → hard-signal
+      rank → Haiku judge → 0-1 pick; curated tier on top). Embed player + first
+      curated entry shipped Jul 11. Needs: free YouTube key (Sissi) + Haiku. (Jul 11)
 - [ ] Live-model content validation — run the 3 golden fixtures, judge real
       output; verify `northStar` / `comprehensionCheck` / `closesGapIndex` land. (Jul 10)
 - [ ] Trim-loop regeneration — roadmap "I already know this" trims feed a
