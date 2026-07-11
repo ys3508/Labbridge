@@ -484,8 +484,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   return (
     <div className="w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col">
-      <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm lg:flex lg:min-h-0 lg:flex-1 lg:flex-col">
-        <header className="border-b border-brand-100 px-4 py-4 sm:px-6 lg:shrink-0">
+      <section className={`lg:flex lg:min-h-0 lg:flex-1 lg:flex-col ${focused ? "" : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"}`}>
+        <header className={`lg:shrink-0 ${focused ? "px-1 pb-2" : "border-b border-brand-100 px-4 py-4 sm:px-6"}`}>
           {focused ? (
             <div className="flex items-center justify-between gap-3 py-0.5">
               <button
@@ -565,7 +565,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           )}
         </header>
 
-        <div className={`grid gap-4 p-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:p-6 ${focused ? "lg:grid-cols-[minmax(0,1fr)]" : "lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
+        <div className={`grid gap-4 lg:min-h-0 lg:flex-1 lg:overflow-hidden ${focused ? "p-0 lg:grid-cols-[minmax(0,1fr)]" : "p-4 lg:p-6 lg:grid-cols-[280px_minmax(0,1fr)]"}`}>
           {!focused && (
           <aside className="min-w-0 space-y-3 lg:min-h-0 lg:overflow-y-auto lg:pr-1">
             <ProjectFolder
@@ -590,7 +590,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
             />
           </aside>
           )}
-          <div ref={taskPanelRef} className={`min-w-0 scroll-mt-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 ${focused ? "lg:mx-auto lg:w-full lg:max-w-3xl" : ""}`}>
+          <div ref={taskPanelRef} className={`min-w-0 scroll-mt-4 lg:min-h-0 lg:overflow-y-auto lg:pr-1 ${focused ? "lg:mx-auto lg:w-full lg:max-w-4xl" : ""}`}>
             {activeSurface === "capstone" ? (
               <ReadinessProject
                 notes={notes}
