@@ -186,16 +186,61 @@ export default function PlanView({ form, isBeginner, onBack }) {
     document.body.scrollLeft = 0;
   }, []);
 
+  // Generation cache: a paid plan is reusable. Same inputs → load from
+  // localStorage instead of re-billing an Opus call on every refresh. Retry
+  // bypasses and overwrites. Demo mode bypasses entirely (personas share an
+  // empty form, so a shared hash would freeze persona switching).
+  const genKey = () => {
+    const str = JSON.stringify(payload);
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) | 0;
+    return "lb_gen_" + (h >>> 0).toString(36);
+  };
+  const isDemo = () => {
+    try {
+      return typeof window !== "undefined" && localStorage.getItem("lb_mock") === "1";
+    } catch {
+      return false;
+    }
+  };
+  const restoredRef = useRef(false);
+  const saveGenCache = (patch) => {
+    if (isDemo()) return;
+    try {
+      const k = genKey();
+      const cur = JSON.parse(localStorage.getItem(k) || "{}");
+      localStorage.setItem(k, JSON.stringify({ ...cur, ...patch, savedAt: Date.now() }));
+    } catch {}
+  };
+
   // 1) Generate the plan. `attempt` lets the error state offer an honest Retry
   //    (a paid call each time — user-initiated only, never automatic).
   const [attempt, setAttempt] = useState(0);
   useEffect(() => {
     let alive = true;
     setError(null);
+    if (attempt === 0 && !isDemo()) {
+      try {
+        const cached = JSON.parse(localStorage.getItem(genKey()) || "null");
+        if (cached?.plan) {
+          restoredRef.current = true;
+          setPlan(cached.plan);
+          if (cached.resources) {
+            setTopicResources(cached.resources);
+            setResourcesDone(true);
+          }
+          if (cached.check) setCheck(cached.check);
+          return;
+        }
+      } catch {}
+    }
+    restoredRef.current = false;
     post("/api/plan", payload).then((d) => {
       if (!alive) return;
-      if (d?.plan) setPlan(d.plan);
-      else setError(d?.error || "Plan generation failed.");
+      if (d?.plan) {
+        setPlan(d.plan);
+        saveGenCache({ plan: d.plan });
+      } else setError(d?.error || "Plan generation failed.");
     });
     return () => {
       alive = false;
@@ -208,6 +253,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   //    resource — only real, verified items are chosen and explained.
   useEffect(() => {
     if (!plan) return;
+    if (restoredRef.current) return; // resources came from the cache
     let alive = true;
     (async () => {
       const topics = plan.learningSequence.map((s, i) => ({ index: i, topic: s.topic, why: s.why, task: s.task }));
@@ -235,6 +281,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
       if (alive) {
         setTopicResources(byIndex);
         setResourcesDone(true);
+        saveGenCache({ resources: byIndex });
       }
 
       // Phase 2 — fill THIN steps (fewer than 2 catalog resources) with a
@@ -269,9 +316,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
     if (!plan) return;
     let alive = true;
     setChecking(true);
+    if (restoredRef.current) {
+      setChecking(false);
+      return;
+    }
     post("/api/check", { plan, background: payload.background, timeline: payload.timeline })
       .then((d) => {
-        if (alive && d && !d.error) setCheck(d);
+        if (alive && d && !d.error) {
+          setCheck(d);
+          saveGenCache({ check: d });
+        }
       })
       .finally(() => alive && setChecking(false));
     return () => {

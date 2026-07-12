@@ -247,6 +247,9 @@ Yes — through the one sanctioned door: YouTube's official embeddable player (t
 **Q (Sissi): "When we put papers, can we cite the most important information so users get it right away?"**
 Yes — with one honest rule: **cite from fetched text, never from memory** (a model "summarizing" a paper it hasn't read is hallucination with a citation attached). Resources gained a `keyPoint`: 1-2 sentences quoted VERBATIM from the paper's abstract (OpenAlex serves abstracts free), attributed "— from the abstract," under the use note. The live fetch demonstrated the rule immediately: the RECORD statement has an abstract → it got a real quoted key point; Funk 2014 has no abstract in OpenAlex → it honestly got none. At API day the select stage fetches abstracts and Haiku picks the task-relevant sentences verbatim (ledger). Verify-and-drop now extends to citations.
 
+**Q (Sissi): "What actually costs API? If I scroll around a generated plan, does that bill?" — then she topped up.**
+Mapped every action to its cost (scrolling/working in a plan = free forever; building = ~$0.35-0.50; each settled resume edit = a small Haiku call) — and the audit found a real spend trap: **the plan lived only in memory, so every page refresh re-billed a full Opus generation.** Shipped the armor before her first paid run: a **generation cache** — plan + resources + self-check stored in localStorage keyed by an input hash. Same inputs → the paid plan loads instantly, free; changed inputs or Retry → fresh generation, cache overwritten; demo mode bypasses (personas share an empty form and would collide). Also flipped `WEB_AUGMENT` off for validation economy. Pay once per plan; own it.
+
 ---
 
 ## Where it stands
