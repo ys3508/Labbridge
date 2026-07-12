@@ -93,3 +93,23 @@ Bridges (measles → code sets; sensitivity/specificity as "a tradeoff you alrea
 ## Consolidation plan (when she calls the review done)
 
 Split into: (1) **close-the-loop features first** (her ordering directive: "stop tuning prose, build page 6 for real") — wrap gate, coach endpoint, reshuffle, skeleton, carry-forward; (2) **prompt edits** batched into one ~$0.40 verification re-run; (3) **template/render fixes** verified free in demo mode; (4) decision items above.
+
+## Round 2 (2026-07-12): mock-mode confusion + the live role-only run
+
+**Context:** Sissi's browser had `lb_mock=1` persisting from old demo links, so her first "role-only" screenshots were the canned sample being served against real inputs (no generation, no hallucination — the epi background was Persona-1 demo content). She then ran a REAL role-only generation (~$0.40): the cold-start test #56, answered early.
+
+**#56 RESULT — cold-start largely PASSED live:** no invented background ("✓ Starting fresh"), no invented employer, horizon explicitly "assumed default." The residue is #60.
+
+| # | Finding | Class | Status |
+|---|---|---|---|
+| 56 | Cold-start honesty | test | **run — passed core; residue → #60** |
+| 57 | "Coming from" selector before generating (Codex Option 2) — gives every bridge a real footing | feature | open |
+| 58 | Mock-leak UX: real form inputs while `lb_mock=1` silently serve the sample (burned Sissi); louder banner or auto-exit on real submission | render | open |
+| 59 | Demo: introduce Meridian as a stand-in; "2 questions" needs a worked example (#21 instance) | copy/prompt | open |
+| 60 | "You today" chips are assertions ("✓ **If** you have ANY spreadsheet experience" — a conditional wearing a checkmark). Make them unticked clickable inputs, pointing the existing I-already-know-this mechanism at the top node | render+feature | open |
+| 61 | **Dependency-order bug in role-only run**: cohort definition (stop 2) before codes/value sets (stop 3) — a cohort def IS a value set + temporal rule. Prompt: stop-order contract ("no stop requires an artifact a later stop produces") + a dependency-check dimension for the plan checker | prompt + checker | open — prompt batch |
+| 62 | Hardcoded roadmap promise "Nothing on this road assumes anything you don't already have" — false for a fresh starter facing confounding adjustment at stop 4 | copy | **FIXED** — scoped down to "each stop is built from the one before it" |
+| 63 | Beginner depth calibration: starting-fresh plans need a confounding-from-zero stop before adjustment/balance stops, and timeboxes calibrated to the STATED background (stop-4 "1–2 days" is epi-calibrated, not beginner-calibrated) | prompt | open — prompt batch |
+| 64 | **Double-bill on mid-generation refresh**: gen cache saves only on completion; refreshing during the ~2-min generation refires a full paid call (her role-only run logged twice). Needs an in-flight guard or generation-started marker | render | open |
+
+**Spend armor added the same day:** (a) `/api/plan` now 400s on effectively-empty payloads before billing (a stray '{}' fetch from testing cost ~2 generations — my error, now impossible); (b) the restore gate lists ALL saved plans (picker with date/hook/task count), not just the newest, so Persona-1 and the role-only plan coexist loadable.

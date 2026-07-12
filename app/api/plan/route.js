@@ -273,6 +273,22 @@ export async function POST(request) {
     return Response.json({ error: "Invalid request body." }, { status: 400 });
   }
 
+  // Spend guard: this is the expensive route. An effectively empty payload
+  // (no background, no target, no artifacts) can only come from a bug, a bot,
+  // or a stray fetch — never from the real form. Refuse before billing.
+  const bg = payload?.background || {};
+  const tg = payload?.target || {};
+  const hasSignal =
+    (bg.resume || "").trim() ||
+    (bg.field || []).length ||
+    (bg.skills || []).length ||
+    (tg.role || "").trim() ||
+    (tg.artifacts || []).length ||
+    (tg.realTask || "").trim();
+  if (!hasSignal) {
+    return Response.json({ error: "Empty input — nothing to build a plan from." }, { status: 400 });
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     return Response.json({ error: "No API key configured on the server." }, { status: 500 });
   }

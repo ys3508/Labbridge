@@ -221,19 +221,19 @@ export default function PlanView({ form, isBeginner, onBack }) {
   // same person re-entering the same materials can MISS their exact key and
   // silently re-bill a full generation. If any saved plan exists, offer it
   // BEFORE spending; "generate new" stays one honest click away.
-  const [pendingRestore, setPendingRestore] = useState(null); // { key, savedAt, cached }
-  const newestSavedPlan = () => {
+  const [pendingRestore, setPendingRestore] = useState(null); // array of { key, cached }, newest first
+  const savedPlans = () => {
     try {
-      let best = null;
+      const found = [];
       for (let i = 0; i < localStorage.length; i++) {
         const k = localStorage.key(i);
         if (!k || !k.startsWith("lb_gen_")) continue;
         const v = JSON.parse(localStorage.getItem(k) || "null");
-        if (v?.plan && (!best || (v.savedAt || 0) > (best.cached.savedAt || 0))) best = { key: k, cached: v };
+        if (v?.plan) found.push({ key: k, cached: v });
       }
-      return best;
+      return found.sort((a, b) => (b.cached.savedAt || 0) - (a.cached.savedAt || 0));
     } catch {
-      return null;
+      return [];
     }
   };
   const adoptCached = (cached) => {
@@ -256,8 +256,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
           return;
         }
       } catch {}
-      const saved = newestSavedPlan();
-      if (saved) {
+      const saved = savedPlans();
+      if (saved.length) {
         setPendingRestore(saved);
         return; // no spend until the user chooses
       }
@@ -390,35 +390,49 @@ export default function PlanView({ form, isBeginner, onBack }) {
   }
 
   if (!plan && pendingRestore) {
-    const when = pendingRestore.cached.savedAt ? new Date(pendingRestore.cached.savedAt).toLocaleString() : "";
-    const savedRole =
-      pendingRestore.cached.plan?.readinessTitle || pendingRestore.cached.plan?.hook || "your last generated plan";
     return (
       <div className="mx-auto max-w-lg py-16 fade-up">
         <div className="rounded-xl border border-brand-100 bg-white px-5 py-4">
-          <p className="t-label text-brand-600">You have a saved plan</p>
-          <p className="mt-2 text-sm leading-relaxed text-ink">
-            A plan you already generated{when ? ` on ${when}` : ""} is saved in this browser
-            {savedRole ? <> — “{shorten(String(savedRole), 90)}”</> : null}. Your current inputs don't exactly
-            match the ones that built it, so loading it is free while generating fresh is a paid call.
+          <p className="t-label text-brand-600">
+            You have {pendingRestore.length === 1 ? "a saved plan" : `${pendingRestore.length} saved plans`}
           </p>
-          <div className="mt-4 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              onClick={() => {
-                adoptCached(pendingRestore.cached);
-                setPendingRestore(null);
-              }}
-              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
-            >
-              Load saved plan — free
-            </button>
+          <p className="mt-2 text-sm leading-relaxed text-ink">
+            Plans you already generated are saved in this browser. Loading one is free and keeps its progress;
+            generating fresh is a paid call.
+          </p>
+          <ul className="mt-3 space-y-2">
+            {pendingRestore.map((s) => {
+              const when = s.cached.savedAt ? new Date(s.cached.savedAt).toLocaleString() : "";
+              const label =
+                s.cached.plan?.readinessTitle || s.cached.plan?.hook || "Generated plan";
+              const stops = s.cached.plan?.learningSequence?.length;
+              return (
+                <li key={s.key}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      adoptCached(s.cached);
+                      setPendingRestore(null);
+                    }}
+                    className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2.5 text-left hover:border-brand-300"
+                  >
+                    <span className="block text-sm font-medium text-ink">“{shorten(String(label), 80)}”</span>
+                    <span className="mt-0.5 block text-xs text-ink-faint">
+                      {when}
+                      {stops ? ` · ${stops} task${stops === 1 ? "" : "s"}` : ""} · load free
+                    </span>
+                  </button>
+                </li>
+              );
+            })}
+          </ul>
+          <div className="mt-4">
             <button
               type="button"
               onClick={() => setAttempt((a) => a + 1)}
               className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
             >
-              Generate a new plan (paid)
+              Generate a new plan from my current inputs (paid)
             </button>
           </div>
         </div>
@@ -3123,7 +3137,7 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
         </p>
       )}
       <p className="mt-3 text-xs text-ink-faint">
-        Nothing on this road assumes anything you don't already have — each stop is built from the one before it.
+        Each stop is built from the one before it — nothing here is ornamental.
       </p>
     </section>
   );
