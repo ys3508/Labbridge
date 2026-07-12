@@ -32,6 +32,8 @@ Purpose — what the plan OPTIMIZES FOR (changes emphasis, not just length):
 - career_move → favor durable foundations that outlast one role.
 - curious → a short, low-commitment taste; keep it light and inviting.
 
+OUTPUT SHAPE (the grammar enforces FLAT fields — map the content described below into them): strengths/gaps items are single strings "Point — detail". keyTerms items: "term — plain meaning". searchLinks items: "label | query". phases items: "Stage | timing | goal". The comprehension check lives in checkQuestion/checkOptions/checkAnswerIndex/checkExplanation; the concept in conceptExplanation/keyTerms/traps; the example in exampleSetup/exampleWalkThrough/exampleTakeaway; the task in taskTitle/managerRequest/givenInputs/steps/deliverable/timebox/doneWhen/stakeholders; the readiness project in readinessTitle/readinessWhy/horizon/horizonAssumed/phases. When a field does not apply (e.g. searchLinks on a non-networking module), return "" or [].
+
 PRODUCE THESE FIELDS (they realize the spine above):
 - hook: 2-3 sentences that LEAD WITH VALUE — how close they already are (what they bring covers the hard part) and what this path delivers to close the rest. This is the first thing they read; make it land. E.g. "You're most of the way there — your epidemiology training already covers the hard part of RWE. Here's the ~20% that gets you productive, and the path to close it." Not a neutral orientation; a reason to keep reading.
 - northStar: ONE sentence naming the concrete thing they'll be able to ship and for whom — their mission in plain words (e.g. "Build the evidence package a new RWE analyst ships in their first month"). Grounded in the actual plan; no invented company/dates (fidelity rules apply).
@@ -99,148 +101,100 @@ VOICE & HONESTY: Write in the person's own vocabulary where you can — translat
 
 DIVISION OF LABOR: You produce the plan's structure and prose — the topics, the ordering, the strengths/gaps, and the first task. You do NOT choose learning resources here; that happens in a separate step over a verified, retrieved candidate pool. So never name a specific book, paper, course, or URL in your output — refer to what to learn, not which resource to read.`;
 
-const strengthItem = {
+// SCHEMA notes: the API's structured-output grammar requires every object to be
+// strict (additionalProperties:false, fully enumerated) AND rejects large
+// compiled grammars — our rich nested schema hit that wall. So generation uses a
+// FLAT shape (strings + string-arrays are grammar-cheap; nested objects are
+// not), and toRichPlan() below adapts it to the nested shape the app consumes.
+const S = { type: "string" };
+const I = { type: "integer" };
+const ARR = { type: "array", items: { type: "string" } };
+const MODULE = {
   type: "object",
   additionalProperties: false,
-  properties: { point: { type: "string" }, detail: { type: "string" } },
-  required: ["point", "detail"],
+  properties: {
+    topic: S, closesGapIndex: I, why: S, context: S, bridgeFromBackground: S,
+    askYourTeam: ARR, searchLinks: ARR,
+    checkQuestion: S, checkOptions: ARR, checkAnswerIndex: I, checkExplanation: S,
+    conceptExplanation: S, keyTerms: ARR, traps: ARR,
+    exampleSetup: S, exampleWalkThrough: ARR, exampleTakeaway: S,
+    taskTitle: S, managerRequest: S, givenInputs: ARR, steps: ARR,
+    deliverable: S, timebox: S, doneWhen: S, stakeholders: S,
+    selfCheckCriteria: ARR, redFlags: ARR,
+  },
+  required: ["topic","closesGapIndex","why","context","bridgeFromBackground","askYourTeam","searchLinks","checkQuestion","checkOptions","checkAnswerIndex","checkExplanation","conceptExplanation","keyTerms","traps","exampleSetup","exampleWalkThrough","exampleTakeaway","taskTitle","managerRequest","givenInputs","steps","deliverable","timebox","doneWhen","stakeholders","selfCheckCriteria","redFlags"],
 };
-
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
-    hook: { type: "string" },
-    northStar: { type: "string" },
-    transferableStrengths: { type: "array", items: strengthItem },
-    knowledgeGaps: { type: "array", items: strengthItem },
-    learningSequence: {
-      type: "array",
-      items: {
-        type: "object",
-        additionalProperties: false,
-        properties: {
-          topic: { type: "string" },
-          closesGapIndex: { type: "integer" },
-          why: { type: "string" },
-          bridgeFromBackground: { type: "string" },
-          context: { type: "string" },
-          askYourTeam: {
-            type: "array",
-            items: { type: "string" },
-          },
-          searchLinks: {
-            type: "array",
-            items: {
-              type: "object",
-              additionalProperties: false,
-              properties: { label: { type: "string" }, query: { type: "string" } },
-              required: ["label", "query"],
-            },
-          },
-          comprehensionCheck: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              question: { type: "string" },
-              options: { type: "array", items: { type: "string" } },
-              answerIndex: { type: "integer" },
-              explanation: { type: "string" },
-            },
-            required: ["question", "options", "answerIndex", "explanation"],
-          },
-          concept: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              explanation: { type: "string" },
-              misconceptionToAvoid: { type: "string" },
-              traps: { type: "array", items: { type: "string" } },
-              keyTerms: {
-                type: "array",
-                items: {
-                  type: "object",
-                  additionalProperties: false,
-                  properties: { term: { type: "string" }, plainMeaning: { type: "string" } },
-                  required: ["term", "plainMeaning"],
-                },
-              },
-            },
-            required: ["explanation", "misconceptionToAvoid", "keyTerms"],
-          },
-          workedExample: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              setup: { type: "string" },
-              walkThrough: { type: "array", items: { type: "string" } },
-              takeaway: { type: "string" },
-            },
-            required: ["setup", "walkThrough", "takeaway"],
-          },
-          task: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              title: { type: "string" },
-              managerRequest: { type: "string" },
-              givenInputs: { type: "array", items: { type: "string" } },
-              deliverable: { type: "string" },
-              timebox: { type: "string" },
-              steps: { type: "array", items: { type: "string" } },
-              doneWhen: { type: "string" },
-              stakeholders: { type: "string" },
-            },
-            required: ["title", "managerRequest", "givenInputs", "deliverable", "timebox", "steps", "doneWhen", "stakeholders"],
-          },
-          selfCheck: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              criteria: { type: "array", items: { type: "string" } },
-              redFlags: { type: "array", items: { type: "string" } },
-            },
-            required: ["criteria", "redFlags"],
-          },
-        },
-        required: ["topic", "why", "bridgeFromBackground", "concept", "workedExample", "task", "selfCheck"],
-      },
-    },
-    firstTask: {
-      type: "object",
-      additionalProperties: false,
-      properties: {
-        title: { type: "string" },
-        why: { type: "string" },
-        horizon: { type: "string" },
-        horizonAssumed: { type: "boolean" },
-        phases: {
-          type: "array",
-          items: {
-            type: "object",
-            additionalProperties: false,
-            properties: {
-              stage: { type: "string" },
-              timing: { type: "string" },
-              goal: { type: "string" },
-            },
-            required: ["stage", "timing", "goal"],
-          },
-        },
-      },
-      required: ["title", "why", "horizon", "horizonAssumed", "phases"],
-    },
-    timelineNote: { type: "string" },
+    hook: S, northStar: S,
+    transferableStrengths: ARR, knowledgeGaps: ARR,
+    learningSequence: { type: "array", items: MODULE },
+    readinessTitle: S, readinessWhy: S, horizon: S,
+    horizonAssumed: { type: "boolean" }, phases: ARR, timelineNote: S,
   },
-  required: [
-    "hook",
-    "transferableStrengths",
-    "knowledgeGaps",
-    "learningSequence",
-    "firstTask",
-    "timelineNote",
-  ],
+  required: ["hook","northStar","transferableStrengths","knowledgeGaps","learningSequence","readinessTitle","readinessWhy","horizon","horizonAssumed","phases","timelineNote"],
 };
+
+// Adapt the flat generated shape to the rich nested plan the whole app consumes.
+function splitPair(str, sep) {
+  const i = (str || "").indexOf(sep);
+  return i === -1 ? [str || "", ""] : [str.slice(0, i), str.slice(i + sep.length)];
+}
+function pointDetail(arr) {
+  return (arr || []).filter(Boolean).map((x) => {
+    const [point, detail] = splitPair(x, " — ");
+    return { point: point.trim(), detail: detail.trim() };
+  });
+}
+function toRichPlan(f) {
+  return {
+    hook: f.hook,
+    northStar: f.northStar || "",
+    transferableStrengths: pointDetail(f.transferableStrengths),
+    knowledgeGaps: pointDetail(f.knowledgeGaps),
+    learningSequence: (f.learningSequence || []).map((m) => ({
+      topic: m.topic,
+      closesGapIndex: m.closesGapIndex,
+      why: m.why,
+      context: m.context,
+      bridgeFromBackground: m.bridgeFromBackground,
+      askYourTeam: (m.askYourTeam || []).filter(Boolean),
+      searchLinks: (m.searchLinks || []).filter(Boolean).map((x) => {
+        const [label, query] = splitPair(x, " | ");
+        return { label: label.trim(), query: (query || label).trim() };
+      }),
+      comprehensionCheck: m.checkQuestion
+        ? { question: m.checkQuestion, options: m.checkOptions || [], answerIndex: m.checkAnswerIndex || 0, explanation: m.checkExplanation || "" }
+        : undefined,
+      concept: {
+        explanation: m.conceptExplanation || "",
+        keyTerms: (m.keyTerms || []).filter(Boolean).map((x) => {
+          const [term, plainMeaning] = splitPair(x, " — ");
+          return { term: term.trim(), plainMeaning: plainMeaning.trim() };
+        }),
+        traps: (m.traps || []).filter(Boolean),
+        misconceptionToAvoid: (m.traps || [])[0] || "",
+      },
+      workedExample: { setup: m.exampleSetup || "", walkThrough: (m.exampleWalkThrough || []).filter(Boolean), takeaway: m.exampleTakeaway || "" },
+      task: {
+        title: m.taskTitle, managerRequest: m.managerRequest,
+        givenInputs: (m.givenInputs || []).filter(Boolean), steps: (m.steps || []).filter(Boolean),
+        deliverable: m.deliverable, timebox: m.timebox, doneWhen: m.doneWhen, stakeholders: m.stakeholders,
+      },
+      selfCheck: { criteria: (m.selfCheckCriteria || []).filter(Boolean), redFlags: (m.redFlags || []).filter(Boolean) },
+    })),
+    firstTask: {
+      title: f.readinessTitle, why: f.readinessWhy, horizon: f.horizon || "", horizonAssumed: !!f.horizonAssumed,
+      phases: (f.phases || []).filter(Boolean).map((x) => {
+        const parts = x.split(" | ");
+        return { stage: (parts[0] || "").trim(), timing: (parts[1] || "").trim(), goal: parts.slice(2).join(" | ").trim() };
+      }),
+    },
+    timelineNote: f.timelineNote,
+  };
+}
 
 const DEPTH_MEANING = {
   landscape: "understand the landscape — orientation, not mastery (stop one rung up)",
@@ -341,7 +295,12 @@ export async function POST(request) {
       console.error("plan route: response hit max_tokens; plan too large to fit.");
       return Response.json({ error: "Plan was too long to finish. Try again, or narrow the scope." }, { status: 500 });
     }
-    return Response.json({ plan: JSON.parse(block.text) });
+    const plan = toRichPlan(JSON.parse(block.text));
+    if (!Array.isArray(plan.learningSequence) || !plan.learningSequence.length || !plan.learningSequence.every((m) => m && m.topic && m.task?.title)) {
+      console.error("plan route: shape check failed on learningSequence");
+      return Response.json({ error: "The plan came back malformed. Retry — this one didn't bill correctly-shaped output." }, { status: 500 });
+    }
+    return Response.json({ plan });
   } catch (err) {
     if (err?.status === 401) return Response.json({ error: "Invalid API key." }, { status: 401 });
     if (err?.status === 429) return Response.json({ error: "Rate limited — try again shortly." }, { status: 429 });
