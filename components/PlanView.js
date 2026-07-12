@@ -216,6 +216,35 @@ export default function PlanView({ form, isBeginner, onBack }) {
   // 1) Generate the plan. `attempt` lets the error state offer an honest Retry
   //    (a paid call each time — user-initiated only, never automatic).
   const [attempt, setAttempt] = useState(0);
+  // Spend gate: the cache key hashes the full payload — including AI-extracted
+  // skill chips, which can word themselves differently between sessions. So the
+  // same person re-entering the same materials can MISS their exact key and
+  // silently re-bill a full generation. If any saved plan exists, offer it
+  // BEFORE spending; "generate new" stays one honest click away.
+  const [pendingRestore, setPendingRestore] = useState(null); // { key, savedAt, cached }
+  const newestSavedPlan = () => {
+    try {
+      let best = null;
+      for (let i = 0; i < localStorage.length; i++) {
+        const k = localStorage.key(i);
+        if (!k || !k.startsWith("lb_gen_")) continue;
+        const v = JSON.parse(localStorage.getItem(k) || "null");
+        if (v?.plan && (!best || (v.savedAt || 0) > (best.cached.savedAt || 0))) best = { key: k, cached: v };
+      }
+      return best;
+    } catch {
+      return null;
+    }
+  };
+  const adoptCached = (cached) => {
+    restoredRef.current = true;
+    setPlan(cached.plan);
+    if (cached.resources) {
+      setTopicResources(cached.resources);
+      setResourcesDone(true);
+    }
+    if (cached.check) setCheck(cached.check);
+  };
   useEffect(() => {
     let alive = true;
     setError(null);
@@ -223,17 +252,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
       try {
         const cached = JSON.parse(localStorage.getItem(genKey()) || "null");
         if (cached?.plan) {
-          restoredRef.current = true;
-          setPlan(cached.plan);
-          if (cached.resources) {
-            setTopicResources(cached.resources);
-            setResourcesDone(true);
-          }
-          if (cached.check) setCheck(cached.check);
+          adoptCached(cached);
           return;
         }
       } catch {}
+      const saved = newestSavedPlan();
+      if (saved) {
+        setPendingRestore(saved);
+        return; // no spend until the user chooses
+      }
     }
+    setPendingRestore(null);
     restoredRef.current = false;
     post("/api/plan", payload).then((d) => {
       if (!alive) return;
@@ -356,6 +385,43 @@ export default function PlanView({ form, isBeginner, onBack }) {
             explore a sample plan →
           </a>
         </p>
+      </div>
+    );
+  }
+
+  if (!plan && pendingRestore) {
+    const when = pendingRestore.cached.savedAt ? new Date(pendingRestore.cached.savedAt).toLocaleString() : "";
+    const savedRole =
+      pendingRestore.cached.plan?.readinessTitle || pendingRestore.cached.plan?.hook || "your last generated plan";
+    return (
+      <div className="mx-auto max-w-lg py-16 fade-up">
+        <div className="rounded-xl border border-brand-100 bg-white px-5 py-4">
+          <p className="t-label text-brand-600">You have a saved plan</p>
+          <p className="mt-2 text-sm leading-relaxed text-ink">
+            A plan you already generated{when ? ` on ${when}` : ""} is saved in this browser
+            {savedRole ? <> — “{shorten(String(savedRole), 90)}”</> : null}. Your current inputs don't exactly
+            match the ones that built it, so loading it is free while generating fresh is a paid call.
+          </p>
+          <div className="mt-4 flex flex-wrap items-center gap-3">
+            <button
+              type="button"
+              onClick={() => {
+                adoptCached(pendingRestore.cached);
+                setPendingRestore(null);
+              }}
+              className="rounded-lg bg-brand-500 px-4 py-2 text-sm font-semibold text-white hover:bg-brand-600"
+            >
+              Load saved plan — free
+            </button>
+            <button
+              type="button"
+              onClick={() => setAttempt((a) => a + 1)}
+              className="rounded-lg border border-slate-200 bg-white px-4 py-2 text-sm font-medium text-ink-soft hover:border-brand-300 hover:text-ink"
+            >
+              Generate a new plan (paid)
+            </button>
+          </div>
+        </div>
       </div>
     );
   }
