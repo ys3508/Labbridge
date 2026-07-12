@@ -445,7 +445,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
   };
   const completeAndAdvance = (i) => {
     setWelcomeBack(null);
-    markDone(i);
+    // Earned-state only: moving on is always allowed, but the done-ledger (sidebar
+    // ✓, briefing gap chips) records a task only when its draft actually exists.
+    if ((drafts[i] || "").trim()) markDone(i);
     if (i < modules.length - 1) {
       setActiveIndex(i + 1);
       setTaskMoment(i + 1, 0);
@@ -684,6 +686,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   }}
                   checks={checksByTask[activeIndex] || []}
                   onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
+                  prevDraft={activeIndex > 0 ? drafts[activeIndex - 1] || "" : null}
+                  prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
                 />
               )
             )}
@@ -734,9 +738,7 @@ function NodeResources({ resources, done }) {
   }
   if (!resources?.length) {
     return (
-      <p className="text-xs italic text-ink-faint">
-        Everything you need to do this is above — no outside reading required.
-      </p>
+      <p className="text-xs italic text-ink-faint">No extra reading attached to this task.</p>
     );
   }
   return (
@@ -1197,9 +1199,11 @@ function getMomentMeta(step) {
     moments.push({ key: "question", label: "Check", objective: "Did it land?" });
   }
   if (task.steps?.length) moments.push({ key: "practice", label: "Try", objective: "Can I do it myself?" });
+  // Review reshuffle: you write BEFORE you're reviewed. Draft precedes Coach so
+  // the self-check + AI review react to a draft that exists.
   moments.push(
-    { key: "coach", label: "Coach", objective: "Am I right?" },
     { key: "artifact", label: "Draft", objective: "What did I produce?" },
+    { key: "coach", label: "Coach", objective: "Am I right?" },
     { key: "reward", label: "Wrap", objective: "What changed in my project?" }
   );
   return moments;
@@ -1385,6 +1389,11 @@ function Module({
   onMomentChange,
   checks,
   onToggleCheck,
+  // `focus` was missing here — JSX below silently resolved it to window.focus
+  // (always truthy), so the moment dots were hidden even outside focus mode.
+  focus,
+  prevDraft,
+  prevArtifact,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1437,6 +1446,8 @@ function Module({
         onMomentChange={onMomentChange}
         checks={checks}
         onToggleCheck={onToggleCheck}
+        prevDraft={prevDraft}
+        prevArtifact={prevArtifact}
       />
     </section>
   );
@@ -1465,6 +1476,8 @@ function MomentFlow({
   onMomentChange,
   checks,
   onToggleCheck,
+  prevDraft,
+  prevArtifact,
 }) {
   const [choice, setChoice] = useState(null);
   const checkSet = new Set(checks || []);
@@ -1490,6 +1503,8 @@ function MomentFlow({
     toggleCheck: onToggleCheck,
     nextLabel,
     isDone,
+    prevDraft,
+    prevArtifact,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -1566,7 +1581,7 @@ function MomentFlow({
           >
             Back
           </button>
-          <span className="hidden text-xs text-ink-faint sm:inline">{current.objective}</span>
+          {/* (center label removed — it repeated the beat header on every page) */}
           <button
             type="button"
             onClick={goNext}
@@ -1610,6 +1625,8 @@ function buildMoments({
   toggleCheck,
   nextLabel,
   isDone,
+  prevDraft,
+  prevArtifact,
 }) {
   // Fixed grammar, variable inclusion. Code assembles the beats a task has content
   // for: Brief/Coach/Artifact/Reward always; Question/Model/Visual/Practice when
@@ -1621,14 +1638,37 @@ function buildMoments({
   const moments = [];
 
   // BRIEF — Why am I here?
+  // Task-boundary honesty: tasks chain on purpose, but the chain must read REAL
+  // state. If the previous task's file is empty, say so; if it's written, quote it.
+  // Quote the user's WORDS, not the template's scaffolding: skip headings,
+  // label lines ("Usable for:"), and empty bullets.
+  const prevQuote = (prevDraft || "")
+    .split("\n")
+    .map((l) => l.trim())
+    .filter((l) => l && !/^#+\s/.test(l) && !/[:：]$/.test(l) && l !== "-" && !/^-\s*$/.test(l))
+    .map((l) => l.replace(/^-\s+/, ""))
+    .filter((l) => l.length > 12)[0];
   moments.push({
     key: "brief",
     label: "Brief",
     title: task.title || step.topic,
     objective: "Why am I here?",
-    kicker: "Start with the job, not the lesson.",
+    kicker: null,
     body: (
       <div className="space-y-4">
+        {moduleIndex > 0 && prevDraft !== null && !prevDraft.trim() && (
+          <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm leading-relaxed text-amber-900">
+            <span className="font-medium">Heads up:</span> {prevArtifact} from the previous task is still
+            empty. You can do this task, but it builds on that file — go back anytime, or continue and
+            accept the guesswork.
+          </div>
+        )}
+        {moduleIndex > 0 && prevQuote && (
+          <div className="rounded-lg bg-slate-50 px-3 py-2.5">
+            <p className="t-label text-ink-faint">From your {prevArtifact}</p>
+            <p className="mt-1 text-sm italic leading-relaxed text-ink-soft">“{shorten(prevQuote, 140)}”</p>
+          </div>
+        )}
         {step.context && (
           <p className="max-w-prose t-body text-ink">{step.context}</p>
         )}
@@ -1642,9 +1682,17 @@ function buildMoments({
           <p className="mt-1 text-sm font-medium leading-relaxed text-ink">{task.deliverable || artifact}</p>
         </div>
         {task.givenInputs?.length > 0 && (
-          <p className="text-sm leading-relaxed text-ink-soft">
-            <span className="font-medium text-ink">You're given:</span> {task.givenInputs.join(", ")}
-          </p>
+          <div className="text-sm leading-relaxed text-ink-soft">
+            <p className="font-medium text-ink">You're given:</p>
+            <ul className="mt-1 space-y-0.5">
+              {task.givenInputs.map((g, k) => (
+                <li key={k} className="flex gap-1.5">
+                  <span className="text-ink-faint">·</span>
+                  <span>{g}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
         {task.stakeholders && (
           <p className="text-sm leading-relaxed text-ink-soft">
@@ -1680,15 +1728,13 @@ function buildMoments({
       body: (
         <div className="space-y-4">
           <p className="max-w-prose whitespace-pre-line t-body text-ink">{concept.explanation}</p>
+          {/* Definitions live in the Toolbox glossary (≔) — repeating them here
+              re-taught the same terms on every page (review item #51). */}
           {concept.keyTerms?.length > 0 && (
-            <dl className="border-t border-slate-100 pt-2">
-              {concept.keyTerms.map((k, j) => (
-                <div key={j} className="py-0.5 text-xs">
-                  <dt className="inline font-semibold text-ink">{k.term}</dt>
-                  <dd className="inline text-ink-soft"> — {k.plainMeaning}</dd>
-                </div>
-              ))}
-            </dl>
+            <p className="text-xs text-ink-faint">
+              Terms used here ({concept.keyTerms.map((k) => k.term).join(" · ")}) are in the glossary — the ≔ icon
+              on the right.
+            </p>
           )}
           {(concept.traps?.length > 0 || concept.misconceptionToAvoid) && (
             <div className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2">
@@ -1759,7 +1805,7 @@ function buildMoments({
       label: "Check",
       title: comprehension.question,
       objective: "Did it land?",
-      kicker: "Answer from what you just learned — retrieving it is what makes it stick.",
+      kicker: "Answer from what you just read.",
       body: (
         <div className="space-y-3">
           <div className="grid gap-2">
@@ -1800,14 +1846,16 @@ function buildMoments({
     });
   }
 
-  // PRACTICE — Can I do it myself? (only if steps exist)
+  // PRACTICE — Can I do it myself? One page: here's the job AND the bar.
+  // Success criteria are an input to the work, not a postscript (review #33) —
+  // the same criteria the Coach review grades against are visible before writing.
   if (task.steps?.length) {
     moments.push({
       key: "practice",
       label: "Try",
       title: "Make the first move.",
       objective: "Can I do it myself?",
-      kicker: "Small action, real project.",
+      kicker: "Here's the job, and the bar it will be judged against.",
       body: (
         <div>
           <ol className="space-y-2">
@@ -1816,15 +1864,56 @@ function buildMoments({
                 key={k}
                 className="flex max-w-prose gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink"
               >
-                <span className="pt-0.5 text-brand-600">□</span>
+                <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-50 text-xs font-semibold text-brand-700 ring-1 ring-brand-100">
+                  {k + 1}
+                </span>
                 <span>{s}</span>
               </li>
             ))}
           </ol>
-          {task.givenInputs?.length > 0 && (
-            <p className="mt-3 text-xs leading-relaxed text-ink-soft">
-              <span className="font-medium text-ink">Use:</span> {task.givenInputs.join(", ")}
+          {task.doneWhen && (
+            <p className="mt-3 rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
+              <span className="font-medium">Done when:</span> {task.doneWhen}
             </p>
+          )}
+          {criteria.length > 0 && (
+            <div className="mt-3 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+              <p className="t-label text-ink-faint">It will be checked against</p>
+              <ul className="mt-1.5 space-y-1">
+                {criteria.map((cr, k) => (
+                  <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                    <span className="text-brand-600">✓</span>
+                    <span>{cr}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {redFlags.length > 0 && (
+            <div className="mt-3 rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
+              <p className="t-label text-rose-600">Watch for</p>
+              <ul className="mt-1.5 space-y-1">
+                {redFlags.map((rf, k) => (
+                  <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                    <span className="text-rose-500">△</span>
+                    <span>{rf}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {task.givenInputs?.length > 0 && (
+            <div className="mt-3 text-xs leading-relaxed text-ink-soft">
+              <p className="font-medium text-ink">Use:</p>
+              <ul className="mt-1 space-y-0.5">
+                {task.givenInputs.map((g, k) => (
+                  <li key={k} className="flex gap-1.5">
+                    <span className="text-ink-faint">·</span>
+                    <span>{g}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
           )}
           {step.searchLinks?.length > 0 && (
             <div className="mt-3">
@@ -1852,13 +1941,44 @@ function buildMoments({
     });
   }
 
-  // COACH — Am I right? (honest self-check: the user ticks, nothing auto-responds)
+  // ARTIFACT — What did I produce? (reshuffled BEFORE Coach: you write, then
+  // you're reviewed. An empty box in front of someone with no data is where the
+  // task dies — the template makes the first keystroke free.)
+  moments.push({
+    key: "artifact",
+    label: "Draft",
+    title: "Write your draft.",
+    objective: "What did I produce?",
+    kicker: "This is where it becomes yours — part of your final project.",
+    body: (
+      <div className="space-y-3">
+        {!(draft || "").trim() && (
+          <button
+            type="button"
+            onClick={() => onDraftChange(draftTemplate(task, artifact))}
+            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 hover:border-brand-400"
+          >
+            Start from a template — the memo shape, ready to fill
+          </button>
+        )}
+        <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+        {task.doneWhen && (
+          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
+            <span className="font-medium">Done when:</span> {task.doneWhen}
+          </p>
+        )}
+        <NodeResources resources={resources} done={resourcesDone} />
+      </div>
+    ),
+  });
+
+  // COACH — Am I right? (self-check + a real AI review of the draft that now exists)
   moments.push({
     key: "coach",
     label: "Coach",
-    title: "Self-check first.",
+    title: "Self-check, then get a review.",
     objective: "Am I right?",
-    kicker: "Tick these against your own draft. It's ready for AI review when they all hold.",
+    kicker: "Tick these against your draft, then have it reviewed against the same bar.",
     body: (
       <div className="space-y-3">
         {criteria.length > 0 && (
@@ -1901,41 +2021,32 @@ function buildMoments({
             </ul>
           </div>
         )}
-        <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-ink-faint">
-          AI review is coming — soon you'll be able to paste your draft and have LabBridge check it against these
-          criteria. For now, judge it yourself.
-        </p>
+        <CoachReview
+          draft={draft}
+          task={task}
+          step={step}
+          criteria={criteria}
+          redFlags={redFlags}
+          moduleIndex={moduleIndex}
+        />
       </div>
     ),
   });
 
-  // ARTIFACT — What did I produce?
-  moments.push({
-    key: "artifact",
-    label: "Draft",
-    title: "Write your draft.",
-    objective: "What did I produce?",
-    kicker: "This is where it becomes yours — part of your final project.",
-    body: (
-      <div className="space-y-3">
-        <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
-        {task.doneWhen && (
-          <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
-            <span className="font-medium">Done when:</span> {task.doneWhen}
-          </p>
-        )}
-        <NodeResources resources={resources} done={resourcesDone} />
-      </div>
-    ),
-  });
-
-  // REWARD — What changed in my project? (reads live state)
+  // REWARD — What changed in my project? (reads live state, and only SAYS what
+  // the state supports. The gap-closed sentence is the product's core currency —
+  // it is never printed for a task whose draft is empty. Review item #44: the old
+  // `doneAsIf` here fabricated completion from navigation alone.)
   const ticked = criteria.filter((_, k) => checks.has(`c${k}`)).length;
   const hasDraft = (draft || "").trim().length > 0;
-  const doneAsIf = new Set(done || []);
-  doneAsIf.add(moduleIndex);
-  const gapReward = getGapClosedReward(plan, modules, done || new Set(), doneAsIf, moduleIndex, roleName);
-  const mirrorReward = doneAsIf.size >= (modules || []).length
+  const allTicked = criteria.length === 0 || ticked === criteria.length;
+  const earned = hasDraft && allTicked;
+  const doneWith = new Set(done || []);
+  if (earned) doneWith.add(moduleIndex);
+  const gapReward = earned
+    ? getGapClosedReward(plan, modules, done || new Set(), doneWith, moduleIndex, roleName)
+    : null;
+  const mirrorReward = earned && doneWith.size >= (modules || []).length
     ? getFinalMirrorReward(plan, modules, roleName)
     : null;
   moments.push({
@@ -1947,6 +2058,24 @@ function buildMoments({
     body: (
       <div className="space-y-3">
         {gapReward && <GapClosedReward reward={gapReward} />}
+        {!hasDraft && (
+          <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
+            <p className="text-sm font-semibold text-amber-900">This task isn't done yet.</p>
+            <p className="mt-1 text-sm leading-relaxed text-amber-900">
+              {artifact} is still empty. Nothing here is graded — but the next task builds on this file.
+              Go back and write it, or move on and accept the gap.
+            </p>
+          </div>
+        )}
+        {hasDraft && !allTicked && (
+          <div className="rounded-xl border border-slate-200 bg-white px-4 py-3">
+            <p className="text-sm font-semibold text-ink">Draft in — not yet checked through.</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              {criteria.length - ticked} of {criteria.length} criteria still open on the Coach page. The gap
+              counts as closed when the draft holds against all of them.
+            </p>
+          </div>
+        )}
         {/* Visual-design spec §5: the Wrap is a work RECEIPT — line items, no banner energy. */}
         <div className="divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
           <div className="px-4 py-3">
@@ -2001,7 +2130,7 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           rows={4}
-          placeholder="Start writing the artifact here. What did you notice first?"
+          placeholder="Start with the bottom line: what can this support, what can't it support yet, and what must the team confirm?"
           className="w-full resize-y border-0 bg-white px-3 py-2 t-body text-ink focus:outline-none focus:ring-0"
         />
       </label>
@@ -2009,6 +2138,151 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
   );
 }
 
+
+// Review item #41: a blank box in front of someone with no data is where the
+// task dies. The template is code-built from the task's own fields (deliverable,
+// steps) — universal across fields, no extra generation, and it enforces the
+// structure the Coach review grades.
+function draftTemplate(task, artifact) {
+  const lines = [
+    `# ${task.deliverable || artifact}`,
+    "",
+    "## Bottom line",
+    "This is usable for:",
+    "- ",
+    "",
+    "It is not yet sufficient for:",
+    "- ",
+    "",
+  ];
+  (task.steps || []).forEach((s, i) => {
+    lines.push(`## ${i + 1}. ${s}`, "- ", "");
+  });
+  lines.push("## Questions for the team", "- ");
+  return lines.join("\n");
+}
+
+// Review item #34: the load-bearing loop-closer. One model call grades the draft
+// against the task's own criteria + red flags. Button-triggered only (never
+// auto-fires — each review is a real, if tiny, API spend); the last review is
+// kept per task so a refresh doesn't re-bill.
+function CoachReview({ draft, task, step, criteria, redFlags, moduleIndex }) {
+  const storeKey = `lb_review_${moduleIndex}`;
+  const [result, setResult] = useState(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      return JSON.parse(localStorage.getItem(storeKey) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const hasDraft = (draft || "").trim().length > 0;
+
+  const run = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft,
+          taskTitle: task.title || step.topic || "",
+          deliverable: task.deliverable || "",
+          doneWhen: task.doneWhen || "",
+          steps: task.steps || [],
+          criteria,
+          redFlags,
+          context: step.context || "",
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Review failed.");
+      setResult(data.review);
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(data.review));
+      } catch {}
+    } catch (e) {
+      setError(e?.message || "Review failed.");
+    }
+    setBusy(false);
+  };
+
+  if (!hasDraft) {
+    return (
+      <p className="rounded-lg border border-dashed border-slate-300 bg-slate-50 px-3 py-2 text-xs text-ink-faint">
+        Nothing to review yet — your draft is empty. Go back one page and write a first pass; the review
+        reacts to what you actually wrote.
+      </p>
+    );
+  }
+
+  const statusGlyph = (s) => (s === "met" ? "✓" : s === "thin" ? "△" : "✕");
+  const statusColor = (s) => (s === "met" ? "text-emerald-600" : s === "thin" ? "text-amber-600" : "text-rose-600");
+
+  return (
+    <div className="space-y-2">
+      <button
+        type="button"
+        onClick={run}
+        disabled={busy}
+        className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+      >
+        {busy ? "Reviewing…" : result ? "Review again" : "Review my draft"}
+      </button>
+      {error && <p className="text-xs text-rose-600">{error}</p>}
+      {result && (
+        <div className="rounded-lg border border-brand-100 bg-white px-3 py-2.5">
+          <p className="t-label text-brand-600">Review</p>
+          {result.overall && <p className="mt-1 text-sm leading-relaxed text-ink">{result.overall}</p>}
+          {result.criteria?.length > 0 && (
+            <ul className="mt-2 space-y-1.5">
+              {result.criteria.map((c, k) => (
+                <li key={k} className="flex gap-1.5 text-xs leading-relaxed">
+                  <span className={`shrink-0 ${statusColor(c.status)}`}>{statusGlyph(c.status)}</span>
+                  <span className="text-ink-soft">
+                    <span className="font-medium text-ink">{shorten(criteria[k] || "", 70)}</span> — {c.note}
+                  </span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {result.redFlagHits?.length > 0 && (
+            <div className="mt-2 rounded-md bg-rose-50 px-2.5 py-1.5">
+              <p className="t-label text-rose-600">Caught in your draft</p>
+              <ul className="mt-1 space-y-1">
+                {result.redFlagHits.map((h, k) => (
+                  <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-rose-800">
+                    <span>△</span>
+                    <span>{h}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+          {result.nextEdits?.length > 0 && (
+            <div className="mt-2">
+              <p className="t-label text-ink-faint">Do next</p>
+              <ol className="mt-1 space-y-1">
+                {result.nextEdits.map((e, k) => (
+                  <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink">
+                    <span className="font-semibold text-brand-700">{k + 1}.</span>
+                    <span>{e}</span>
+                  </li>
+                ))}
+              </ol>
+            </div>
+          )}
+          <p className="mt-2 text-[11px] text-ink-faint">
+            A starting point, not a sign-off — your team's conventions win.
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function GapClosedReward({ reward }) {
   return (
