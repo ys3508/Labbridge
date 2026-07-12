@@ -249,6 +249,7 @@ Yes — with one honest rule: **cite from fetched text, never from memory** (a m
 
 **Q (Sissi): "What actually costs API? If I scroll around a generated plan, does that bill?" — then she topped up.**
 Mapped every action to its cost (scrolling/working in a plan = free forever; building = ~$0.35-0.50; each settled resume edit = a small Haiku call) — and the audit found a real spend trap: **the plan lived only in memory, so every page refresh re-billed a full Opus generation.** Shipped the armor before her first paid run: a **generation cache** — plan + resources + self-check stored in localStorage keyed by an input hash. Same inputs → the paid plan loads instantly, free; changed inputs or Retry → fresh generation, cache overwritten; demo mode bypasses (personas share an empty form and would collide). Also flipped `WEB_AUGMENT` off for validation economy. Pay once per plan; own it.
+**Follow-up: "can you make it save this time's plan?"** — the cache was already live, but her phrasing exposed the missing half: the cache keeps a plan *in the browser*; it doesn't give you a *file*. Added **"Download this plan (.md)"** to the Why-this-plan drawer — the full generated plan (mission, strengths/gaps, every task's context/concept/traps/example/check/assignment/ask-your-team/self-check, the readiness arc) as portable markdown. A paid plan is now savable, shareable, and reviewable outside the app — exactly what validation day needs.
 
 ---
 

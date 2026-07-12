@@ -2191,6 +2191,13 @@ function PlanDrawer({ plan, check, checking, payload, showPayload, onTogglePaylo
             <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
               ← Back to edit
             </button>
+            <a
+              href={`data:text/markdown;charset=utf-8,${encodeURIComponent(planMarkdown(plan))}`}
+              download="labbridge-plan.md"
+              className="text-xs font-medium text-brand-700 underline decoration-brand-200 underline-offset-2"
+            >
+              Download this plan (.md)
+            </a>
             <button type="button" onClick={onTogglePayload} className="text-xs text-ink-faint hover:text-ink-soft">
               {showPayload ? "Hide" : "Show"} what the generator received
             </button>
@@ -2965,4 +2972,69 @@ function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, o
 function youtubeId(url) {
   const m = (url || "").match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([\w-]{11})/);
   return m ? m[1] : null;
+}
+
+
+// The full generated plan as a portable markdown file — for saving a paid plan
+// outside the browser and sharing it (validation reviews, expert spot-checks).
+function planMarkdown(plan) {
+  const L = [];
+  const push = (...x) => L.push(...x, "");
+  push(`# Onboarding plan`);
+  if (plan.northStar) push(`**Mission:** ${plan.northStar}`);
+  if (plan.hook) push(plan.hook);
+  if (plan.transferableStrengths?.length) {
+    push(`## What you already bring`);
+    plan.transferableStrengths.forEach((x) => push(`- **${x.point}** — ${x.detail}`));
+  }
+  if (plan.knowledgeGaps?.length) {
+    push(`## What's actually missing`);
+    plan.knowledgeGaps.forEach((x) => push(`- **${x.point}** — ${x.detail}`));
+  }
+  (plan.learningSequence || []).forEach((m, i) => {
+    push(`## Task ${i + 1}: ${m.task?.title || m.topic}`);
+    if (m.context) push(m.context);
+    if (m.why) push(`**Why now:** ${m.why}`);
+    if (m.bridgeFromBackground) push(`**Bridge:** ${m.bridgeFromBackground}`);
+    if (m.concept?.explanation) push(`### Concept`, m.concept.explanation);
+    (m.concept?.keyTerms || []).forEach((k) => push(`- **${k.term}** — ${k.plainMeaning}`));
+    const traps = m.concept?.traps?.length ? m.concept.traps : m.concept?.misconceptionToAvoid ? [m.concept.misconceptionToAvoid] : [];
+    if (traps.length) {
+      push(`### Field-tested traps`);
+      traps.forEach((t) => push(`- ${t}`));
+    }
+    if (m.workedExample?.setup) {
+      push(`### Worked example`, m.workedExample.setup);
+      (m.workedExample.walkThrough || []).forEach((x, k) => push(`${k + 1}. ${x}`));
+      if (m.workedExample.takeaway) push(`**Takeaway:** ${m.workedExample.takeaway}`);
+    }
+    if (m.comprehensionCheck?.question)
+      push(`### Check`, m.comprehensionCheck.question, `Answer: ${m.comprehensionCheck.options?.[m.comprehensionCheck.answerIndex] || ""} — ${m.comprehensionCheck.explanation || ""}`);
+    if (m.task) {
+      push(`### Assignment`);
+      if (m.task.managerRequest) push(`> ${m.task.managerRequest}`);
+      if (m.task.givenInputs?.length) push(`**Given:** ${m.task.givenInputs.join(", ")}`);
+      (m.task.steps || []).forEach((x, k) => push(`${k + 1}. ${x}`));
+      if (m.task.deliverable) push(`**Deliverable:** ${m.task.deliverable}`);
+      if (m.task.timebox) push(`**Timebox:** ${m.task.timebox}`);
+      if (m.task.doneWhen) push(`**Done when:** ${m.task.doneWhen}`);
+      if (m.task.stakeholders) push(`**Who consumes it:** ${m.task.stakeholders}`);
+    }
+    if (m.askYourTeam?.length) {
+      push(`### Ask your team`);
+      m.askYourTeam.forEach((q) => push(`- ${q}`));
+    }
+    if (m.selfCheck?.criteria?.length) {
+      push(`### Self-check`);
+      m.selfCheck.criteria.forEach((c) => push(`- [ ] ${c}`));
+      (m.selfCheck.redFlags || []).forEach((r) => push(`- ⚠ ${r}`));
+    }
+  });
+  if (plan.firstTask) {
+    push(`## Readiness project: ${plan.firstTask.title || ""}`);
+    if (plan.firstTask.why) push(plan.firstTask.why);
+    (plan.firstTask.phases || []).forEach((ph) => push(`- **${ph.stage}** (${ph.timing}): ${ph.goal}`));
+  }
+  if (plan.timelineNote) push(`**Pace:** ${plan.timelineNote}`);
+  return L.join("\n");
 }
