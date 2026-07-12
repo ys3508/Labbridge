@@ -77,6 +77,42 @@ const FIRSTTASK_SCHEMA = {
   required: ["missing_prerequisites", "vague_points", "scope_concern", "needs_review", "pass"],
 };
 
+// Review #55 — the un-teach scan. Unlike the two comparison checkers above,
+// this one is ALLOWED domain knowledge, because its question is exactly "does
+// this teach something a senior practitioner would have to un-teach?" The
+// review found one confident, fluent, wrong simplification per module (lab
+// claims ≠ lab values; first fill ≠ initiation) — the failure mode a fluent
+// generator fails invisibly and a targeted second pass catches well.
+const UNTEACH_SYSTEM = `You are a SENIOR PRACTITIONER doing a technical review of teaching content for your own field. Your ONLY question, for each claim the content teaches: "if a new hire repeated this to me or acted on it, would I have to correct them?"
+
+RULES
+- Flag ONLY claims that are wrong or dangerously oversimplified AS STATED — the "fine for a lesson, dangerous on the job" class (e.g. teaching "first prescription fill = treatment start" without a look-back; calling a lab ORDER a lab VALUE; "drug fill confirms the diagnosis" for a non-specific drug).
+- Do NOT flag: correct simplifications, claims properly hedged or flagged as conventions to confirm locally, style, or depth choices.
+- Quote the claim as taught (short), then say what a senior person would correct it TO, in one sentence.
+- Maximum 5 findings, most dangerous first. If nothing qualifies, return an empty list and pass=true.`;
+
+const UNTEACH_SCHEMA = {
+  type: "object",
+  additionalProperties: false,
+  properties: {
+    findings: {
+      type: "array",
+      items: {
+        type: "object",
+        additionalProperties: false,
+        properties: {
+          module: { type: "string" },
+          claim: { type: "string" },
+          correction: { type: "string" },
+        },
+        required: ["module", "claim", "correction"],
+      },
+    },
+    pass: { type: "boolean" },
+  },
+  required: ["findings", "pass"],
+};
+
 async function runCheck(system, schema, userText) {
   const message = await client.messages.create({
     model: PLAN_MODEL,
@@ -133,12 +169,29 @@ export async function POST(request) {
   const earliestWindow = firstPhase?.timing ? `the earliest phase's window ("${firstPhase.timing}")` : timeWindow(timeline);
   const firstTaskPrompt = `INPUT A — First task, exactly as written to the learner:\n${firstTaskText}\n\nINPUT B — Skills available before the task (what they already had + what the plan covers):\n${coveredSkills}\n\nINPUT C — Time budget: ${earliestWindow}\n\nRun the three checks per your rules.`;
 
+  const taughtContent = plan.learningSequence
+    .map((s, i) => {
+      const c = s.concept || {};
+      const ex = s.workedExample || {};
+      return [
+        `TASK ${i + 1}: ${s.topic}`,
+        c.explanation && `Teaches: ${String(c.explanation).slice(0, 1200)}`,
+        ex.setup && `Example: ${String(ex.setup).slice(0, 300)} | ${(ex.walkThrough || []).join(" | ").slice(0, 600)} | ${String(ex.takeaway || "").slice(0, 300)}`,
+        (c.traps || []).length && `Traps taught: ${(c.traps || []).join(" · ").slice(0, 500)}`,
+      ]
+        .filter(Boolean)
+        .join("\n");
+    })
+    .join("\n\n");
+  const unteachPrompt = `The teaching content of an onboarding plan for the role "${plan.readinessTitle || plan.northStar || "the target role"}". Review it per your rules.\n\n${taughtContent}`;
+
   try {
-    const [overteaching, firstTask] = await Promise.all([
+    const [overteaching, firstTask, unteach] = await Promise.all([
       runCheck(OVERTEACH_SYSTEM, OVERTEACH_SCHEMA, overteachPrompt),
       runCheck(FIRSTTASK_SYSTEM, FIRSTTASK_SCHEMA, firstTaskPrompt),
+      runCheck(UNTEACH_SYSTEM, UNTEACH_SCHEMA, unteachPrompt),
     ]);
-    return Response.json({ overteaching, firstTask });
+    return Response.json({ overteaching, firstTask, unteach });
   } catch (err) {
     if (err?.status === 401) return Response.json({ error: "Invalid API key." }, { status: 401 });
     console.error("check route error:", err?.message || err);

@@ -237,6 +237,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
     }
   };
   const adoptCached = (cached) => {
+    try {
+      localStorage.removeItem("lb_gen_inflight");
+    } catch {}
     restoredRef.current = true;
     setPlan(cached.plan);
     if (cached.resources) {
@@ -257,14 +260,27 @@ export default function PlanView({ form, isBeginner, onBack }) {
         }
       } catch {}
       const saved = savedPlans();
-      if (saved.length) {
+      // #64: a refresh DURING generation used to silently re-fire a full paid
+      // call (the cache only saves on completion). A fresh in-flight marker now
+      // routes to the gate instead — regenerating is always an explicit click.
+      let interrupted = false;
+      try {
+        interrupted = Date.now() - Number(localStorage.getItem("lb_gen_inflight") || 0) < 10 * 60 * 1000;
+      } catch {}
+      if (saved.length || interrupted) {
         setPendingRestore(saved);
         return; // no spend until the user chooses
       }
     }
     setPendingRestore(null);
     restoredRef.current = false;
+    try {
+      localStorage.setItem("lb_gen_inflight", String(Date.now()));
+    } catch {}
     post("/api/plan", payload).then((d) => {
+      try {
+        localStorage.removeItem("lb_gen_inflight");
+      } catch {}
       if (!alive) return;
       if (d?.plan) {
         setPlan(d.plan);
@@ -394,11 +410,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
       <div className="mx-auto max-w-lg py-16 fade-up">
         <div className="rounded-xl border border-brand-100 bg-white px-5 py-4">
           <p className="t-label text-brand-600">
-            You have {pendingRestore.length === 1 ? "a saved plan" : `${pendingRestore.length} saved plans`}
+            {pendingRestore.length === 0
+              ? "A generation was already in progress"
+              : pendingRestore.length === 1
+                ? "You have a saved plan"
+                : `You have ${pendingRestore.length} saved plans`}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-ink">
-            Plans you already generated are saved in this browser. Loading one is free and keeps its progress;
-            generating fresh is a paid call.
+            {pendingRestore.length === 0
+              ? "It looks like a plan was still being generated when this page reloaded. That call may have completed and been lost — generating again is a new paid call, so it stays your choice."
+              : "Plans you already generated are saved in this browser. Loading one is free and keeps its progress; generating fresh is a paid call."}
           </p>
           <ul className="mt-3 space-y-2">
             {pendingRestore.map((s) => {
@@ -817,17 +838,18 @@ function NodeResources({ resources, done }) {
     return <p className="text-xs text-ink-faint">Finding extra explanations for this task…</p>;
   }
   if (!resources?.length) {
-    return (
-      <p className="text-xs italic text-ink-faint">No extra reading attached to this task.</p>
-    );
+    return null; // review #77: announcing an absence nobody asked about was dead space
   }
   return (
     <details className="group rounded-lg border border-slate-100 bg-white px-4 py-3">
       <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-xs text-ink-soft">
-        <span>
+        <span className="min-w-0">
           <span className="font-semibold uppercase tracking-wide text-ink-faint">Need another explanation?</span>
+          {/* #86: name the verified source up front — a hidden count reads as a
+              hallucination risk; the actual titles are catalog-verified. */}
           <span className="ml-2 text-ink-faint">
-            {resources.length} analyst-vetted source{resources.length === 1 ? "" : "s"}
+            {shorten(resources[0]?.title || "", 60)}
+            {resources.length > 1 ? ` + ${resources.length - 1} more` : ""} · verified
           </span>
         </span>
         <span className="text-ink-faint transition-transform group-open:rotate-180">▾</span>
@@ -1995,6 +2017,9 @@ function buildMoments({
               </ul>
             </div>
           )}
+          <div className="mt-3">
+            <TaskMaterials step={step} task={task} moduleIndex={moduleIndex} />
+          </div>
           {step.searchLinks?.length > 0 && (
             <div className="mt-3">
               <p className="t-label text-ink-faint">Start your search</p>
@@ -2038,10 +2063,11 @@ function buildMoments({
             onClick={() => onDraftChange(draftTemplate(task, artifact))}
             className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 hover:border-brand-400"
           >
-            Start from a template — the memo shape, ready to fill
+            {templateButtonLabel(task)}
           </button>
         )}
         <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+        <TaskMaterials step={step} task={task} moduleIndex={moduleIndex} />
         {task.doneWhen && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
             <span className="font-medium">Done when:</span> {task.doneWhen}
@@ -2058,7 +2084,9 @@ function buildMoments({
     label: "Coach",
     title: "Self-check, then get a review.",
     objective: "Am I right?",
-    kicker: "Tick these against your draft, then have it reviewed against the same bar.",
+    // Review #78: ticks are PREDICTIONS, not claims — the gap between your ticks
+    // and the review is the calibration lesson.
+    kicker: "Tick what you think holds — the review will tell you if you're right.",
     body: (
       <div className="space-y-3">
         {criteria.length > 0 && (
@@ -2088,25 +2116,16 @@ function buildMoments({
             })}
           </ul>
         )}
-        {redFlags.length > 0 && (
-          <div className="rounded-lg bg-white px-3 py-2 ring-1 ring-slate-100">
-            <p className="t-label text-rose-600">Watch for</p>
-            <ul className="mt-2 space-y-1">
-              {redFlags.map((rf, k) => (
-                <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
-                  <span className="text-rose-500">△</span>
-                  <span>{rf}</span>
-                </li>
-              ))}
-            </ul>
-          </div>
-        )}
+        {/* Watch-for list lives on the Try page (before the work) — repeating it
+            here verbatim was noise (review #79). The review below still checks
+            against the red flags AND the concept's field-tested traps (#80). */}
         <CoachReview
           draft={draft}
           task={task}
           step={step}
           criteria={criteria}
           redFlags={redFlags}
+          concept={concept}
           moduleIndex={moduleIndex}
         />
       </div>
@@ -2142,8 +2161,10 @@ function buildMoments({
           <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3">
             <p className="text-sm font-semibold text-amber-900">This task isn't done yet.</p>
             <p className="mt-1 text-sm leading-relaxed text-amber-900">
-              {artifact} is still empty. Nothing here is graded — but the next task builds on this file.
-              Go back and write it, or move on and accept the gap.
+              {/* #98: the final task has no "next task" — it gets capstone phrasing. */}
+              {nextLabel
+                ? `${artifact} is still empty. Nothing here is graded — but the next task builds on this file. Go back and write it, or move on and accept the gap.`
+                : `${artifact} is still empty. Nothing downstream depends on it — but this is your capstone deliverable, the artifact you'd actually show someone. Go back and write it, or move on.`}
             </p>
           </div>
         )}
@@ -2177,8 +2198,11 @@ function buildMoments({
             <>
               <span className="font-medium">Next:</span> {nextLabel}
             </>
-          ) : (
+          ) : earned && doneWith.size >= (modules || []).length ? (
             "That's the last task — your project is assembled. The readiness project below is where you own it end-to-end."
+          ) : (
+            // #99: "assembled" was printed over a 0-of-N counter. Say what's true.
+            "That's the last task. Your project holds whatever you've written so far — the readiness project below is where you own it end-to-end."
           )}
         </p>
         {mirrorReward && <FinalMirrorReward reward={mirrorReward} />}
@@ -2210,7 +2234,7 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
           value={draft}
           onChange={(e) => onDraftChange(e.target.value)}
           rows={4}
-          placeholder="Start with the bottom line: what can this support, what can't it support yet, and what must the team confirm?"
+          placeholder={draftPlaceholder(step?.task || {})}
           className="w-full resize-y border-0 bg-white px-3 py-2 t-body text-ink focus:outline-none focus:ring-0"
         />
       </label>
@@ -2223,18 +2247,62 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
 // task dies. The template is code-built from the task's own fields (deliverable,
 // steps) — universal across fields, no extra generation, and it enforces the
 // structure the Coach review grades.
+// Review #85: the framing adapts to the deliverable TYPE. Five tasks got Task 1's
+// memo prompt verbatim; a spec, a table, and a summary each deserve their own shape.
+function deliverableKind(task) {
+  const t = `${task?.deliverable || ""} ${task?.title || ""}`.toLowerCase();
+  if (/(table|comparison|csv|spreadsheet|dataset)/.test(t)) return "table";
+  if (/(spec|specification|definition|plan\b|protocol|rules)/.test(t)) return "spec";
+  return "memo";
+}
+
+function draftPlaceholder(task) {
+  const kind = deliverableKind(task);
+  if (kind === "table")
+    return "Lay out the table first — rows, columns, the numbers with their raw counts — then the note explaining what it can and can't say.";
+  if (kind === "spec")
+    return "State the rules precisely: every criterion with its codes, counts, and windows — exact enough that a colleague could rebuild your result.";
+  return "Start with the bottom line: what can this support, what can't it support yet, and what must the team confirm?";
+}
+
+function templateButtonLabel(task) {
+  const kind = deliverableKind(task);
+  if (kind === "table") return "Start from a template — the table shape, ready to fill";
+  if (kind === "spec") return "Start from a template — the spec shape, ready to fill";
+  return "Start from a template — the memo shape, ready to fill";
+}
+
 function draftTemplate(task, artifact) {
-  const lines = [
-    `# ${task.deliverable || artifact}`,
-    "",
-    "## Bottom line",
-    "This is usable for:",
-    "- ",
-    "",
-    "It is not yet sufficient for:",
-    "- ",
-    "",
-  ];
+  const kind = deliverableKind(task);
+  const lines = [`# ${task.deliverable || artifact}`, ""];
+  if (kind === "table") {
+    lines.push(
+      "| Group / Item | Count | Denominator | Result |",
+      "|---|---|---|---|",
+      "|  |  |  |  |",
+      "",
+      "## How these were produced",
+      "- ",
+      "",
+      "## What this table cannot say",
+      "- ",
+      ""
+    );
+  } else if (kind === "spec") {
+    lines.push(
+      "## Objective",
+      "- ",
+      "",
+      "## Rules (exact codes, counts, windows)",
+      "- ",
+      "",
+      "## What each rule removes, and why",
+      "- ",
+      ""
+    );
+  } else {
+    lines.push("## Bottom line", "This is usable for:", "- ", "", "It is not yet sufficient for:", "- ", "");
+  }
   (task.steps || []).forEach((s, i) => {
     lines.push(`## ${i + 1}. ${s}`, "- ", "");
   });
@@ -2242,11 +2310,116 @@ function draftTemplate(task, artifact) {
   return lines.join("\n");
 }
 
+// Review #95 (Door C): the givens become real. For two reviews the plan named
+// files that didn't exist — "the most checkable broken promise in the product."
+// Instead of shipping a dataset, the model writes SMALL, internally-consistent,
+// explicitly-synthetic practice materials for this task on demand (a mini
+// extract as a table, a filled example artifact), seeded with the module's own
+// traps so they're discoverable, not asserted. User-triggered, cached per task,
+// always labeled synthetic.
+function TaskMaterials({ step, task, moduleIndex }) {
+  const storeKey = `lb_materials_${moduleIndex}`;
+  const [materials, setMaterials] = useState(() => {
+    try {
+      if (typeof window === "undefined") return null;
+      return JSON.parse(localStorage.getItem(storeKey) || "null");
+    } catch {
+      return null;
+    }
+  });
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  if (!task.givenInputs?.length) return null;
+
+  const run = async () => {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/materials", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          taskTitle: task.title || step.topic || "",
+          deliverable: task.deliverable || "",
+          givenInputs: task.givenInputs || [],
+          steps: task.steps || [],
+          context: step.context || "",
+          traps: (step.concept?.traps?.length
+            ? step.concept.traps
+            : [step.concept?.misconceptionToAvoid]
+          ).filter(Boolean),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Couldn't generate materials.");
+      setMaterials(data.materials);
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(data.materials));
+      } catch {}
+    } catch (e) {
+      setError(e?.message || "Couldn't generate materials.");
+    }
+    setBusy(false);
+  };
+
+  return (
+    <div className="rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+      <p className="t-label text-ink-faint">Your starting materials</p>
+      {!materials?.length ? (
+        <div className="mt-1.5">
+          <p className="text-xs leading-relaxed text-ink-soft">
+            The materials this task names don't exist until you make them. Generate a small synthetic set to
+            practice on — clearly labeled, safe to be wrong with.
+          </p>
+          <button
+            type="button"
+            onClick={run}
+            disabled={busy}
+            className="mt-2 rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            {busy ? "Writing your materials…" : "Generate practice materials"}
+          </button>
+          {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
+        </div>
+      ) : (
+        <div className="mt-2 space-y-3">
+          {materials.map((m, k) => (
+            <div key={k} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+              <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-1.5">
+                <p className="t-mono min-w-0 break-all text-xs font-medium text-ink">{m.filename}</p>
+                <p className="shrink-0 text-[11px] text-amber-700">synthetic sample</p>
+              </div>
+              {m.note && <p className="px-3 pt-2 text-xs text-ink-soft">{m.note}</p>}
+              <pre className="max-h-72 overflow-auto whitespace-pre-wrap px-3 py-2 text-xs leading-relaxed text-ink">
+                {m.content}
+              </pre>
+            </div>
+          ))}
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[11px] text-ink-faint">
+              Generated for practice — internally consistent, not real data.
+            </p>
+            <button
+              type="button"
+              onClick={run}
+              disabled={busy}
+              className="text-[11px] font-medium text-brand-700 hover:underline disabled:opacity-50"
+            >
+              {busy ? "Regenerating…" : "Regenerate"}
+            </button>
+          </div>
+          {error && <p className="text-xs text-rose-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Review item #34: the load-bearing loop-closer. One model call grades the draft
 // against the task's own criteria + red flags. Button-triggered only (never
 // auto-fires — each review is a real, if tiny, API spend); the last review is
 // kept per task so a refresh doesn't re-bill.
-function CoachReview({ draft, task, step, criteria, redFlags, moduleIndex }) {
+function CoachReview({ draft, task, step, criteria, redFlags, concept, moduleIndex }) {
   const storeKey = `lb_review_${moduleIndex}`;
   const [result, setResult] = useState(() => {
     try {
@@ -2274,7 +2447,12 @@ function CoachReview({ draft, task, step, criteria, redFlags, moduleIndex }) {
           doneWhen: task.doneWhen || "",
           steps: task.steps || [],
           criteria,
-          redFlags,
+          // #80: the concept's field-tested traps join the red flags — the plan
+          // already knows the domain mistakes; the reviewer should hunt them too.
+          redFlags: [
+            ...redFlags,
+            ...((concept?.traps?.length ? concept.traps : [concept?.misconceptionToAvoid]).filter(Boolean)),
+          ],
           context: step.context || "",
         }),
       });
@@ -2408,9 +2586,10 @@ function CheckReview({ check, checking }) {
   const vague = ft.vague_points || [];
   const ftReview = ft.needs_review || [];
   const scope = (ft.scope_concern || "").trim();
+  const unteach = check.unteach?.findings || [];
 
   // Only GENUINE failures drive the visible signal; soft "maybe" flags live inside.
-  const failures = missing.length + (scope ? 1 : 0) + vague.length;
+  const failures = missing.length + (scope ? 1 : 0) + vague.length + unteach.length;
   const soft = known.length + otReview.length + ftReview.length;
   if (!failures && !soft) {
     return <p className="px-1 text-xs text-emerald-700">✓ Plan self-check passed — no blocking gaps found.</p>;
@@ -2422,6 +2601,15 @@ function CheckReview({ check, checking }) {
   return (
     <Collapse summary={summary} hint="details" defaultOpen={false}>
       <div className="space-y-3 text-sm">
+        {unteach.length > 0 && (
+          <Finding tone="amber" title="A senior practitioner would correct these before you repeat them:">
+            {unteach.map((u, i) => (
+              <li key={i}>
+                <strong>{u.module}</strong> — teaches “{u.claim}” · <span className="text-ink-soft">{u.correction}</span>
+              </li>
+            ))}
+          </Finding>
+        )}
         {missing.length > 0 && (
           <Finding tone="amber" title="The readiness project may need skills the plan didn't cover:">
             {missing.map((m, i) => (
@@ -2833,15 +3021,10 @@ function shorten(s, max = 160) {
 const FILE_STOPWORDS = new Set(["a","an","the","for","of","to","in","on","with","your","new","that","and","or","from","one","two","three","page","plus","draft","write","produce","build","create","make","hold","against"]);
 function deliverableName(step, index) {
   const title = step?.task?.title || step?.topic || `task-${index + 1}`;
-  const lower = title.toLowerCase(); // ext from the TITLE only — deliverable sentences false-positive ("code lists" -> .sql)
-  const ext =
-    lower.includes("table") || lower.includes("csv") || lower.includes("spreadsheet")
-      ? ".csv"
-      : lower.includes("summary") || lower.includes("memo") || lower.includes("brief")
-        ? ".pdf"
-        : lower.includes("code") || lower.includes("sql") || lower.includes("script")
-          ? ".sql"
-          : ".md";
+  // Review #76: the draft is typed into a plain textarea, so the only honest
+  // extension is .md — a name like .pdf/.csv promises a file type the workspace
+  // can't produce (and the extension chaos read as carelessness).
+  const ext = ".md";
   const words = cleanPoint(title)
     .toLowerCase()
     .replace(/[^a-z0-9\s-]+/g, "")
