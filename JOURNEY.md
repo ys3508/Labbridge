@@ -254,6 +254,9 @@ Mapped every action to its cost (scrolling/working in a plan = free forever; bui
 **Validation run #1 attempt: "Plan generation failed."**
 Her first paid run hit a real API wall we'd built ourselves into: `400 — the compiled grammar is too large`. Every field added this week made the structured-output schema so detailed that Anthropic's grammar compiler refused it (and probes confirmed the constraints: every object must be strict + fully enumerated, so you can't just loosen the leaves). The escape: **generation now uses a FLAT schema** (strings and string-arrays are grammar-cheap) and the route adapts it back to the rich nested shape the whole app consumes — `"term — meaning"`, `"label | query"`, `"Stage | timing | goal"` string formats, split server-side. Penny-sized Haiku probes verified the fix before asking her to spend again; her failed 400s billed nothing. Bonus intel from the same run: **live resume extraction worked well** — her annotation asked to check keyword accuracy, and the extracted field/sector/skills matched the fixture resume cleanly.
 
+**VALIDATION RUN #1 — the real model, under the full contract: PASS.**
+Third attempt (after the grammar fix) generated the plan this whole week aimed at. Concepts ~200 words that actually teach, senior-grade traps, ask-your-team questions better than the spec imagined, flagged conventions everywhere a one-shot would have asserted facts, the horizon compressed to her real 4-week deadline instead of a canned 30-60-90, a coherent five-task project ending at her actual ticket — and every honesty gate intact. The "is the content too little / will it get better with API" question that she asked three times is now answered with evidence: **live output roughly doubled the mock's teaching density on the first run, zero tuning.** Open nits logged (duplicate capstone label, lifecycle/OMOP still thin) in `revise/validation-notes.md` #4.
+
 ---
 
 ## Where it stands

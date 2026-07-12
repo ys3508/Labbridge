@@ -72,3 +72,39 @@ extraction — connects our resource layer to a task).
 **What both lack (the moat, twice confirmed):** verification, state/artifacts,
 progress, user control (trims), honesty guarantees across runs, and (ChatGPT)
 personalization. Their content depth + our contract and workspace = the target.
+
+## #4 — LIVE VALIDATION RUN #1 (Persona 1, real model, 2026-07-11) — **PASS**
+
+First paid generation under the full contract (after the grammar-limit fix).
+Judged against the pre-registered rubric:
+
+- **Teaching density:** concepts ~185-200 words each, genuinely teaching, in her
+  voice ("treat the extract like a registry with three catches"). ~2x the mock.
+- **Traps:** senior-grade, matching the one-shot's best ("a pharmacy claim means
+  dispensed, not taken"; "one product spans many NDCs; missing some silently
+  drops patients"; "don't set index after outcomes").
+- **Flagged conventions WORKING:** never asserts n<11 or washout lengths as fact —
+  every threshold is "confirm the team's convention." More honest than the
+  one-shot, equally useful.
+- **Fidelity:** role verbatim; Meridian named (given); deadline 2026-08-07 used
+  untransformed; phases relative and COMPRESSED TO HER 4-WEEK RUNWAY (Week 1 /
+  Weeks 2-3 / Final week — not 30-60-90). Horizon derivation confirmed live.
+- **New fields all landed:** context (newcomer scene-setting) ✓ · askYourTeam
+  (excellent: "open vs closed claims?", "monthly rows vs start/end dates?") ✓ ·
+  comprehensionChecks answerable-from-taught ✓ · self-falsification steps in
+  tasks 4-5 ✓ · searchLinks correctly ABSENT (purpose=starting_role — gating
+  works) ✓ · worked examples on tiny named objects (P001, P002/P003) ✓.
+- **Coherent project:** each task's Given references prior modules' outputs;
+  capstone = her actual ticket, verbatim intent.
+- **The flat→rich adapter worked first try** (roadmap totals parsed day-level
+  timeboxes into ~48-96 hrs; calendar span rendered from the real deadline).
+
+**Open nits (non-blocking):** duplicated "Readiness Project:" in the capstone
+title (model included the label; strip in prompt or UI) · lifecycle/pre-post-
+launch context still thin (IQVIA gap #1 partially open; audiences covered,
+lifecycle not) · OMOP/CDM still absent (gap #2) · closesGapIndex not visible in
+the export — verify via briefing chips as tasks complete.
+
+**Verdict: the content question is answered.** Live output exceeds the mock
+~2x in teaching density, matches the one-shot's practitioner wisdom, and keeps
+every honesty gate the one-shot lacked. First run, zero tuning.
