@@ -788,6 +788,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   checks={checksByTask[activeIndex] || []}
                   onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
                   prevDraft={activeIndex > 0 ? drafts[activeIndex - 1] || "" : null}
+                  allDrafts={drafts}
                   prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
                 />
               )
@@ -1496,6 +1497,7 @@ function Module({
   focus,
   prevDraft,
   prevArtifact,
+  allDrafts,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1550,6 +1552,7 @@ function Module({
         onToggleCheck={onToggleCheck}
         prevDraft={prevDraft}
         prevArtifact={prevArtifact}
+        allDrafts={allDrafts}
       />
     </section>
   );
@@ -1580,6 +1583,7 @@ function MomentFlow({
   onToggleCheck,
   prevDraft,
   prevArtifact,
+  allDrafts,
 }) {
   const [choice, setChoice] = useState(null);
   const checkSet = new Set(checks || []);
@@ -1607,6 +1611,7 @@ function MomentFlow({
     isDone,
     prevDraft,
     prevArtifact,
+    allDrafts,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -1729,6 +1734,7 @@ function buildMoments({
   isDone,
   prevDraft,
   prevArtifact,
+  allDrafts,
 }) {
   // Fixed grammar, variable inclusion. Code assembles the beats a task has content
   // for: Brief/Coach/Artifact/Reward always; Question/Model/Visual/Practice when
@@ -1787,13 +1793,33 @@ function buildMoments({
           <div className="text-sm leading-relaxed text-ink-soft">
             <p className="font-medium text-ink">You're given:</p>
             <ul className="mt-1 space-y-0.5">
-              {task.givenInputs.map((g, k) => (
-                <li key={k} className="flex gap-1.5">
-                  <span className="text-ink-faint">·</span>
-                  <span>{g}</span>
-                </li>
-              ))}
+              {task.givenInputs.map((g, k) => {
+                // "(from task N)" givens get annotated with the REAL file and its
+                // real state — the model narrates the chain; the app verifies it.
+                const m = String(g).match(/from (?:task|module)\s*(\d+)/i);
+                const refIdx = m ? Number(m[1]) - 1 : -1;
+                const valid = refIdx >= 0 && refIdx < moduleIndex && modules?.[refIdx];
+                return (
+                  <li key={k} className="flex gap-1.5">
+                    <span className="text-ink-faint">·</span>
+                    <span>
+                      {g}
+                      {valid && (
+                        <span className="text-xs text-ink-faint">
+                          {" "}
+                          → {deliverableName(modules[refIdx], refIdx)}
+                          {(allDrafts?.[refIdx] || "").trim() ? " (written)" : " (still empty)"}
+                        </span>
+                      )}
+                    </span>
+                  </li>
+                );
+              })}
             </ul>
+            <p className="mt-1.5 text-xs text-ink-faint">
+              Practice versions of these are generated for you when you reach the Try page — synthetic, labeled,
+              safe to be wrong with.
+            </p>
           </div>
         )}
         {task.stakeholders && (
@@ -1829,7 +1855,20 @@ function buildMoments({
       kicker: "One compact model — short enough to use while working.",
       body: (
         <div className="space-y-4">
-          <p className="max-w-prose whitespace-pre-line t-body text-ink">{concept.explanation}</p>
+          {/* Review (5/5 tasks confirmed): the compact model was buried in a
+              ~250-word wall under a promise of glanceability. Hoist the first
+              sentences — the second-monitor lines — into a box; prose supports. */}
+          {(() => {
+            const [lead, rest] = splitCompactModel(concept.explanation);
+            return (
+              <>
+                <div className="rounded-lg border border-brand-100 bg-brand-50/50 px-4 py-3">
+                  <p className="max-w-prose text-sm font-medium leading-relaxed text-ink">{lead}</p>
+                </div>
+                {rest && <p className="max-w-prose whitespace-pre-line t-body text-ink-soft">{rest}</p>}
+              </>
+            );
+          })()}
           {/* Definitions live in the Toolbox glossary (≔) — repeating them here
               re-taught the same terms on every page (review item #51). */}
           {concept.keyTerms?.length > 0 && (
@@ -1855,6 +1894,33 @@ function buildMoments({
             <p className="rounded-lg bg-brand-50 px-4 py-3 text-sm italic leading-relaxed text-brand-700">
               ↪ {step.bridgeFromBackground}
             </p>
+          )}
+          {/* Review ("thin and boring" diagnosis): the verified real-world anchor
+              was buried in a collapsed drawer on the Draft page. Surface the
+              strongest one HERE, where the concept is taught — a real document
+              from the field, catalog-verified, with its quoted key point. */}
+          {resourcesDone && resources?.length > 0 && (
+            <div className="rounded-lg border border-slate-200 bg-white px-4 py-3">
+              <p className="t-label text-ink-faint">From the field — real, verified</p>
+              <p className="mt-1.5 text-sm font-medium">
+                <a
+                  href={resources[0].url}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="text-brand-700 underline decoration-brand-200 underline-offset-2 hover:decoration-brand-400"
+                >
+                  {resources[0].title} ↗
+                </a>
+              </p>
+              {resources[0].keyPoint && (
+                <blockquote className="mt-1.5 border-l-2 border-slate-200 pl-3 text-xs italic leading-relaxed text-ink-soft">
+                  “{resources[0].keyPoint}” <span className="not-italic text-ink-faint">— from the abstract</span>
+                </blockquote>
+              )}
+              {(resources[0].use || resources[0].why) && (
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-soft">{resources[0].use || resources[0].why}</p>
+              )}
+            </div>
           )}
         </div>
       ),
@@ -2018,7 +2084,7 @@ function buildMoments({
             </div>
           )}
           <div className="mt-3">
-            <TaskMaterials step={step} task={task} moduleIndex={moduleIndex} />
+            <TaskMaterials step={step} task={task} plan={plan} moduleIndex={moduleIndex} draft={draft} autoStart />
           </div>
           {step.searchLinks?.length > 0 && (
             <div className="mt-3">
@@ -2060,14 +2126,21 @@ function buildMoments({
         {!(draft || "").trim() && (
           <button
             type="button"
-            onClick={() => onDraftChange(draftTemplate(task, artifact))}
+            onClick={() => {
+              // Prefer the plan's OWN generated template (from the materials) over
+              // the code-built skeleton — the keyword detector guesses; the
+              // generated template IS the deliverable's shape. (Review item.)
+              const mats = getCachedMaterials(plan, moduleIndex) || [];
+              const tpl = mats.find((m) => /template/i.test(m.filename || ""));
+              onDraftChange(tpl?.content?.trim() ? tpl.content : draftTemplate(task, artifact));
+            }}
             className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 hover:border-brand-400"
           >
             {templateButtonLabel(task)}
           </button>
         )}
         <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
-        <TaskMaterials step={step} task={task} moduleIndex={moduleIndex} />
+        <TaskMaterials step={step} task={task} plan={plan} moduleIndex={moduleIndex} draft={draft} autoStart />
         {task.doneWhen && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
             <span className="font-medium">Done when:</span> {task.doneWhen}
@@ -2123,6 +2196,7 @@ function buildMoments({
           draft={draft}
           task={task}
           step={step}
+          plan={plan}
           criteria={criteria}
           redFlags={redFlags}
           concept={concept}
@@ -2249,6 +2323,26 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
 // structure the Coach review grades.
 // Review #85: the framing adapts to the deliverable TYPE. Five tasks got Task 1's
 // memo prompt verbatim; a spec, a table, and a summary each deserve their own shape.
+// The compact-model hoist: first sentences (≤ ~220 chars, max 3) become the
+// boxed second-monitor lines; the rest becomes supporting prose. The prompt
+// already orders explanations model-first, so the split lands on real seams.
+function splitCompactModel(text) {
+  const t = (text || "").trim();
+  if (!t) return ["", ""];
+  const sentences = t.match(/[^.!?]+[.!?]+(\s|$)/g) || [t];
+  let lead = "";
+  let count = 0;
+  for (const s of sentences) {
+    if (count >= 3 || (lead && lead.length + s.length > 220)) break;
+    lead += s;
+    count++;
+  }
+  lead = lead.trim();
+  const rest = t.slice(lead.length).trim();
+  if (!lead || !rest) return [t, ""];
+  return [lead, rest];
+}
+
 function deliverableKind(task) {
   const t = `${task?.deliverable || ""} ${task?.title || ""}`.toLowerCase();
   if (/(table|comparison|csv|spreadsheet|dataset)/.test(t)) return "table";
@@ -2317,8 +2411,77 @@ function draftTemplate(task, artifact) {
 // extract as a table, a filled example artifact), seeded with the module's own
 // traps so they're discoverable, not asserted. User-triggered, cached per task,
 // always labeled synthetic.
-function TaskMaterials({ step, task, moduleIndex }) {
-  const storeKey = `lb_materials_${moduleIndex}`;
+// Materials cache + world canon are PLAN-scoped (review: task-number-only keys
+// leaked one plan's materials into another). The canon — data source type, entity
+// identities, code sets, ID scheme — is written by the first generation and is
+// LAW for every later task, so Drug A can't change identity between tasks.
+function materialsKey(plan, moduleIndex) {
+  return scopedPlanKey(`lb_materials_${moduleIndex}`, plan?.learningSequence || []);
+}
+function canonKey(plan) {
+  return scopedPlanKey("lb_canon", plan?.learningSequence || []);
+}
+function getCachedMaterials(plan, moduleIndex) {
+  try {
+    if (typeof window === "undefined") return null;
+    return JSON.parse(localStorage.getItem(materialsKey(plan, moduleIndex)) || "null");
+  } catch {
+    return null;
+  }
+}
+
+// Tiny CSV → table: our generated extracts are ≤30 rows, so "open the CSV as a
+// CSV" is a real table, not monospace soup. Falls back to <pre> on anything odd.
+function parseCsv(content) {
+  const lines = (content || "").trim().split("\n").map((l) => l.trim()).filter(Boolean);
+  if (lines.length < 2 || lines.length > 60) return null;
+  const rows = lines.map((l) => l.split(","));
+  const w = rows[0].length;
+  if (w < 2 || w > 14) return null;
+  if (!rows.every((r) => r.length === w)) return null;
+  return rows;
+}
+
+function MaterialBody({ m }) {
+  const isCsv = /\.csv$/i.test(m.filename || "");
+  const rows = isCsv ? parseCsv(m.content) : null;
+  if (!rows) {
+    return (
+      <pre className="max-h-72 overflow-auto whitespace-pre-wrap px-3 py-2 text-xs leading-relaxed text-ink">
+        {m.content}
+      </pre>
+    );
+  }
+  return (
+    <div className="max-h-72 overflow-auto">
+      <table className="w-full border-collapse text-xs">
+        <thead>
+          <tr>
+            {rows[0].map((h, i) => (
+              <th key={i} className="sticky top-0 whitespace-nowrap border-b border-slate-200 bg-slate-50 px-2 py-1.5 text-left font-semibold text-ink">
+                {h}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {rows.slice(1).map((r, i) => (
+            <tr key={i} className={i % 2 ? "bg-slate-50/50" : ""}>
+              {r.map((c, j) => (
+                <td key={j} className="whitespace-nowrap border-b border-slate-100 px-2 py-1 text-ink-soft">
+                  {c}
+                </td>
+              ))}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+function TaskMaterials({ step, task, plan, moduleIndex, draft, autoStart }) {
+  const storeKey = materialsKey(plan, moduleIndex);
   const [materials, setMaterials] = useState(() => {
     try {
       if (typeof window === "undefined") return null;
@@ -2329,12 +2492,16 @@ function TaskMaterials({ step, task, moduleIndex }) {
   });
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
-  if (!task.givenInputs?.length) return null;
+  const startedRef = useRef(false);
 
   const run = async () => {
     setBusy(true);
     setError("");
     try {
+      let canon = "";
+      try {
+        canon = localStorage.getItem(canonKey(plan)) || "";
+      } catch {}
       const res = await fetch("/api/materials", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -2344,6 +2511,8 @@ function TaskMaterials({ step, task, moduleIndex }) {
           givenInputs: task.givenInputs || [],
           steps: task.steps || [],
           context: step.context || "",
+          canon,
+          exampleSetup: step.workedExample?.setup || "",
           traps: (step.concept?.traps?.length
             ? step.concept.traps
             : [step.concept?.misconceptionToAvoid]
@@ -2355,11 +2524,33 @@ function TaskMaterials({ step, task, moduleIndex }) {
       setMaterials(data.materials);
       try {
         localStorage.setItem(storeKey, JSON.stringify(data.materials));
+        if (data.entities && !canon) localStorage.setItem(canonKey(plan), data.entities);
       } catch {}
     } catch (e) {
       setError(e?.message || "Couldn't generate materials.");
     }
     setBusy(false);
+  };
+
+  // Review: even the reviewer misread the pre-click state four times — a real
+  // user always will. On first arrival at a work beat, materials make themselves.
+  useEffect(() => {
+    if (!autoStart || startedRef.current || materials?.length || busy) return;
+    startedRef.current = true;
+    run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStart]);
+
+  if (!task.givenInputs?.length) return null;
+
+  const regenerate = () => {
+    if ((draft || "").trim()) {
+      const ok = window.confirm(
+        "Your draft may reference this data — regenerating replaces it with a fresh set. Continue?"
+      );
+      if (!ok) return;
+    }
+    run();
   };
 
   return (
@@ -2368,17 +2559,19 @@ function TaskMaterials({ step, task, moduleIndex }) {
       {!materials?.length ? (
         <div className="mt-1.5">
           <p className="text-xs leading-relaxed text-ink-soft">
-            The materials this task names don't exist until you make them. Generate a small synthetic set to
-            practice on — clearly labeled, safe to be wrong with.
+            {busy
+              ? "Writing your practice materials — a small synthetic set, clearly labeled, safe to be wrong with…"
+              : "The materials this task names don't exist until you make them. Generate a small synthetic set to practice on — clearly labeled, safe to be wrong with."}
           </p>
-          <button
-            type="button"
-            onClick={run}
-            disabled={busy}
-            className="mt-2 rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
-          >
-            {busy ? "Writing your materials…" : "Generate practice materials"}
-          </button>
+          {!busy && (
+            <button
+              type="button"
+              onClick={run}
+              className="mt-2 rounded-lg bg-brand-500 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-600"
+            >
+              Generate practice materials
+            </button>
+          )}
           {error && <p className="mt-1.5 text-xs text-rose-600">{error}</p>}
         </div>
       ) : (
@@ -2387,12 +2580,19 @@ function TaskMaterials({ step, task, moduleIndex }) {
             <div key={k} className="overflow-hidden rounded-lg border border-slate-200 bg-white">
               <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-1.5">
                 <p className="t-mono min-w-0 break-all text-xs font-medium text-ink">{m.filename}</p>
-                <p className="shrink-0 text-[11px] text-amber-700">synthetic sample</p>
+                <span className="flex shrink-0 items-center gap-2">
+                  <a
+                    href={`data:text/plain;charset=utf-8,${encodeURIComponent(m.content)}`}
+                    download={m.filename}
+                    className="text-[11px] font-medium text-brand-700 hover:underline"
+                  >
+                    download
+                  </a>
+                  <span className="text-[11px] text-amber-700">synthetic sample</span>
+                </span>
               </div>
               {m.note && <p className="px-3 pt-2 text-xs text-ink-soft">{m.note}</p>}
-              <pre className="max-h-72 overflow-auto whitespace-pre-wrap px-3 py-2 text-xs leading-relaxed text-ink">
-                {m.content}
-              </pre>
+              <MaterialBody m={m} />
             </div>
           ))}
           <div className="flex items-center justify-between gap-2">
@@ -2401,7 +2601,7 @@ function TaskMaterials({ step, task, moduleIndex }) {
             </p>
             <button
               type="button"
-              onClick={run}
+              onClick={regenerate}
               disabled={busy}
               className="text-[11px] font-medium text-brand-700 hover:underline disabled:opacity-50"
             >
@@ -2419,7 +2619,7 @@ function TaskMaterials({ step, task, moduleIndex }) {
 // against the task's own criteria + red flags. Button-triggered only (never
 // auto-fires — each review is a real, if tiny, API spend); the last review is
 // kept per task so a refresh doesn't re-bill.
-function CoachReview({ draft, task, step, criteria, redFlags, concept, moduleIndex }) {
+function CoachReview({ draft, task, step, plan, criteria, redFlags, concept, moduleIndex }) {
   const storeKey = `lb_review_${moduleIndex}`;
   const [result, setResult] = useState(() => {
     try {
@@ -2454,6 +2654,12 @@ function CoachReview({ draft, task, step, criteria, redFlags, concept, moduleInd
             ...((concept?.traps?.length ? concept.traps : [concept?.misconceptionToAvoid]).filter(Boolean)),
           ],
           context: step.context || "",
+          // The coach reviews against the ACTUAL practice data, not just prose —
+          // empirical claims (counts, spans) become checkable. (Review item.)
+          materials: (getCachedMaterials(plan, moduleIndex) || [])
+            .map((m) => `--- ${m.filename} ---\n${(m.content || "").slice(0, 1200)}`)
+            .join("\n")
+            .slice(0, 4000),
         }),
       });
       const data = await res.json();

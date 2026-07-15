@@ -70,6 +70,33 @@ implemented; see JOURNEY.md for the story.)*
 ### Talked about, never done (the honest ledger — Sissi asked for this)
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
+**From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
+- [ ] **In-browser data workspace** — DuckDB-WASM SQL cell (and/or grid editor)
+      embedded in the Try/Draft beats so learners RUN their cohort spec against
+      the generated extract and the Check verifies their count. The concrete
+      version of the long-parked toolbox 模拟软件. Spec:
+      `revise/data-workspace-spec.md`. Real engineering project — own session. (Jul 15)
+- [ ] **YouTube Data API key** — free, Sissi creates it; unlocks the already-specced
+      video search pipeline (`revise/video-pipeline-spec.md`). (Jul 11, re-raised Jul 15)
+- [ ] Curated-anchor pass per field — beyond the select-stage "prefer the anchor"
+      rule: seed the candidates stage with known authoritative sources per domain
+      (FDA RWD guidance, OHDSI phenotype library, ISPOR/ISPE good practices for
+      RWE; field-equivalents elsewhere). (Jul 15)
+- [ ] "Coming from" selector before generation (#57) + clickable "You today"
+      chips (#60) — the input-layer fix for cold-start bridge quality. (Jul 13)
+- [ ] Mock-mode leak loudness (#58) — real form inputs while `lb_mock=1` silently
+      serve the sample; burned Sissi once. (Jul 13)
+- [ ] One-page review mode (#9); free-text check answers graded by /api/coach (#24). (Jul 12)
+- [ ] Sonnet fallback for /api/coach if trap-wired Haiku recall still short (#80). (Jul 13)
+- [ ] Reference fact-check pass currently covers coding-reference docs only —
+      consider widening (statutes, standards) per field. (Jul 15)
+- [ ] Base44 satellites (landing page / waitlist / feedback form) — keep the
+      product here; use Base44 only for near-product surfaces. (Jul 15)
+- [ ] Warning-collapse when multiple prior tasks are empty (#88) — chained ambers
+      read as a corridor of failure; collapse repeats. (Jul 13)
+- [ ] Growth-equity + beginner fixture verification runs (~$1). (Jul 12)
+- [ ] Expert 30-min spot-check of a generated plan with the .md export. (Jul 11)
+
 **Needs API funding:**
 - [ ] Paper key-points at select stage — fetch the abstract (OpenAlex, free),
       Haiku selects 1-2 task-relevant sentences VERBATIM (quoted + attributed

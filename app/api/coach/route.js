@@ -57,6 +57,7 @@ export async function POST(request) {
   const deliverable = (body?.deliverable || "").toString();
   const doneWhen = (body?.doneWhen || "").toString();
   const context = (body?.context || "").toString();
+  const materials = (body?.materials || "").toString();
 
   if (!draft) return Response.json({ error: "Nothing to review — the draft is empty." }, { status: 400 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "No API key." }, { status: 500 });
@@ -71,6 +72,8 @@ export async function POST(request) {
       ? `Success criteria (return one status per criterion, in this order):\n${criteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
       : "Success criteria: none given — grade against the deliverable and done-when line (return an empty criteria array).",
     redFlags.length && `Red flags to check for:\n${redFlags.map((r) => `- ${r}`).join("\n")}`,
+    materials &&
+      `THE PRACTICE MATERIALS the draft was written against (use these to verify empirical claims — counts, dates, spans, codes; a claim the materials contradict is wrong):\n${materials.slice(0, 4000)}`,
     `THE DRAFT:\n"""\n${draft.slice(0, 8000)}\n"""`,
   ].filter(Boolean);
 

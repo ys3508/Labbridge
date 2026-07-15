@@ -231,3 +231,13 @@ Recipe/two-cooks analogy (reproducibility); "vague rules destroy trust" stakes l
 ## LEDGER FINAL COUNT: 100 items. Awaiting Sissi's "review complete" to consolidate.
 
 - 101 (SISSI, final item + GO signal): "I don't like current plan personally — I don't even feel like it needs 90 days, only 3 hours is enough." → DUAL-CLOCK defect: tasks priced in job-world time (half-days, 90-day arc) while the experience is workspace time (~30-60 min/task ≈ 3h total). Fix: timeboxes = honest in-app production time; roadmap sums to hours; 90-day arc demoted to job-ramp context footnote. Her go-ahead: "after I come back, we changed everything based on review."
+
+---
+
+# Verification-run review (Jul 14-15) + second action batch — RESOLVED
+
+The full-persona run confirmed the prompt batch (hours timeboxes, dependency order, honest cold-start AND persona bridges, washout centerpiece, scenario checks) and surfaced the materials-layer bugs (entity drift: Drug A = metformin/gemcitabine/three dose ladders; claims-vs-EHR world drift; E11.0+E11.2 wrong code pairings; E13 in a T2D list). Codex's fluent-wrong coach test passed 4/4 on M002.
+
+**Batch 2 shipped (Jul 15):** plan-scoped world CANON for materials (entity sheet — first generation writes it, every later task reuses it; verified live: NDC family/brand/strengths/IDs all held) · reference-docs-must-be-correct rule + Opus fact-check pass on coding references (verified live: all 12 E11 subcodes correct after the pass) · auto-generate materials on Try/Draft arrival + Brief pointer + download links + CSV renders as a real table · draft template button prefers the plan's own generated template · Model beat: compact-model hoist box + "From the field" verified anchor surfaced (was buried in the Draft drawer — the "thin and boring" fix) · WEB_AUGMENT back on + select-stage "prefer the anchor" rule · coach receives the cached materials (empirical claims now checkable) · regenerate guard when a draft exists · "(from task N)" givens annotated with the real file + state · check length-tell + stem-keyword rules in the prompt · plan-scoped materials cache (the stale-leak bug).
+
+**Deferred with specs:** in-browser data workspace (revise/data-workspace-spec.md), video pipeline (needs Sissi's free YouTube key), and the TASKS.md honest-ledger additions.

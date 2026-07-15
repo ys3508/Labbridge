@@ -8,7 +8,9 @@ const SELECT_SYSTEM = `You choose learning resources for ONE module of an intera
 
 Pick ONLY resources that DIRECTLY help complete THIS module's TASK — relevance to the task is the bar, not general topic-relevance. For each pick, write "use" as a justified selection, not a blurb — cover three things in 1–2 short sentences: (1) the GAP it closes for THIS learner given their background (what they can't yet do that this fixes); (2) the EXACT part to use (e.g. "chapters 2–3", "the 'Joins' section", "the getting-started tutorial") and what to SKIP; (3) why THIS source over alternatives, if relevant. Scope it to the minimum needed for the task — a specific chapter / section / article, never "read the whole book". Never present a resource as general reading.
 
-Choose 0–2 per module. It is GOOD to return an EMPTY list when the task is best done hands-on and needs no external resource — do not pad to look complete. Choose ONLY by the numbers given; never invent a resource or a number not in the list.`;
+Choose 0–2 per module. It is GOOD to return an EMPTY list when the task is best done hands-on and needs no external resource — do not pad to look complete. Choose ONLY by the numbers given; never invent a resource or a number not in the list.
+
+PREFER THE ANCHOR: when the pool contains an authoritative field artifact tightly tied to THIS task's core concept — official guidance, a published standard/phenotype, a canonical methods paper — pick THAT one over multiple loosely-related resources. One real anchor the learner can trust beats two decorations; it grounds the module in the actual field.`;
 
 const SCHEMA = {
   type: "object",
