@@ -15,6 +15,22 @@ The form adapts per door. Interview mode's fields, in order:
    - CARE RULE: this field invites vulnerable disclosures (visa, age, disability). Engage honestly with what we can help (framing, practice, narrative); say plainly what we can't (no legal/visa advice); never dismiss, never overpromise.
 6. **"When is the interview?"** (+ optional hours/day) — drives countdown, cram order, budget, walk-in-card timing.
 
+## The intake router + the seam (Jul 15, round 2 — the load-bearing handoff)
+
+**The router:** one Haiku call at door-submit reads the challenge/worry answers and outputs `{ contentFears[], obstacles[], tone: playful|neutral|gentle }`. Explicit rule: ONE sentence can carry both signals ("scared of system design because I freeze" → fear: system design + obstacle: freezing — extract both, never classify as one). `tone` flows into EVERY downstream prompt (generation, coach, assistant): vulnerable intake raises the warmth dial everywhere; boss-fight/game language is CONDITIONAL — full volume for content nerves, retired for identity/vulnerability intake. One router solves parsing, emotional baseline, and gamification-collision.
+
+**The seam — the first diagnostic beat must visibly metabolize the challenge field. Rule: ACKNOWLEDGE → ADAPT → EXPLAIN** (quote their words; make one visible MECHANICAL change because of them; say why the first move is shaped that way). By type:
+- freeze-on-technical → contract line names it; Q1 is the no-freeze question; Q2 arrives untimed ("the timer comes later, when you're ready").
+- rambling → Q1 gains the 90-second aid, framed as help ("I'll show you where the time went").
+- layoff/gap → NEVER cold-open the wound: acknowledge + grant deferral as a choice ("we'll build that answer at stop 3 — with craft, not cold; for now it can be one plain sentence or absent, your call"). The dedicated stop exists BECAUSE they typed it, and the map says so.
+- second language → first pass in whichever language thinks best; English version built together (language rules already shipped).
+- identity fears (age, bias) → gentle tone plan-wide + the honest limit: "I can't control bias in the room; I can make every answer force the conversation onto your evidence — that's trainable."
+**Negative rule (carve in stone): the acknowledged fear is NEVER tested cold in the first beat.** And the arc closes the circle: the door confession becomes the visible progress ("day one you said you freeze; yesterday you took the timed rapid-fire and held").
+
+**Input door refinements (round 2):**
+- Company honesty, sharpened: do not assert company specifics EVEN FROM OWN KNOWLEDGE — frame as the user's to verify ("commonly reported — check their careers page"), even when confident. Stale-confident beats invented for danger.
+- Optional ammunition field: "Anything you're already planning to lean on — projects, stories, wins? (optional)" — curated highlights ≠ resume; feeds the answer bank as raw material; if their strongest resume story is missing from their own list, the diagnostic hands it back.
+
 ## The journey
 
 1. **Entry (lighter than the form):** paste the job posting + the interview date (resume optional but urged — "add it and every answer gets built from your life"). Date drives everything: countdown identity, cram ordering, cheat-sheet timing.
