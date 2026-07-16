@@ -71,6 +71,12 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
+- [ ] **INTERVIEW MODE = the front door** (strategic decision Jul 15) — full design in
+      `revise/interview-mode-spec.md`: diagnostic-first opening (2 cold questions,
+      map generates FROM them), Question Map with posting-line receipts, named-not-
+      dreaded gap question, graduated exposure ramp, dynamic-pushback mock runner
+      (now AHEAD of DuckDB), walk-in card, post-interview loop, win→onboarding
+      handoff. Two-axis rubric authoring deferred by Sissi. (Jul 15)
 - [ ] Interactive check variants — drag-to-classify / click-the-error / pick-the-codes,
       rendered client-side from the same check data (one checkGenre enum max). After
       the DuckDB workspace. (Jul 15)
