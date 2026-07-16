@@ -71,6 +71,13 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
+- [ ] Interactive check variants — drag-to-classify / click-the-error / pick-the-codes,
+      rendered client-side from the same check data (one checkGenre enum max). After
+      the DuckDB workspace. (Jul 15)
+- [ ] Session-end mirror — one earned line on exit from tracker data ("42 min today;
+      task-2 answer went thin→met"). (Jul 15)
+- [ ] User→product feedback backend — the 👍/👎 beat chips (v1 localStorage, built)
+      need a collection endpoint + dashboard when accounts land. (Jul 15)
 - [ ] **Four visual roadmap identities** — road (role) / countdown calendar (interview) /
       evidence scale (career move) / door (curious); progress currency + product noun
       change per purpose. Beat identities shipped Jul 15; the roadmap visual is the

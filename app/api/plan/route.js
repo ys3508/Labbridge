@@ -56,7 +56,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
     · scenario MCQ (use sparingly — max once per plan outside interview purpose; it IS the right genre for interview rapid-fire): a scenario-classification stem with 3-4 options. MCQ QUALITY BAR: every distractor tempts a smart reader (one from an adjacent task's concept, one true-but-insufficient), length-match all options, the correct one must NOT be the longest, and never reuse the stem's key phrases in it.
     Free-text genres are worth more than MCQ almost everywhere: they test production, not recognition.
   • concept: a concise support layer for the task — not a blog post, not a mini textbook:
-      · explanation: 150–250 words, like a strong senior teammate actually TEACHING the idea. STRUCTURE: the FIRST 1-3 sentences are the compact usable model — the thing worth keeping on a second monitor (the UI hoists them); support and nuance follow. SPINE RULE: center the HIGHEST-JUDGMENT decision in this task — the place a novice's errors actually occur ("one code, or two codes 30 days apart?") — not the vocabulary around it. ANSWER THE HARD QUESTIONS YOU RAISE: when the concept names a judgment call, (a) state the 2-3 conventions practitioners actually use, flagged confirm-locally; (b) name the validated/standard artifacts the field already maintains (teach find→evaluate→adapt before build-from-scratch); (c) name the standard instrument/metric/threshold a lead will ask for BY NAME (flagged as convention). When you mention a more advanced method, state the LIMIT of the simpler one that motivates it ("stratification runs out of patients beyond two variables — that's what propensity scores are for"). NAME the professional term when teaching its concept ("what one row means" is called GRAIN). Qualifiers ride WITH the claim they qualify — never state a naive rule now and correct it later. Be honest about signal strength: suggestive evidence is not confirmation.
+      · explanation: 150–250 words, like a strong senior teammate actually TEACHING the idea. STRUCTURE: the FIRST 1-3 sentences are the compact usable model — the thing worth keeping on a second monitor (the UI hoists them); support and nuance follow AS SHORT PARAGRAPHS (2-4 sentences each, blank-line separated), never one unbroken block. SPINE RULE: center the HIGHEST-JUDGMENT decision in this task — the place a novice's errors actually occur ("one code, or two codes 30 days apart?") — not the vocabulary around it. ANSWER THE HARD QUESTIONS YOU RAISE: when the concept names a judgment call, (a) state the 2-3 conventions practitioners actually use, flagged confirm-locally; (b) name the validated/standard artifacts the field already maintains (teach find→evaluate→adapt before build-from-scratch); (c) name the standard instrument/metric/threshold a lead will ask for BY NAME (flagged as convention). When you mention a more advanced method, state the LIMIT of the simpler one that motivates it ("stratification runs out of patients beyond two variables — that's what propensity scores are for"). NAME the professional term when teaching its concept ("what one row means" is called GRAIN). Qualifiers ride WITH the claim they qualify — never state a naive rule now and correct it later. Be honest about signal strength: suggestive evidence is not confirmation.
       · misconceptionToAvoid: one common wrong mental model to head off.
       · traps (2-4): field-tested practitioner mistakes people ACTUALLY make in their first month — the "never say patients took / a headnote isn't the holding / ARR isn't recognized revenue" class of wisdom, adapted to THIS field. Each trap must add NEW field wisdom — never restate a sentence from the explanation in warning voice. These read as senior experience; generic study-tips do not qualify.
       · keyTerms: 1–4 essential terms, each { term, plainMeaning } — plain language, no jargon defining jargon. Don't re-define a term an earlier module already taught.
@@ -64,7 +64,7 @@ PRODUCE THESE FIELDS (they realize the spine above):
       · setup: the tiny concrete scenario, with specifics.
       · walkThrough: 2–4 steps reasoning through it. Include exactly ONE decision that is defensible either way (a combination product — in or out? an ambiguous date column — which one?) so the learner rehearses judgment instead of watching certainty. If a rule needs a qualifier (an index date needs a clean look-back), the qualifier appears IN the same step as the rule, not two steps later.
       · takeaway: the principle it illustrates — including what it CANNOT prove, and NAME the tradeoff in the ambiguous decision rather than resolving it.
-  • task: the manager-assigned assignment (see TASK QUALITY BAR). Provide: title; managerRequest (the stakeholder ask that kicks it off — "Your RWE lead says: …"); givenInputs (1+ named inputs they are HANDED — files, tickets, drafts); 2–5 steps (each step ONE skill — no compound steps hiding three checks in one sentence); deliverable; timebox — WORKSPACE TIME, the honest minutes of focused reading+writing to produce the deliverable IN THIS APP against small practice materials, typically "30-60 min" per task (NOT job-world half-days; the whole plan should sum to a few hours of focused work — if a task honestly needs longer at real scale, say the workspace version's time and let context mention the job-scale version); doneWhen (a TEST THE READER CAN RUN — "another analyst could rebuild your exact cohort from the spec alone and get the same count", never a vibe); stakeholders (who consumes it and what each needs).
+  • task: the manager-assigned assignment (see TASK QUALITY BAR). Provide: title; managerRequest (the stakeholder ask that kicks it off — "Your RWE lead says: …"); givenInputs (1+ named inputs they are HANDED — files, tickets, drafts); 2–5 steps (each step ONE skill — no compound steps hiding three checks in one sentence); deliverable; timebox — WORKSPACE TIME, the honest minutes of focused reading+writing to produce the deliverable IN THIS APP against small practice materials, typically "30-60 min" per task (NOT job-world half-days; the whole plan should sum to a few hours of focused work — if a task honestly needs longer at real scale, say the workspace version's time and let context mention the job-scale version); timeEstimateMin — the SAME estimate as an integer of minutes (the budget math and the time tracker count against this; be honest, not round); doneWhen (a TEST THE READER CAN RUN — "another analyst could rebuild your exact cohort from the spec alone and get the same count", never a vibe); stakeholders (who consumes it and what each needs).
   • stakeholders: who in the ORGANIZATION consumes this output and what each needs — one short line, e.g. "Medical Affairs: does it answer the clinical question? · Regulatory: is the method defensible?". Adapt to the target field. Situates the work inside a company, not a classroom.
   • selfCheck: PRACTICAL, not motivational — how they'd know their work is good enough:
       · criteria: 3+ checkable statements ("another analyst can reproduce your cohort counts from the spec"), never "you feel confident". COVERAGE RULE: together the criteria must cover EVERY step of the task (a step with no criterion verifying it is a silent drop) and every element the deliverable/goal demands (if the goal says "three limitations," a criterion checks for three). A criterion may NAME the anti-pattern it excludes ("limitations name specific fields, not generic 'data may be messy'").
@@ -92,6 +92,8 @@ PRODUCE THESE FIELDS (they realize the spine above):
   • horizon — the DERIVED time window as a short RELATIVE phrase (see HORIZON below), e.g. "~90 days", "your ~3-week runway". Never an absolute calendar date — the app renders the real deadline next to it.
   • horizonAssumed — true ONLY if you fell back to a goal-based default because the user gave no timeline; false if it came from their deadline or pace.
   • phases — the staged arc, each item { stage, timing, goal }. Stage names come from the PURPOSE GRAMMAR: starting_role → "Observe" | "Assist" | "Own" (3 items); interview → "Warm-up" | "Core questions" | "Rapid fire" (3 items, the mock interview); career_move → "Orient" | "Talk to people" | "Decide" (3 items); curious → ONE item, stage "If it grabbed you" (the door). timing = a RELATIVE label for that phase (e.g. "Weeks 1-2", "Weeks 3-4", "Final week", "Days 1-30") — sized to the horizon, NOT hard-coded to 30/60/90. NEVER put an absolute calendar date in timing, even when a deadline was given — the app displays the real deadline itself; you only supply relative windows. goal = what they do in that phase (for starting_role: Observe = understand/reproduce existing work; Assist = modify existing work; Own = own a small piece end-to-end — if they gave a real ticket, fold it into Own. Other purposes: goals per their grammar above).
+- entitySheet: THE WORLD CANON, defined at birth (borrowed placement — it prevents the example-vs-materials mismatch). If the plan references ANY synthetic entities (a drug, a dataset, codes, patient IDs, a company stand-in), define them ONCE here as a compact reference block: data source TYPE, each entity's identity/codes/strengths, the condition's code set, the patient-ID scheme, the date range. EVERY unit's examples and given inputs must derive from this sheet — a drug has one identity across all tasks; example patients (their IDs and dates) must be ones the practice materials can contain. If nothing synthetic is referenced, return "".
+- trims: units you CUT to fit the runway, each as one string "what — why it was deferrable — what to do about it after". Empty array when nothing was cut. Cuts live HERE, structured, never only in prose.
 - timelineNote: one honest sentence on pace/feasibility given their timeline and the plan's size. Reference a concrete date ONLY if one is in TIMELINE (see date rule below).
 
 HOW MANY UNITS (critical — this is where personalization becomes VISIBLE): the count is DERIVED, never defaulted.
@@ -142,22 +144,23 @@ const MODULE = {
     conceptExplanation: S, keyTerms: ARR, traps: ARR,
     exampleSetup: S, exampleWalkThrough: ARR, exampleTakeaway: S,
     taskTitle: S, managerRequest: S, givenInputs: ARR, steps: ARR,
-    deliverable: S, timebox: S, doneWhen: S, stakeholders: S,
+    deliverable: S, timebox: S, timeEstimateMin: I, doneWhen: S, stakeholders: S,
     selfCheckCriteria: ARR, redFlags: ARR,
   },
-  required: ["topic","archetype","closesGapIndex","why","context","bridgeFromBackground","askYourTeam","searchLinks","checkQuestion","checkOptions","checkAnswerIndex","checkExplanation","conceptExplanation","keyTerms","traps","exampleSetup","exampleWalkThrough","exampleTakeaway","taskTitle","managerRequest","givenInputs","steps","deliverable","timebox","doneWhen","stakeholders","selfCheckCriteria","redFlags"],
+  required: ["topic","archetype","closesGapIndex","why","context","bridgeFromBackground","askYourTeam","searchLinks","checkQuestion","checkOptions","checkAnswerIndex","checkExplanation","conceptExplanation","keyTerms","traps","exampleSetup","exampleWalkThrough","exampleTakeaway","taskTitle","managerRequest","givenInputs","steps","deliverable","timebox","timeEstimateMin","doneWhen","stakeholders","selfCheckCriteria","redFlags"],
 };
 const SCHEMA = {
   type: "object",
   additionalProperties: false,
   properties: {
+    entitySheet: S, trims: ARR,
     hook: S, northStar: S,
     transferableStrengths: ARR, knowledgeGaps: ARR,
     learningSequence: { type: "array", items: MODULE },
     readinessTitle: S, readinessWhy: S, horizon: S,
     horizonAssumed: { type: "boolean" }, phases: ARR, timelineNote: S,
   },
-  required: ["hook","northStar","transferableStrengths","knowledgeGaps","learningSequence","readinessTitle","readinessWhy","horizon","horizonAssumed","phases","timelineNote"],
+  required: ["entitySheet","trims","hook","northStar","transferableStrengths","knowledgeGaps","learningSequence","readinessTitle","readinessWhy","horizon","horizonAssumed","phases","timelineNote"],
 };
 
 // Adapt the flat generated shape to the rich nested plan the whole app consumes.
@@ -175,6 +178,8 @@ function toRichPlan(f) {
   return {
     hook: f.hook,
     northStar: f.northStar || "",
+    entitySheet: f.entitySheet || "",
+    trims: (f.trims || []).filter(Boolean),
     transferableStrengths: pointDetail(f.transferableStrengths),
     knowledgeGaps: pointDetail(f.knowledgeGaps),
     learningSequence: (f.learningSequence || []).map((m) => ({
@@ -205,7 +210,8 @@ function toRichPlan(f) {
       task: {
         title: m.taskTitle, managerRequest: m.managerRequest,
         givenInputs: (m.givenInputs || []).filter(Boolean), steps: (m.steps || []).filter(Boolean),
-        deliverable: m.deliverable, timebox: m.timebox, doneWhen: m.doneWhen, stakeholders: m.stakeholders,
+        deliverable: m.deliverable,
+      timeEstimateMin: Number(m.timeEstimateMin) || 0, timebox: m.timebox, doneWhen: m.doneWhen, stakeholders: m.stakeholders,
       },
       selfCheck: { criteria: (m.selfCheckCriteria || []).filter(Boolean), redFlags: (m.redFlags || []).filter(Boolean) },
     })),

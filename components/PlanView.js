@@ -148,6 +148,17 @@ export default function PlanView({ form, isBeginner, onBack }) {
   // Split-pane AI assistant (Sissi): read on the left, ask on the right.
   const [assistantOpen, setAssistantOpen] = useState(false);
 
+  // World canon seeding (borrowed from the Phase-A draft): when the PLAN itself
+  // ships an entitySheet, it becomes the canon at birth — examples and materials
+  // derive from one world from the first page.
+  useEffect(() => {
+    if (!plan?.entitySheet) return;
+    try {
+      const k = canonKey(plan);
+      if (!localStorage.getItem(k)) localStorage.setItem(k, plan.entitySheet);
+    } catch {}
+  }, [plan]);
+
   // Time tracker (Sissi's mechanic 2): count ACTIVE seconds only — tab visible,
   // a task open, input within the last 2 minutes. The timeline makes a promise;
   // this shows it being kept. A signal, never surveillance.
@@ -3660,6 +3671,7 @@ function fmtDur(sec) {
 function TimeMeter({ modules, timeSpent, deadline, inline }) {
   const spentSec = Object.values(timeSpent || {}).reduce((a, b) => a + (Number(b) || 0), 0);
   const plannedH = (modules || []).reduce((acc, m) => {
+    if (Number(m?.task?.timeEstimateMin) > 0) return acc + Number(m.task.timeEstimateMin) / 60;
     const hrs = timeboxHours(m?.task?.timebox);
     return acc + (hrs ? (hrs[0] + hrs[1]) / 2 : 0.75);
   }, 0);
@@ -3797,6 +3809,20 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
           {trimmedCount} stop{trimmedCount === 1 ? "" : "s"} marked as already known — saved. A leaner roadmap
           regenerates when the live model is connected; until then those stops stay available in your workspace.
         </p>
+      )}
+      {plan?.trims?.length > 0 && (
+        <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2.5">
+          <p className="t-label text-ink-faint">Deferred to fit your runway</p>
+          <ul className="mt-1.5 space-y-1">
+            {plan.trims.map((t, k) => (
+              <li key={k} className="flex gap-1.5 text-xs leading-relaxed text-ink-soft">
+                <span className="text-ink-faint">→</span>
+                <span>{t}</span>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-1.5 text-[11px] text-ink-faint">Real gaps, honestly cut for time — not forgotten.</p>
+        </div>
       )}
       <p className="mt-3 text-xs text-ink-faint">
         Each stop is built from the one before it — nothing here is ornamental.
