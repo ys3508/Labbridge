@@ -1395,7 +1395,7 @@ function getMomentMeta(step, purpose) {
   const moments = [{ key: "brief", label: id.brief[0], objective: id.brief[1] }];
   if (concept.explanation) moments.push({ key: "model", label: id.model[0], objective: id.model[1] });
   if (example.setup) moments.push({ key: "visual", label: id.visual[0], objective: id.visual[1] });
-  if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
+  if (step?.comprehensionCheck?.question) {
     moments.push({ key: "question", label: id.question[0], objective: id.question[1] });
   }
   if (task.steps?.length) moments.push({ key: "practice", label: id.practice[0], objective: id.practice[1] });
@@ -1617,8 +1617,21 @@ function Module({
             {isDone ? "✓" : i + 1}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="mb-1 t-label text-brand-600">
-            Task {i + 1}{total ? ` of ${total}` : ""}
+          <div className="mb-1 flex items-center gap-2">
+            <span className="t-label text-brand-600">
+              Task {i + 1}{total ? ` of ${total}` : ""}
+            </span>
+            {step.archetype && step.archetype !== "learn_and_do" && (
+              <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft">
+                {step.archetype === "critique"
+                  ? "find the flaws"
+                  : step.archetype === "shadow_reproduce"
+                    ? "reproduce it"
+                    : step.archetype === "plot_twist"
+                      ? "expect a twist"
+                      : step.archetype.replace(/_/g, " ")}
+              </span>
+            )}
           </div>
           <div className={`text-base font-semibold leading-snug ${isDone ? "text-ink-soft line-through" : "text-ink"}`}>
             {t.title || step.topic}
@@ -2072,14 +2085,18 @@ function buildMoments({
   }
 
   // CHECK — Did the idea land? (after Model + Example — restoring the original order)
-  if (comprehension?.question && comprehension.options?.length) {
+  if (comprehension?.question) {
     moments.push({
       key: "question",
       label: beatId.question[0],
       title: comprehension.question,
       objective: beatId.question[1],
       kicker: "Answer from what you just read.",
-      body: (
+      body: !comprehension.options?.length ? (
+        // Free-text check genres (explain-back / predict / spot-the-flaw): typed
+        // answer, graded against the generated key — production, not recognition.
+        <FreeTextCheck comprehension={comprehension} task={task} step={step} moduleIndex={moduleIndex} />
+      ) : (
         <div className="space-y-3">
           <div className="grid gap-2">
             {comprehension.options.map((o, idx) => {
@@ -2742,6 +2759,91 @@ function TaskMaterials({ step, task, plan, moduleIndex, draft, autoStart }) {
             </button>
           </div>
           {error && <p className="text-xs text-rose-600">{error}</p>}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// Free-text check (Sissi: "the questions you ask are not valuable at all"):
+// explain-back / predict / spot-the-flaw genres — the learner TYPES an answer
+// and it's graded against the generated key via the coach endpoint (~1¢).
+// Recognition quizzes test nothing; production does.
+function FreeTextCheck({ comprehension, task, step, moduleIndex }) {
+  const [answer, setAnswer] = useState("");
+  const [result, setResult] = useState(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  const grade = async () => {
+    if (!answer.trim() || busy) return;
+    setBusy(true);
+    setError("");
+    try {
+      const res = await fetch("/api/coach", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          draft: answer,
+          taskTitle: `Check question: ${comprehension.question}`,
+          deliverable: "A short typed answer to the question.",
+          doneWhen: "The answer demonstrates the understanding described in the grading key.",
+          steps: [],
+          criteria: [comprehension.explanation || "The answer addresses the question correctly."],
+          redFlags: (step.concept?.traps || []).slice(0, 2),
+          context: (step.concept?.explanation || "").slice(0, 600),
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Grading failed.");
+      setResult(data.review);
+    } catch (e) {
+      setError(e?.message || "Grading failed.");
+    }
+    setBusy(false);
+  };
+
+  const verdict = result?.criteria?.[0];
+  return (
+    <div className="space-y-3">
+      <textarea
+        value={answer}
+        onChange={(e) => setAnswer(e.target.value)}
+        rows={3}
+        placeholder="Type your answer in your own words — it gets graded, not pattern-matched."
+        className="w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none"
+      />
+      <div className="flex items-center gap-3">
+        <button
+          type="button"
+          onClick={grade}
+          disabled={busy || !answer.trim()}
+          className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+        >
+          {busy ? "Grading…" : result ? "Grade again" : "Check my answer"}
+        </button>
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+      </div>
+      {result && (
+        <div
+          className={`rounded-lg px-3 py-2 text-sm leading-relaxed ${
+            verdict?.status === "met"
+              ? "bg-emerald-50 text-emerald-800"
+              : verdict?.status === "thin"
+                ? "bg-amber-50 text-amber-900"
+                : "bg-rose-50 text-rose-800"
+          }`}
+        >
+          <p className="font-medium">
+            {verdict?.status === "met" ? "Got it." : verdict?.status === "thin" ? "Close — but thin." : "Not yet."}
+          </p>
+          {verdict?.note && <p className="mt-1">{verdict.note}</p>}
+          {result.overall && <p className="mt-1 text-xs opacity-80">{result.overall}</p>}
+          {comprehension.explanation && verdict?.status !== "met" && (
+            <p className="mt-2 border-t border-current/10 pt-2 text-xs">
+              <span className="font-medium">The key:</span> {comprehension.explanation}
+            </p>
+          )}
         </div>
       )}
     </div>
