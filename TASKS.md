@@ -71,6 +71,24 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
+- [ ] **Four visual roadmap identities** — road (role) / countdown calendar (interview) /
+      evidence scale (career move) / door (curious); progress currency + product noun
+      change per purpose. Beat identities shipped Jul 15; the roadmap visual is the
+      remaining half. (Jul 15)
+- [ ] Interactive mock-interview runner — timed rapid-fire capstone, scored via
+      /api/coach; today the mock interview is a described arc. (Jul 15)
+- [ ] Post-interview loop — log real questions after the interview → plan
+      regenerates weak spots (campaign companion). (Jul 15)
+- [ ] Exports: interview cheat-sheet (one page, 30-min-before) + Day-One Pack
+      (artifacts + ask-your-team list, formatted for the first 1:1). (Jul 15)
+- [ ] Form-free curious entry — one typed phrase, no resume/goals/timeline;
+      Haiku-generated taste as free top-of-funnel. (Jul 15)
+- [ ] Purpose-ladder handoff — the curious door / decision brief / interview win
+      regenerates the next purpose's plan with background carried over. (Jul 15)
+- [ ] Assistant select-to-ask — highlight page text → quoted into the chat. (Jul 15)
+- [ ] Register selector UI + explicit language field (prompt honors steering-note
+      language today; make it a first-class input). (Jul 15)
+- [ ] Career-move drip pacing — weekly rhythm + "still curious?" re-entry. (Jul 15)
 - [ ] **In-browser data workspace** — DuckDB-WASM SQL cell (and/or grid editor)
       embedded in the Try/Draft beats so learners RUN their cohort spec against
       the generated extract and the Check verifies their count. The concrete

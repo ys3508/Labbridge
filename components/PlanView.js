@@ -145,6 +145,52 @@ export default function PlanView({ form, isBeginner, onBack }) {
     } catch {}
   }, [draftMeta, plan, stateLoaded]);
 
+  // Split-pane AI assistant (Sissi): read on the left, ask on the right.
+  const [assistantOpen, setAssistantOpen] = useState(false);
+
+  // Time tracker (Sissi's mechanic 2): count ACTIVE seconds only — tab visible,
+  // a task open, input within the last 2 minutes. The timeline makes a promise;
+  // this shows it being kept. A signal, never surveillance.
+  const [timeSpent, setTimeSpent] = useState({});
+  const lastInputRef = useRef(Date.now());
+  useEffect(() => {
+    if (!stateLoaded || !plan?.learningSequence?.length) return;
+    try {
+      setTimeSpent(JSON.parse(localStorage.getItem(scopedPlanKey("lb_time", plan.learningSequence)) || "{}"));
+    } catch {}
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [stateLoaded, plan]);
+  useEffect(() => {
+    const mark = () => {
+      lastInputRef.current = Date.now();
+    };
+    window.addEventListener("pointerdown", mark);
+    window.addEventListener("keydown", mark);
+    window.addEventListener("scroll", mark, true);
+    return () => {
+      window.removeEventListener("pointerdown", mark);
+      window.removeEventListener("keydown", mark);
+      window.removeEventListener("scroll", mark, true);
+    };
+  }, []);
+  useEffect(() => {
+    if (!plan?.learningSequence?.length) return;
+    const iv = setInterval(() => {
+      if (document.hidden) return;
+      if (activeSurface !== "task") return;
+      if (Date.now() - lastInputRef.current > 120000) return;
+      setTimeSpent((prev) => {
+        const next = { ...prev, [activeIndex]: (prev[activeIndex] || 0) + 5 };
+        try {
+          localStorage.setItem(scopedPlanKey("lb_time", plan.learningSequence), JSON.stringify(next));
+        } catch {}
+        return next;
+      });
+    }, 5000);
+    return () => clearInterval(iv);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [plan, activeSurface, activeIndex]);
+
   const markDone = (i) => {
     setDone((prev) => {
       if (prev.has(i)) return prev;
@@ -490,7 +536,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
     "";
   const modules = plan.learningSequence || [];
   const activeModule = modules[activeIndex] || modules[0];
-  const activeMeta = activeModule ? getMomentMeta(activeModule) : [];
+  const activeMeta = activeModule ? getMomentMeta(activeModule, form.goals.purpose) : [];
   const activeMomentKey = activeMeta.length
     ? activeMeta[Math.min(Number(momentsByTask[activeIndex] || 0), activeMeta.length - 1)]?.key
     : null;
@@ -640,7 +686,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
   }
 
   return (
-    <div className="w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col">
+    <div className={`w-full fade-up lg:flex lg:h-[calc(100dvh-7rem)] lg:min-h-0 lg:flex-col ${assistantOpen ? "lg:mr-[404px]" : ""}`}>
       <section className={`lg:flex lg:min-h-0 lg:flex-1 lg:flex-col ${focused ? "" : "overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm"}`}>
         <header className={`lg:shrink-0 ${focused ? "px-1 pb-2" : "border-b border-brand-100 px-4 py-4 sm:px-6"}`}>
           {focused ? (
@@ -654,7 +700,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
               </button>
               <p className="min-w-0 truncate text-sm font-medium text-ink">{activeModule?.task?.title || activeModule?.topic}</p>
               <p className="shrink-0 text-xs text-ink-faint">
-                Task {activeIndex + 1}/{modules.length}
+                <TimeMeter modules={modules} timeSpent={timeSpent} deadline={deadline} inline /> · Task{" "}
+                {activeIndex + 1}/{modules.length}
               </p>
             </div>
           ) : (
@@ -667,6 +714,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
             </div>
             <div className="shrink-0 space-y-2 lg:w-64">
               <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact />
+              <TimeMeter modules={modules} timeSpent={timeSpent} deadline={deadline} />
               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
                 <button
                   type="button"
@@ -789,6 +837,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
                   prevDraft={activeIndex > 0 ? drafts[activeIndex - 1] || "" : null}
                   allDrafts={drafts}
+                  purpose={form.goals.purpose}
                   prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
                 />
               )
@@ -800,7 +849,20 @@ export default function PlanView({ form, isBeginner, onBack }) {
         </div>
       </section>
 
+      {assistantOpen && activeModule && (
+        <AssistantPanel
+          onClose={() => setAssistantOpen(false)}
+          module={activeModule}
+          moduleIndex={activeIndex}
+          beatKey={activeMomentKey}
+          plan={plan}
+          draft={drafts[activeIndex] || ""}
+          purpose={form.goals.purpose}
+        />
+      )}
       <Toolbox
+        assistantOpen={assistantOpen}
+        onAssistant={() => setAssistantOpen((v) => !v)}
         modules={modules}
         activeIndex={activeIndex}
         activeModule={activeModule}
@@ -1291,24 +1353,60 @@ function formatFullDateTime(epochMs) {
   })}`;
 }
 
-function getMomentMeta(step) {
+// Purpose picks the grammar (Sissi's flexibility redesign): the same beats wear
+// different identities per career goal, and "curious" drops the homework beats
+// entirely. Defaults = starting_role, the original job simulation.
+const BEAT_IDENTITY = {
+  starting_role: {
+    brief: ["Brief", "Why am I here?"], model: ["Model", "What's the idea?"],
+    visual: ["Example", "What does it look like?"], question: ["Check", "Did it land?"],
+    practice: ["Try", "Can I do it myself?"], artifact: ["Draft", "What did I produce?"],
+    coach: ["Coach", "Am I right?"], reward: ["Wrap", "What changed in my project?"],
+  },
+  interview: {
+    brief: ["Question", "Why do they ask this?"], model: ["Answer", "What's the strong answer?"],
+    visual: ["Hear it", "What does strong sound like?"], question: ["Rapid fire", "Can I answer cold?"],
+    practice: ["Rehearse", "Can I say it in my words?"], artifact: ["Bank it", "What's MY answer?"],
+    coach: ["Score", "Would this land?"], reward: ["Banked", "What's in my answer bank?"],
+  },
+  career_move: {
+    brief: ["Stop", "What is this corner of the field?"], model: ["Reality", "What's the durable idea?"],
+    visual: ["A day in it", "What does the work look like?"], question: ["Gut check", "Does this fit me?"],
+    practice: ["Taste", "Do I enjoy doing it?"], artifact: ["Evidence", "What did I learn about fit?"],
+    coach: ["Weigh it", "What does the evidence say?"], reward: ["Ledger", "Where does my decision stand?"],
+  },
+  curious: {
+    brief: ["Hook", "Why is this interesting?"], model: ["Big idea", "What's the one idea?"],
+    visual: ["See it", "Show me."], question: ["Huh?", "Did that land?"],
+    practice: ["Tiny try", "Want to poke at it?"], artifact: ["Scratch", "Want to jot something?"],
+    coach: ["Hmm", "Was I right?"], reward: ["Door", "Where does this lead?"],
+  },
+};
+function beatIdentity(purpose) {
+  return BEAT_IDENTITY[purpose] || BEAT_IDENTITY.starting_role;
+}
+
+function getMomentMeta(step, purpose) {
+  const id = beatIdentity(purpose);
   const task = step?.task || {};
   const concept = step?.concept || {};
   const example = step?.workedExample || {};
-  const moments = [{ key: "brief", label: "Brief", objective: "Why am I here?" }];
-  if (concept.explanation) moments.push({ key: "model", label: "Model", objective: "What's the idea?" });
-  if (example.setup) moments.push({ key: "visual", label: "Example", objective: "What does it look like?" });
+  const curious = purpose === "curious";
+  const moments = [{ key: "brief", label: id.brief[0], objective: id.brief[1] }];
+  if (concept.explanation) moments.push({ key: "model", label: id.model[0], objective: id.model[1] });
+  if (example.setup) moments.push({ key: "visual", label: id.visual[0], objective: id.visual[1] });
   if (step?.comprehensionCheck?.question && step.comprehensionCheck.options?.length) {
-    moments.push({ key: "question", label: "Check", objective: "Did it land?" });
+    moments.push({ key: "question", label: id.question[0], objective: id.question[1] });
   }
-  if (task.steps?.length) moments.push({ key: "practice", label: "Try", objective: "Can I do it myself?" });
+  if (task.steps?.length) moments.push({ key: "practice", label: id.practice[0], objective: id.practice[1] });
   // Review reshuffle: you write BEFORE you're reviewed. Draft precedes Coach so
   // the self-check + AI review react to a draft that exists.
-  moments.push(
-    { key: "artifact", label: "Draft", objective: "What did I produce?" },
-    { key: "coach", label: "Coach", objective: "Am I right?" },
-    { key: "reward", label: "Wrap", objective: "What changed in my project?" }
-  );
+  // Curious drops the homework beats: no draft/coach unless a real task exists.
+  if (!curious || task.steps?.length) {
+    moments.push({ key: "artifact", label: id.artifact[0], objective: id.artifact[1] });
+    if (!curious) moments.push({ key: "coach", label: id.coach[0], objective: id.coach[1] });
+  }
+  moments.push({ key: "reward", label: id.reward[0], objective: id.reward[1] });
   return moments;
 }
 
@@ -1498,6 +1596,7 @@ function Module({
   prevDraft,
   prevArtifact,
   allDrafts,
+  purpose,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1553,6 +1652,7 @@ function Module({
         prevDraft={prevDraft}
         prevArtifact={prevArtifact}
         allDrafts={allDrafts}
+        purpose={purpose}
       />
     </section>
   );
@@ -1584,6 +1684,7 @@ function MomentFlow({
   prevDraft,
   prevArtifact,
   allDrafts,
+  purpose,
 }) {
   const [choice, setChoice] = useState(null);
   const checkSet = new Set(checks || []);
@@ -1612,6 +1713,7 @@ function MomentFlow({
     prevDraft,
     prevArtifact,
     allDrafts,
+    purpose,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -1735,7 +1837,10 @@ function buildMoments({
   prevDraft,
   prevArtifact,
   allDrafts,
+  purpose,
 }) {
+  const beatId = beatIdentity(purpose);
+  const isCurious = purpose === "curious";
   // Fixed grammar, variable inclusion. Code assembles the beats a task has content
   // for: Brief/Coach/Artifact/Reward always; Question/Model/Visual/Practice when
   // their content exists. The model never chooses the flow.
@@ -1758,9 +1863,9 @@ function buildMoments({
     .filter((l) => l.length > 12)[0];
   moments.push({
     key: "brief",
-    label: "Brief",
+    label: beatId.brief[0],
     title: task.title || step.topic,
-    objective: "Why am I here?",
+    objective: beatId.brief[1],
     kicker: null,
     body: (
       <div className="space-y-4">
@@ -1849,9 +1954,9 @@ function buildMoments({
   if (concept.explanation) {
     moments.push({
       key: "model",
-      label: "Model",
+      label: beatId.model[0],
       title: "The idea you need.",
-      objective: "What's the idea?",
+      objective: beatId.model[1],
       kicker: "One compact model — short enough to use while working.",
       body: (
         <div className="space-y-4">
@@ -1931,9 +2036,9 @@ function buildMoments({
   if (example.setup) {
     moments.push({
       key: "visual",
-      label: "Example",
+      label: beatId.visual[0],
       title: "See it on one tiny case.",
-      objective: "What does it look like?",
+      objective: beatId.visual[1],
       kicker: null,
       body: (
         <div className="space-y-3">
@@ -1970,9 +2075,9 @@ function buildMoments({
   if (comprehension?.question && comprehension.options?.length) {
     moments.push({
       key: "question",
-      label: "Check",
+      label: beatId.question[0],
       title: comprehension.question,
-      objective: "Did it land?",
+      objective: beatId.question[1],
       kicker: "Answer from what you just read.",
       body: (
         <div className="space-y-3">
@@ -2020,9 +2125,9 @@ function buildMoments({
   if (task.steps?.length) {
     moments.push({
       key: "practice",
-      label: "Try",
-      title: "Make the first move.",
-      objective: "Can I do it myself?",
+      label: beatId.practice[0],
+      title: purpose === "interview" ? "Rehearse it." : purpose === "curious" ? "A tiny try — totally optional." : "Make the first move.",
+      objective: beatId.practice[1],
       kicker: "Here's the job, and the bar it will be judged against.",
       body: (
         <div>
@@ -2115,11 +2220,12 @@ function buildMoments({
   // ARTIFACT — What did I produce? (reshuffled BEFORE Coach: you write, then
   // you're reviewed. An empty box in front of someone with no data is where the
   // task dies — the template makes the first keystroke free.)
-  moments.push({
+  // Curious grammar: no homework — draft only if a real tiny-try exists, no coach.
+  if (!isCurious || task.steps?.length) moments.push({
     key: "artifact",
-    label: "Draft",
-    title: "Write your draft.",
-    objective: "What did I produce?",
+    label: beatId.artifact[0],
+    title: purpose === "interview" ? "Write your answer, in your words." : purpose === "career_move" ? "Log the evidence." : "Write your draft.",
+    objective: beatId.artifact[1],
     kicker: "This is where it becomes yours — part of your final project.",
     body: (
       <div className="space-y-3">
@@ -2152,11 +2258,11 @@ function buildMoments({
   });
 
   // COACH — Am I right? (self-check + a real AI review of the draft that now exists)
-  moments.push({
+  if (!isCurious) moments.push({
     key: "coach",
-    label: "Coach",
-    title: "Self-check, then get a review.",
-    objective: "Am I right?",
+    label: beatId.coach[0],
+    title: purpose === "interview" ? "Would this answer land?" : "Self-check, then get a review.",
+    objective: beatId.coach[1],
     // Review #78: ticks are PREDICTIONS, not claims — the gap between your ticks
     // and the review is the calibration lesson.
     kicker: "Tick what you think holds — the review will tell you if you're right.",
@@ -2224,11 +2330,38 @@ function buildMoments({
     : null;
   moments.push({
     key: "reward",
-    label: "Wrap",
+    label: beatId.reward[0],
     title: isDone ? "Task complete." : "Add it to your project.",
-    objective: "What changed in my project?",
+    objective: beatId.reward[1],
     kicker: null,
-    body: (
+    body: isCurious ? (
+      // The curious grammar ends at a DOOR, not a receipt — no files, no ticks.
+      <div className="space-y-3">
+        <div className="rounded-xl border border-brand-100 bg-brand-50/40 px-4 py-3">
+          <p className="t-label text-brand-600">The door</p>
+          <p className="mt-1 text-sm font-medium text-ink">{plan.firstTask?.title || "Where this leads"}</p>
+          {plan.firstTask?.why && (
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">{plan.firstTask.why}</p>
+          )}
+          {(plan.firstTask?.phases || [])[0]?.goal && (
+            <p className="mt-2 text-sm leading-relaxed text-ink">{plan.firstTask.phases[0].goal}</p>
+          )}
+          <p className="mt-2 text-xs text-ink-faint">
+            If this grabbed you, rebuild with “Exploring a career move” or “Starting a role soon” — your
+            background carries over. No pressure either way; that was the point.
+          </p>
+        </div>
+        <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-ink">
+          {nextLabel ? (
+            <>
+              <span className="font-medium">Next taste:</span> {nextLabel}
+            </>
+          ) : (
+            "That's the whole taste — no homework, nothing to finish."
+          )}
+        </p>
+      </div>
+    ) : (
       <div className="space-y-3">
         {gapReward && <GapClosedReward reward={gapReward} />}
         {!hasDraft && (
@@ -3414,6 +3547,37 @@ function SampleCoaching({ draft, criteria = [], checks, redFlags = [], concept =
 // in hours with the file you'll walk away holding, and ends at the role. Every
 // number derives from plan data — no invented percentages, no motivational
 // filler. Trims shrink the visible road; regeneration stays honestly gated.
+// Mechanic 2 (Sissi): "I need a time tracker so users know how much time they
+// actually work." Shows spent vs planned; with a deadline, a soft pacing word.
+function fmtDur(sec) {
+  const m = Math.round(sec / 60);
+  if (m < 1) return "0m";
+  if (m < 60) return `${m}m`;
+  return `${Math.floor(m / 60)}h ${m % 60 ? `${m % 60}m` : ""}`.trim();
+}
+function TimeMeter({ modules, timeSpent, deadline, inline }) {
+  const spentSec = Object.values(timeSpent || {}).reduce((a, b) => a + (Number(b) || 0), 0);
+  const plannedH = (modules || []).reduce((acc, m) => {
+    const hrs = timeboxHours(m?.task?.timebox);
+    return acc + (hrs ? (hrs[0] + hrs[1]) / 2 : 0.75);
+  }, 0);
+  if (!modules?.length) return null;
+  const plannedSec = plannedH * 3600;
+  let pace = "";
+  if (deadline && spentSec > 0) {
+    const daysLeft = Math.max(0, Math.ceil((new Date(deadline) - Date.now()) / 86400000));
+    const remainH = Math.max(0, plannedSec - spentSec) / 3600;
+    pace = remainH < 0.1 ? " · done" : daysLeft <= 0 ? "" : remainH <= daysLeft ? " · on pace" : ` · ~${Math.ceil(remainH)}h left`;
+  }
+  const text = `${fmtDur(spentSec)} worked · ~${Math.round(plannedH * 10) / 10}h planned${pace}`;
+  if (inline) return <span title="Active time only — pauses when you're idle or away">{text}</span>;
+  return (
+    <p className="text-right text-[11px] text-ink-faint" title="Active time only — pauses when you're idle or away">
+      ⏱ {text}
+    </p>
+  );
+}
+
 function timeboxHours(tb) {
   const t = (tb || "").toLowerCase();
   let m = t.match(/(\d+)\s*[-\u2013]\s*(\d+)\s*h/);
@@ -3473,6 +3637,13 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
               </span>
             ))}
           </div>
+          {strengths.length > 0 && (
+            // The skips made visible (Sissi): the road's LENGTH is personalization —
+            // say out loud that these strengths deleted stops.
+            <p className="mt-1 text-xs text-ink-faint">
+              — so this road has no stops for what you already do. Your background just made it shorter.
+            </p>
+          )}
         </li>
 
         {stops.map((stop) => (
@@ -3574,7 +3745,162 @@ function momentSnapshotText(step, key) {
   return [step?.context, t.managerRequest, t.deliverable].filter(Boolean).join("\n");
 }
 
-function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, onNotes, drafts, checksByTask, openTool, setOpenTool }) {
+// Split-pane assistant (Sissi): "read information and use the chatbot at the
+// same time." A docked right panel, not an overlay — the content column yields.
+// The whole value is CONTEXT INJECTION: every message automatically carries the
+// current beat, the task, the materials, and the draft, and the reply must
+// anchor back to the page (honesty rules inherited from the plan contract).
+function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, purpose }) {
+  const storeKey = scopedPlanKey(`lb_chat_${moduleIndex}`, plan?.learningSequence || []);
+  const [messages, setMessages] = useState(() => {
+    try {
+      if (typeof window === "undefined") return [];
+      return JSON.parse(localStorage.getItem(storeKey) || "[]");
+    } catch {
+      return [];
+    }
+  });
+  const [input, setInput] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const scrollRef = useRef(null);
+
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
+  }, [messages, busy]);
+
+  const send = async (text) => {
+    const q = (text || "").trim();
+    if (!q || busy) return;
+    const nextMsgs = [...messages, { role: "user", content: q }];
+    setMessages(nextMsgs);
+    setInput("");
+    setBusy(true);
+    setError("");
+    try {
+      let canon = "";
+      try {
+        canon = localStorage.getItem(canonKey(plan)) || "";
+      } catch {}
+      const materials = (getCachedMaterials(plan, moduleIndex) || [])
+        .map((m) => `--- ${m.filename} ---\n${(m.content || "").slice(0, 900)}`)
+        .join("\n")
+        .slice(0, 3000);
+      const res = await fetch("/api/assist", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          messages: nextMsgs.slice(-8),
+          context: {
+            purpose: purpose || "starting_role",
+            taskTitle: module?.task?.title || module?.topic || "",
+            beatKey: beatKey || "",
+            beatContent: momentSnapshotText(module, beatKey).slice(0, 2500),
+            concept: (module?.concept?.explanation || "").slice(0, 1500),
+            draft: (draft || "").slice(0, 2000),
+            materials,
+            canon,
+          },
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || data.error) throw new Error(data.error || "Assistant failed.");
+      const withReply = [...nextMsgs, { role: "assistant", content: data.reply }];
+      setMessages(withReply);
+      try {
+        localStorage.setItem(storeKey, JSON.stringify(withReply.slice(-30)));
+      } catch {}
+    } catch (e) {
+      setError(e?.message || "Assistant failed.");
+      setMessages(nextMsgs); // keep the user's question visible for retry
+    }
+    setBusy(false);
+  };
+
+  const quick = [
+    { label: "Explain simpler", q: "Explain what this page teaches in simpler words, using my background." },
+    { label: "Another example", q: "Give me one more tiny concrete example of this idea." },
+    { label: "Quiz me", q: "Ask me one question to test whether I understood this page. Wait for my answer." },
+  ];
+
+  return (
+    <aside
+      className="fixed right-0 top-0 z-40 flex h-full w-full flex-col border-l border-slate-200 bg-white shadow-xl sm:w-[400px]"
+      aria-label="AI assistant"
+    >
+      <div className="flex items-center justify-between gap-2 border-b border-slate-100 px-4 py-3">
+        <div className="min-w-0">
+          <p className="t-label text-brand-600">Ask about this page</p>
+          <p className="truncate text-xs text-ink-faint">{module?.task?.title || module?.topic}</p>
+        </div>
+        <button type="button" onClick={onClose} className="shrink-0 text-xs text-ink-faint hover:text-ink">
+          Close ✕
+        </button>
+      </div>
+
+      <div ref={scrollRef} className="min-h-0 flex-1 space-y-3 overflow-y-auto px-4 py-3">
+        {messages.length === 0 && (
+          <p className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+            I can see the page you're reading, your materials, and your draft — ask about any of it. I'll flag
+            team-specific conventions to confirm locally, and I won't invent facts about your company.
+          </p>
+        )}
+        {messages.map((m, k) => (
+          <div key={k} className={m.role === "user" ? "ml-auto w-fit max-w-[88%]" : "w-fit max-w-[92%]"}>
+            <p
+              className={`whitespace-pre-wrap rounded-lg px-3 py-2 text-sm leading-relaxed ${
+                m.role === "user" ? "bg-brand-100 text-brand-900" : "bg-white text-ink ring-1 ring-slate-100"
+              }`}
+            >
+              {m.content}
+            </p>
+          </div>
+        ))}
+        {busy && <p className="text-xs text-ink-faint">Thinking…</p>}
+        {error && <p className="text-xs text-rose-600">{error}</p>}
+      </div>
+
+      <div className="border-t border-slate-100 px-4 py-3">
+        <div className="mb-2 flex flex-wrap gap-1.5">
+          {quick.map((qa) => (
+            <button
+              key={qa.label}
+              type="button"
+              onClick={() => send(qa.q)}
+              disabled={busy}
+              className="rounded-full bg-white px-2.5 py-1 text-[11px] font-medium text-brand-700 ring-1 ring-brand-100 hover:ring-brand-300 disabled:opacity-50"
+            >
+              {qa.label}
+            </button>
+          ))}
+        </div>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            send(input);
+          }}
+          className="flex gap-2"
+        >
+          <input
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about what you're reading…"
+            className="min-w-0 flex-1 rounded-lg border border-slate-200 px-3 py-2 text-sm text-ink focus:border-brand-300 focus:outline-none"
+          />
+          <button
+            type="submit"
+            disabled={busy || !input.trim()}
+            className="rounded-lg bg-brand-500 px-3 py-2 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+          >
+            →
+          </button>
+        </form>
+      </div>
+    </aside>
+  );
+}
+
+function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, onNotes, drafts, checksByTask, openTool, setOpenTool, onAssistant, assistantOpen }) {
   const [demo] = useState(() => {
     try {
       return typeof window !== "undefined" && localStorage.getItem("lb_mock") === "1";
@@ -3610,6 +3936,7 @@ function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, o
   const terms = q ? allTerms.filter((t) => `${t.term} ${t.plainMeaning}`.toLowerCase().includes(q)) : allTerms;
 
   const tools = [
+    { key: "assistant", glyph: "✳", label: "Ask AI — opens a side panel so you can read and ask at once" },
     { key: "notes", glyph: "✎", label: "Notes" },
     { key: "glossary", glyph: "≔", label: "Glossary" },
     { key: "snapshot", glyph: "⌗", label: snapped ? "Saved ✓" : "Snapshot this moment" },
@@ -3625,9 +3952,13 @@ function Toolbox({ modules, activeIndex, activeModule, activeMomentKey, notes, o
             type="button"
             title={t.label}
             aria-label={t.label}
-            onClick={() => (t.key === "snapshot" ? snapshot() : setOpenTool(openTool === t.key ? null : t.key))}
+            onClick={() =>
+              t.key === "snapshot" ? snapshot() : t.key === "assistant" ? onAssistant?.() : setOpenTool(openTool === t.key ? null : t.key)
+            }
             className={`flex h-9 w-9 items-center justify-center rounded-full text-sm transition ${
-              openTool === t.key ? "bg-brand-600 text-white" : "text-ink-soft hover:bg-slate-100 hover:text-ink"
+              openTool === t.key || (t.key === "assistant" && assistantOpen)
+                ? "bg-brand-600 text-white"
+                : "text-ink-soft hover:bg-slate-100 hover:text-ink"
             }`}
           >
             {t.key === "snapshot" && snapped ? "✓" : t.glyph}
