@@ -4,6 +4,17 @@
 
 **Calibrated promise (never inflate):** "Nothing in this posting will surprise you." / "Walk in with answers rehearsed against pushback, anchored to your real background." Never "ace any interview."
 
+## The input door (Sissi, Jul 15 — the input side of "purpose picks the grammar")
+
+The form adapts per door. Interview mode's fields, in order:
+1. **Job description** (promoted to THE field — the Question Map's receipts depend on it)
+2. **Company** (first-class, no longer only via the posting) — powers "why this company" + questions-to-ask-them; honesty rule: the name frames prep, never invents facts about them
+3. Role · Resume/background (urged: "add it and every answer gets built from your life")
+4. **The interview:** "What round is it, what format — and what are you most worried they'll ask?" (round → unit selection; worry → cram order + boss-fight framing)
+5. **The challenge field:** "What's the hardest part of this for you? The question you're dreading, nerves, explaining a gap or layoff, interviewing in your second language — whatever it actually is." One warm field, two signal types: content fears → cram order/boss fight; PERSONAL obstacles → delivery-axis weighting, dedicated units (e.g. "explaining the gap" — invisible in any posting), tone calibration, language rules. The worry field tunes the CONTENT; the challenge field tunes the TREATMENT.
+   - CARE RULE: this field invites vulnerable disclosures (visa, age, disability). Engage honestly with what we can help (framing, practice, narrative); say plainly what we can't (no legal/visa advice); never dismiss, never overpromise.
+6. **"When is the interview?"** (+ optional hours/day) — drives countdown, cram order, budget, walk-in-card timing.
+
 ## The journey
 
 1. **Entry (lighter than the form):** paste the job posting + the interview date (resume optional but urged — "add it and every answer gets built from your life"). Date drives everything: countdown identity, cram ordering, cheat-sheet timing.
