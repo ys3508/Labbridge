@@ -6,6 +6,17 @@ import { client, MODEL } from "@/lib/ai";
 // draft doesn't contain and never praises work that isn't there — the whole
 // point of this endpoint is that the checkmark upstream is earned.
 
+// Purpose-aware tone (the four lenses must FEEL different): verdicts fit a
+// deliverable that can be right or wrong; "does this fit me?" cannot be graded.
+const REFLECTIVE_SYSTEM = `You are a thoughtful career mentor reading someone's private reflection notes about whether to move into a new field. This is NOT gradable work — there is no right answer to "does this fit me."
+
+Rules:
+- NO verdicts, NO pass/fail language. For each listed criterion, status is "met" if the note engages with that dimension at all, "thin" only if it's genuinely unexplored — and every note you write is a REFLECTION, not a correction: mirror back what their own words suggest ("you keep returning to autonomy — that's telling you something"), name tensions you see, ask at most one good question.
+- redFlagHits: only genuine self-deception patterns (deciding from imagination instead of evidence, sunk-cost language), phrased gently.
+- nextEdits: 2-3 prompts for further reflection, not corrections.
+- overall: 2-3 sentences mirroring the strongest signal in their notes — what the evidence they've gathered actually points toward. Never tell them what to decide.
+- Judge ONLY from their text; quote their own words back where it helps.`;
+
 const SYSTEM = `You are an experienced, direct, kind team lead reviewing a new hire's first-week draft. You are given the task, its success criteria, its red flags (known failure modes), and the draft.
 
 Rules:
@@ -15,6 +26,7 @@ Rules:
 - redFlagHits: list ONLY red flags whose MISTAKE actually appears in the draft, each as one sentence pointing at where. A draft that mentions the topic while handling it correctly (e.g. it correctly distinguishes billed codes from clinical truth) has NOT hit the flag — do not list it. If none appear, return an empty array — do not manufacture problems.
 - nextEdits: the 2-3 highest-value concrete edits, imperative voice, each ≤ 20 words, ordered by impact.
 - overall: 2-3 sentences. Honest read first (is this usable work?), then the single biggest strength and the single biggest gap. No grade inflation, no rubric restating, no "great job" filler.
+- If the task is INTERVIEW REHEARSAL (the deliverable is an answer to an interviewer's question), judge it as the interviewer would: would this answer land in the room? Note where they'd push back, and whether it survives the push.
 - If the draft is only a template or placeholder bullets with nothing filled in, say exactly that in overall, mark criteria accordingly, and make nextEdits about doing the work — never pretend effort you don't see.`;
 
 const S = { type: "string" };
@@ -58,6 +70,8 @@ export async function POST(request) {
   const doneWhen = (body?.doneWhen || "").toString();
   const context = (body?.context || "").toString();
   const materials = (body?.materials || "").toString();
+  const canon = (body?.canon || "").toString();
+  const purpose = (body?.purpose || "starting_role").toString();
 
   if (!draft) return Response.json({ error: "Nothing to review — the draft is empty." }, { status: 400 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "No API key." }, { status: 500 });
@@ -72,6 +86,7 @@ export async function POST(request) {
       ? `Success criteria (return one status per criterion, in this order):\n${criteria.map((c, i) => `${i + 1}. ${c}`).join("\n")}`
       : "Success criteria: none given — grade against the deliverable and done-when line (return an empty criteria array).",
     redFlags.length && `Red flags to check for:\n${redFlags.map((r) => `- ${r}`).join("\n")}`,
+    canon && `World canon (the plan's fixed facts — a draft contradicting these is wrong):\n${canon.slice(0, 1200)}`,
     materials &&
       `THE PRACTICE MATERIALS the draft was written against (use these to verify empirical claims — counts, dates, spans, codes; a claim the materials contradict is wrong):\n${materials.slice(0, 4000)}`,
     `THE DRAFT:\n"""\n${draft.slice(0, 8000)}\n"""`,
@@ -81,7 +96,7 @@ export async function POST(request) {
     const message = await client.messages.create({
       model: MODEL,
       max_tokens: 1024,
-      system: SYSTEM,
+      system: purpose === "career_move" ? REFLECTIVE_SYSTEM : SYSTEM,
       output_config: { format: { type: "json_schema", schema: SCHEMA } },
       messages: [{ role: "user", content: parts.join("\n\n") }],
     });

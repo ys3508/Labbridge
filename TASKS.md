@@ -76,8 +76,8 @@ implemented; see JOURNEY.md for the story.)*
       the DuckDB workspace. (Jul 15)
 - [ ] Session-end mirror — one earned line on exit from tracker data ("42 min today;
       task-2 answer went thin→met"). (Jul 15)
-- [ ] User→product feedback backend — the 👍/👎 beat chips (v1 localStorage — in the approved-pending batch)
-      need a collection endpoint + dashboard when accounts land. (Jul 15)
+- [ ] User→product feedback backend — the 👍/👎 beat chips SHIPPED (v1 localStorage, Jul 15);
+      still needs a collection endpoint + dashboard when accounts land. (Jul 15)
 - [ ] **Four visual roadmap identities** — road (role) / countdown calendar (interview) /
       evidence scale (career move) / door (curious); progress currency + product noun
       change per purpose. Beat identities shipped Jul 15; the roadmap visual is the

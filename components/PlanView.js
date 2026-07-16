@@ -147,6 +147,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
   // Split-pane AI assistant (Sissi): read on the left, ask on the right.
   const [assistantOpen, setAssistantOpen] = useState(false);
+  const [assistantSeed, setAssistantSeed] = useState("");
 
   // World canon seeding (borrowed from the Phase-A draft): when the PLAN itself
   // ships an entitySheet, it becomes the canon at birth — examples and materials
@@ -849,6 +850,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   prevDraft={activeIndex > 0 ? drafts[activeIndex - 1] || "" : null}
                   allDrafts={drafts}
                   purpose={form.goals.purpose}
+                  onDiscuss={(seed) => {
+                    setAssistantSeed(seed);
+                    setAssistantOpen(true);
+                  }}
                   prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
                 />
               )
@@ -862,6 +867,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
 
       {assistantOpen && activeModule && (
         <AssistantPanel
+          seed={assistantSeed}
+          onSeedConsumed={() => setAssistantSeed("")}
           onClose={() => setAssistantOpen(false)}
           module={activeModule}
           moduleIndex={activeIndex}
@@ -1608,6 +1615,7 @@ function Module({
   prevArtifact,
   allDrafts,
   purpose,
+  onDiscuss,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1677,8 +1685,71 @@ function Module({
         prevArtifact={prevArtifact}
         allDrafts={allDrafts}
         purpose={purpose}
+        onDiscuss={onDiscuss}
       />
     </section>
+  );
+}
+
+// Beat-level feedback (Sissi's feedback system, users→product direction):
+// one tap tells us which beats work and which don't — and a 👎 note becomes
+// regeneration context later. V1 stores locally; backend arrives with accounts.
+function recordBeatFeedback(plan, entry) {
+  try {
+    const k = scopedPlanKey("lb_feedback", plan?.learningSequence || []);
+    const arr = JSON.parse(localStorage.getItem(k) || "[]");
+    arr.push({ ...entry, at: Date.now() });
+    localStorage.setItem(k, JSON.stringify(arr.slice(-200)));
+  } catch {}
+}
+function BeatFeedback({ plan, taskIndex, beatKey }) {
+  const [state, setState] = useState(null); // null | "up" | "down" | "noted"
+  const [note, setNote] = useState("");
+  if (state === "noted") return <span className="text-[11px] text-ink-faint">noted — thanks</span>;
+  if (state === "down") {
+    return (
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          recordBeatFeedback(plan, { taskIndex, beatKey, vote: "down", note: note.trim() });
+          setState("noted");
+        }}
+        className="flex items-center gap-1.5"
+      >
+        <input
+          value={note}
+          onChange={(e) => setNote(e.target.value)}
+          placeholder="what's off? (optional)"
+          className="w-40 rounded border border-slate-200 px-2 py-1 text-[11px] text-ink focus:outline-none"
+        />
+        <button type="submit" className="text-[11px] font-medium text-brand-700 hover:underline">
+          send
+        </button>
+      </form>
+    );
+  }
+  return (
+    <span className="flex items-center gap-1 text-ink-faint">
+      <button
+        type="button"
+        title="This page helped"
+        onClick={() => {
+          recordBeatFeedback(plan, { taskIndex, beatKey, vote: "up" });
+          setState("noted");
+        }}
+        className="rounded px-1.5 py-0.5 text-xs hover:bg-slate-100"
+      >
+        👍
+      </button>
+      <button
+        type="button"
+        title="Something's off on this page"
+        onClick={() => setState("down")}
+        className="rounded px-1.5 py-0.5 text-xs hover:bg-slate-100"
+      >
+        👎
+      </button>
+    </span>
   );
 }
 
@@ -1709,6 +1780,7 @@ function MomentFlow({
   prevArtifact,
   allDrafts,
   purpose,
+  onDiscuss,
 }) {
   const [choice, setChoice] = useState(null);
   const checkSet = new Set(checks || []);
@@ -1738,6 +1810,7 @@ function MomentFlow({
     prevArtifact,
     allDrafts,
     purpose,
+    onDiscuss,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -1814,7 +1887,7 @@ function MomentFlow({
           >
             Back
           </button>
-          {/* (center label removed — it repeated the beat header on every page) */}
+          <BeatFeedback plan={plan} taskIndex={moduleIndex} beatKey={current.key} />
           <button
             type="button"
             onClick={goNext}
@@ -1862,6 +1935,7 @@ function buildMoments({
   prevArtifact,
   allDrafts,
   purpose,
+  onDiscuss,
 }) {
   const beatId = beatIdentity(purpose);
   const isCurious = purpose === "curious";
@@ -2000,12 +2074,7 @@ function buildMoments({
           })()}
           {/* Definitions live in the Toolbox glossary (≔) — repeating them here
               re-taught the same terms on every page (review item #51). */}
-          {concept.keyTerms?.length > 0 && (
-            <p className="text-xs text-ink-faint">
-              Terms used here ({concept.keyTerms.map((k) => k.term).join(" · ")}) are in the glossary — the ≔ icon
-              on the right.
-            </p>
-          )}
+          {concept.keyTerms?.length > 0 && <TermChips keyTerms={concept.keyTerms} />}
           {(concept.traps?.length > 0 || concept.misconceptionToAvoid) && (
             <div className="rounded-md border-l-2 border-amber-300 bg-amber-50 px-3 py-2">
               <p className="text-xs font-medium text-amber-800">Field-tested traps</p>
@@ -2106,7 +2175,7 @@ function buildMoments({
       body: !comprehension.options?.length ? (
         // Free-text check genres (explain-back / predict / spot-the-flaw): typed
         // answer, graded against the generated key — production, not recognition.
-        <FreeTextCheck comprehension={comprehension} task={task} step={step} moduleIndex={moduleIndex} />
+        <FreeTextCheck comprehension={comprehension} task={task} step={step} moduleIndex={moduleIndex} purpose={purpose} />
       ) : (
         <div className="space-y-3">
           <div className="grid gap-2">
@@ -2274,6 +2343,7 @@ function buildMoments({
           </button>
         )}
         <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+        <DraftLinter draft={draft} plan={plan} moduleIndex={moduleIndex} task={task} />
         <TaskMaterials step={step} task={task} plan={plan} moduleIndex={moduleIndex} draft={draft} autoStart />
         {task.doneWhen && (
           <p className="rounded-lg bg-emerald-50 px-3 py-2 text-sm leading-relaxed text-emerald-800">
@@ -2331,10 +2401,12 @@ function buildMoments({
           task={task}
           step={step}
           plan={plan}
+          purpose={purpose}
           criteria={criteria}
           redFlags={redFlags}
           concept={concept}
           moduleIndex={moduleIndex}
+          onDiscuss={onDiscuss}
         />
       </div>
     ),
@@ -2776,11 +2848,60 @@ function TaskMaterials({ step, task, plan, moduleIndex, draft, autoStart }) {
   );
 }
 
+// The draft linter (feedback batch): a zero-cost, real-time fact spell-checker.
+// While you write, it checks that files, codes, and IDs you cite actually exist
+// in your practice materials and world canon — the phantom-file catch, live.
+// Deliberately conservative: only token classes with digits/extensions, never words.
+function draftCitations(draft) {
+  const found = new Set();
+  const text = draft || "";
+  (text.match(/\b[\w-]+\.(?:csv|md|txt|pdf|xlsx|json|sql)\b/gi) || []).forEach((x) => found.add(x));
+  (text.match(/\b[A-Z]\d{2}(?:\.\d{1,3})?\b/g) || []).forEach((x) => found.add(x)); // ICD-shaped
+  (text.match(/\b\d{4,5}-\d{3,4}(?:-\d{1,2})?\b/g) || []).forEach((x) => found.add(x)); // NDC-shaped
+  (text.match(/\b[MP]T?\d{3,}\b/g) || []).forEach((x) => found.add(x)); // member/patient IDs
+  return [...found];
+}
+function DraftLinter({ draft, plan, moduleIndex, task }) {
+  const [warnings, setWarnings] = useState([]);
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const mats = getCachedMaterials(plan, moduleIndex) || [];
+      if (!mats.length || !(draft || "").trim()) {
+        setWarnings([]);
+        return;
+      }
+      let canon = "";
+      try {
+        canon = localStorage.getItem(canonKey(plan)) || "";
+      } catch {}
+      const corpus = (
+        mats.map((m) => `${m.filename}\n${m.content}`).join("\n") +
+        "\n" +
+        canon +
+        "\n" +
+        (task?.givenInputs || []).join("\n")
+      ).toLowerCase();
+      setWarnings(draftCitations(draft).filter((c) => !corpus.includes(c.toLowerCase())).slice(0, 4));
+    }, 800);
+    return () => clearTimeout(t);
+  }, [draft, plan, moduleIndex, task]);
+  if (!warnings.length) return null;
+  return (
+    <div className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2">
+      <p className="text-xs font-medium text-amber-900">Cited, but not in your materials:</p>
+      <p className="mt-0.5 t-mono text-xs text-amber-800">{warnings.join(" · ")}</p>
+      <p className="mt-0.5 text-[11px] text-amber-700">
+        Check the spelling against the data — a reviewer would catch this too.
+      </p>
+    </div>
+  );
+}
+
 // Free-text check (Sissi: "the questions you ask are not valuable at all"):
 // explain-back / predict / spot-the-flaw genres — the learner TYPES an answer
 // and it's graded against the generated key via the coach endpoint (~1¢).
 // Recognition quizzes test nothing; production does.
-function FreeTextCheck({ comprehension, task, step, moduleIndex }) {
+function FreeTextCheck({ comprehension, task, step, moduleIndex, purpose }) {
   const [answer, setAnswer] = useState("");
   const [result, setResult] = useState(null);
   const [busy, setBusy] = useState(false);
@@ -2800,6 +2921,7 @@ function FreeTextCheck({ comprehension, task, step, moduleIndex }) {
           deliverable: "A short typed answer to the question.",
           doneWhen: "The answer demonstrates the understanding described in the grading key.",
           steps: [],
+          purpose: purpose || "starting_role",
           criteria: [comprehension.explanation || "The answer addresses the question correctly."],
           redFlags: (step.concept?.traps || []).slice(0, 2),
           context: (step.concept?.explanation || "").slice(0, 600),
@@ -2865,7 +2987,7 @@ function FreeTextCheck({ comprehension, task, step, moduleIndex }) {
 // against the task's own criteria + red flags. Button-triggered only (never
 // auto-fires — each review is a real, if tiny, API spend); the last review is
 // kept per task so a refresh doesn't re-bill.
-function CoachReview({ draft, task, step, plan, criteria, redFlags, concept, moduleIndex }) {
+function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, concept, moduleIndex, onDiscuss }) {
   const storeKey = `lb_review_${moduleIndex}`;
   const [result, setResult] = useState(() => {
     try {
@@ -2900,6 +3022,14 @@ function CoachReview({ draft, task, step, plan, criteria, redFlags, concept, mod
             ...((concept?.traps?.length ? concept.traps : [concept?.misconceptionToAvoid]).filter(Boolean)),
           ],
           context: step.context || "",
+          purpose: purpose || "starting_role",
+          canon: (() => {
+            try {
+              return localStorage.getItem(canonKey(plan)) || "";
+            } catch {
+              return "";
+            }
+          })(),
           // The coach reviews against the ACTUAL practice data, not just prose —
           // empirical claims (counts, spans) become checkable. (Review item.)
           materials: (getCachedMaterials(plan, moduleIndex) || [])
@@ -2985,10 +3115,59 @@ function CoachReview({ draft, task, step, plan, criteria, redFlags, concept, mod
               </ol>
             </div>
           )}
-          <p className="mt-2 text-[11px] text-ink-faint">
-            A starting point, not a sign-off — your team's conventions win.
-          </p>
+          <div className="mt-2 flex items-center justify-between gap-2">
+            <p className="text-[11px] text-ink-faint">
+              A starting point, not a sign-off — your team's conventions win.
+            </p>
+            {onDiscuss && (
+              <button
+                type="button"
+                onClick={() =>
+                  onDiscuss(
+                    `I just got this review of my draft:\n${result.overall}\n` +
+                      result.criteria
+                        .map((c, i) => `${i + 1}. [${c.status}] ${c.note}`)
+                        .join("\n") +
+                      `\n\nHelp me understand what to fix first, and why.`
+                  )
+                }
+                className="shrink-0 text-[11px] font-medium text-brand-700 hover:underline"
+              >
+                Discuss this review →
+              </button>
+            )}
+          </div>
         </div>
+      )}
+    </div>
+  );
+}
+
+// Tap-a-term (feedback batch): the glossary, one tap away from the prose it
+// serves — each key term is a chip; tapping reveals the plain meaning inline.
+function TermChips({ keyTerms }) {
+  const [open, setOpen] = useState(null);
+  return (
+    <div>
+      <div className="flex flex-wrap items-center gap-1.5">
+        <span className="text-xs text-ink-faint">Terms:</span>
+        {keyTerms.map((k, i) => (
+          <button
+            key={i}
+            type="button"
+            onClick={() => setOpen(open === i ? null : i)}
+            className={`rounded-full px-2 py-0.5 text-xs transition ${
+              open === i ? "bg-brand-600 text-white" : "bg-slate-100 text-ink-soft hover:bg-brand-50 hover:text-brand-700"
+            }`}
+          >
+            {k.term}
+          </button>
+        ))}
+      </div>
+      {open !== null && keyTerms[open] && (
+        <p className="mt-1.5 rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-ink">
+          <span className="font-semibold">{keyTerms[open].term}</span> — {keyTerms[open].plainMeaning}
+        </p>
       )}
     </div>
   );
@@ -3878,7 +4057,7 @@ function momentSnapshotText(step, key) {
 // The whole value is CONTEXT INJECTION: every message automatically carries the
 // current beat, the task, the materials, and the draft, and the reply must
 // anchor back to the page (honesty rules inherited from the plan contract).
-function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, purpose }) {
+function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, purpose, seed, onSeedConsumed }) {
   const storeKey = scopedPlanKey(`lb_chat_${moduleIndex}`, plan?.learningSequence || []);
   const [messages, setMessages] = useState(() => {
     try {
@@ -3896,6 +4075,17 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight });
   }, [messages, busy]);
+
+  // "Discuss this review": the coach hands its verdict to the panel as a seed —
+  // one auto-sent message (the user's click on Discuss WAS the consent).
+  const seedRef = useRef(false);
+  useEffect(() => {
+    if (!seed || seedRef.current || busy) return;
+    seedRef.current = true;
+    send(seed);
+    onSeedConsumed?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [seed]);
 
   const send = async (text) => {
     const q = (text || "").trim();
