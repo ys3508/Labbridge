@@ -1,5 +1,7 @@
 # Interview Mode — the front door (full spec from the Jul 15 brainstorm)
 
+**BUILD STATUS (Jul 15, Session A SHIPPED):** landing two doors · InterviewDoor intake (all spec fields) · /api/intake bundle (router + Q2 + grading keys + hybrid contract line, per-element fallbacks) · DiagnosticFlow (A-A-E contract line, Q1/Q2, two-axis grading, skip-with-honest-price, results feed generation) · prompt: INTERVIEW INTAKE rules + why-as-receipt + archetype-as-question-kind + tone dial · render: coverage meter, receipt chips, named-not-dreaded gap marker (single calm register — nothing for the tone dial to leak), interview archetype chips, assistant tone. LIVE-VERIFIED: fused sentence split into both signals; tone=gentle on vulnerable intake; model-written contract line (excellent); posting-derived Q2 with receipt; two-axis verdicts with quoted evidence; deferral-grant bug caught and fixed (grader now honors the layoff-omission promise). Session B (runner + Simulated Live + walk-in card) next.
+
 **Strategic decision (Sissi):** interview prep becomes the product's highlight/entry point — the acquisition wedge that earns trust fast (verified by the real room within days), converting into onboarding at the win moment. Onboarding stays the retention core. Positioning: the career-changer's interview — the corner of the market nobody serves.
 
 **Calibrated promise (never inflate):** "Nothing in this posting will surprise you." / "Walk in with answers rehearsed against pushback, anchored to your real background." Never "ace any interview."

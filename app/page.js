@@ -7,6 +7,8 @@ import GoalsSection from "@/components/GoalsSection";
 import TimelineSection from "@/components/TimelineSection";
 import ReviewScreen from "@/components/ReviewScreen";
 import PlanView from "@/components/PlanView";
+import InterviewDoor from "@/components/InterviewDoor";
+import DiagnosticFlow from "@/components/DiagnosticFlow";
 import { Note } from "@/components/ui";
 import { inferGoals, detectDeadline } from "@/lib/stubs";
 
@@ -24,7 +26,8 @@ const INITIAL = {
 
 export default function Page() {
   const [form, setForm] = useState(INITIAL);
-  const [stage, setStage] = useState("form"); // form | review | done
+  const [stage, setStage] = useState("landing"); // landing | interview | diagnostic | form | review | done
+  const [intakeBundle, setIntakeBundle] = useState(null);
 
   // Mock mode is for offline UI work. Reopen the generated workspace directly
   // after refresh so local progress/draft state can be verified without API.
@@ -86,6 +89,139 @@ export default function Page() {
     }));
 
   const hideTimeline = form.goals.purpose === "curious";
+
+  // Interview door → structured intake block in the steering notes (zero payload
+  // schema change; the generation prompt reads the labeled sections).
+  const enterInterview = (fields, intake) => {
+    const b = intake || {};
+    const block = [
+      "INTERVIEW INTAKE",
+      fields.company && `Company: ${fields.company}`,
+      fields.roundWorry && `Round/format/worry: ${fields.roundWorry}`,
+      fields.challenge && `Their stated challenge: ${fields.challenge}`,
+      fields.ammunition && `Material they plan to lean on: ${fields.ammunition}`,
+      fields.interviewers && `Interviewers (pasted by the user): ${fields.interviewers}`,
+      b.contentFears?.length && `Signals — content fears: ${b.contentFears.join("; ")}`,
+      b.obstacles?.length && `Signals — personal obstacles: ${b.obstacles.join("; ")}`,
+      b.tone && `Signals — tone: ${b.tone}`,
+    ]
+      .filter(Boolean)
+      .join("\n");
+    setIntakeBundle(b);
+    setForm((f) => ({
+      ...f,
+      headed: {
+        role: fields.role,
+        artifacts: [{ id: 1, text: fields.jd, source: "text", type: "job_posting", touched: true }],
+        realTask: "",
+        instructions: block,
+      },
+      goals: { depth: "functional", purpose: "interview", purposeTouched: true },
+      timeline: fields.date
+        ? { mode: "deadline", deadline: fields.date, weeklyHrs: "" }
+        : { mode: null, deadline: "", weeklyHrs: "" },
+    }));
+    setStage("diagnostic");
+  };
+  const finishDiagnostic = (summaryText) => {
+    setForm((f) => ({
+      ...f,
+      headed: {
+        ...f.headed,
+        instructions:
+          f.headed.instructions +
+          (summaryText ? `\nDIAGNOSTIC RESULTS (build the map FROM these):\n${summaryText}` : "\nDIAGNOSTIC: skipped by user."),
+      },
+    }));
+    setStage("done");
+  };
+
+  if (stage === "landing") {
+    return (
+      <Shell>
+        <Hero />
+        <div className="mt-10 grid gap-4 sm:grid-cols-2">
+          <button
+            type="button"
+            onClick={() => setStage("interview")}
+            className="rounded-2xl border-2 border-brand-200 bg-white p-6 text-left transition hover:border-brand-400 hover:shadow-md"
+          >
+            <p className="text-lg font-semibold text-ink">I have an interview</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              Paste the posting. See every likely question — then walk in with answers rehearsed against
+              pushback, built from your real background.
+            </p>
+            <p className="mt-3 text-xs font-medium text-brand-700">Start prepping →</p>
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              setForm((f) => ({ ...f, goals: { ...f.goals, purpose: "starting_role", purposeTouched: true } }));
+              setStage("form");
+            }}
+            className="rounded-2xl border border-slate-200 bg-white p-6 text-left transition hover:border-brand-300 hover:shadow-md"
+          >
+            <p className="text-lg font-semibold text-ink">I'm starting a new role</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
+              Ramp into real work: manager-assigned tasks, practice materials, honest review — your first
+              month, rehearsed.
+            </p>
+            <p className="mt-3 text-xs font-medium text-brand-700">Build my onboarding →</p>
+          </button>
+        </div>
+        <p className="mt-6 text-center text-sm text-ink-soft">
+          Or:{" "}
+          <button
+            type="button"
+            className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2"
+            onClick={() => {
+              setForm((f) => ({ ...f, goals: { ...f.goals, purpose: "career_move", purposeTouched: true } }));
+              setStage("form");
+            }}
+          >
+            exploring a career move
+          </button>{" "}
+          ·{" "}
+          <button
+            type="button"
+            className="font-medium text-brand-700 underline decoration-brand-200 underline-offset-2"
+            onClick={() => {
+              setForm((f) => ({ ...f, goals: { ...f.goals, purpose: "curious", purposeTouched: true } }));
+              setStage("form");
+            }}
+          >
+            just curious about a field
+          </button>
+        </p>
+      </Shell>
+    );
+  }
+
+  if (stage === "interview") {
+    return (
+      <Shell>
+        <InterviewDoor
+          background={form.background}
+          onBackground={setPart("background")}
+          onContinue={enterInterview}
+          onBack={() => setStage("landing")}
+        />
+      </Shell>
+    );
+  }
+
+  if (stage === "diagnostic") {
+    return (
+      <Shell>
+        <DiagnosticFlow
+          intake={{ intake: intakeBundle }}
+          onDone={(summaryText) => finishDiagnostic(summaryText)}
+          onSkip={() => finishDiagnostic("")}
+        />
+      </Shell>
+    );
+  }
+
 
   if (stage === "review") {
     return (

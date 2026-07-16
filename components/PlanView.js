@@ -659,7 +659,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           {plan.hook && (
             <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{firstSentence(plan.hook)}</p>
           )}
-          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""} />
+          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} purpose={form.goals.purpose} deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""} />
         </header>
 
         <div className="mt-6 space-y-3">
@@ -725,7 +725,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
             </div>
             <div className="shrink-0 space-y-2 lg:w-64">
-              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact />
+              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact purpose={form.goals.purpose} />
               <TimeMeter modules={modules} timeSpent={timeSpent} deadline={deadline} />
               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
                 <button
@@ -1550,12 +1550,12 @@ function buildProjectMarkdown(projectTitle, modules, files, drafts, done, notes 
   return lines.join("\n");
 }
 
-function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false }) {
+function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false, purpose }) {
   const total = modules.length;
   const doneCount = done.size;
   /* a11y: expose the earned count to assistive tech. */
   return (
-    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={doneCount} aria-label={`${doneCount} of ${total} project files built`}>
+    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={doneCount} aria-label={`${doneCount} of ${total} ${purpose === "interview" ? "answers banked" : "project files built"}`}>
       <div className="text-xs text-ink-soft">
         {total > 0 && doneCount >= total ? (
           <span>All {total} files built — your readiness project is open ★</span>
@@ -1642,13 +1642,16 @@ function Module({
             </span>
             {step.archetype && step.archetype !== "learn_and_do" && (
               <span className="rounded-full bg-slate-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-ink-soft">
-                {step.archetype === "critique"
-                  ? "find the flaws"
-                  : step.archetype === "shadow_reproduce"
-                    ? "reproduce it"
-                    : step.archetype === "plot_twist"
-                      ? "expect a twist"
-                      : step.archetype.replace(/_/g, " ")}
+                {{
+                  critique: "find the flaws",
+                  shadow_reproduce: "reproduce it",
+                  plot_twist: "expect a twist",
+                  concept: "drill",
+                  behavioral: "tell me about a time",
+                  story: "your story",
+                  gap_defense: "the gap question",
+                  ask_them: "you ask them",
+                }[step.archetype] || step.archetype.replace(/_/g, " ")}
               </span>
             )}
           </div>
@@ -3894,7 +3897,7 @@ function totalHoursLabel(timeboxes) {
   return lo === hi ? `~${hi} hrs` : `~${lo}\u2013${hi} hrs`;
 }
 
-function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTrim, roleName, deadline }) {
+function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTrim, roleName, deadline, purpose }) {
   const strengths = (plan.transferableStrengths || []).slice(0, 4).map((x) => cleanPoint(x.point));
   const ft = plan.firstTask || {};
   const stops = modules.map((m, i) => ({
@@ -3952,6 +3955,14 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
               <p className={`text-sm font-medium ${stop.isTrimmed ? "text-ink-faint line-through" : "text-ink"}`}>
                 {stop.capability}
               </p>
+              {/* Named, not dreaded (decided): the gap question is visible from
+                  minute one, calm, with the promise attached. One register only —
+                  no game language here, so the tone dial has nothing to leak. */}
+              {purpose === "interview" && modules[stop.i]?.archetype === "gap_defense" && (
+                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200">
+                  the gap question — we'll be ready
+                </span>
+              )}
               {stop.timebox && !stop.isDone && !stop.isTrimmed && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-ink-soft">{stop.timebox}</span>
               )}
@@ -3971,6 +3982,11 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
                 </button>
               )}
             </div>
+            {purpose === "interview" && (modules[stop.i]?.why || "").trim() && !stop.isTrimmed && (
+              <p className="mt-0.5 text-xs italic text-ink-faint">
+                from the posting: “{shorten(modules[stop.i].why, 90)}”
+              </p>
+            )}
           </li>
         ))}
 
@@ -4111,6 +4127,13 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
           messages: nextMsgs.slice(-8),
           context: {
             purpose: purpose || "starting_role",
+            tone: (() => {
+              try {
+                return JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
+              } catch {
+                return "";
+              }
+            })(),
             taskTitle: module?.task?.title || module?.topic || "",
             beatKey: beatKey || "",
             beatContent: momentSnapshotText(module, beatKey).slice(0, 2500),

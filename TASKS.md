@@ -71,7 +71,7 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
-- [ ] **INTERVIEW MODE = the front door** (strategic decision Jul 15) — full design in
+- [~] **INTERVIEW MODE = the front door** — Session A SHIPPED Jul 15 (doors, intake, diagnostic, receipts, gap marker); Session B remaining (runner, Simulated Live, walk-in card, post-interview loop) — full design in
       `revise/interview-mode-spec.md`: diagnostic-first opening (2 cold questions,
       map generates FROM them), Question Map with posting-line receipts, named-not-
       dreaded gap question, graduated exposure ramp, dynamic-pushback mock runner

@@ -36,6 +36,7 @@ export async function POST(request) {
   const c = body?.context || {};
   const ctx = [
     c.purpose && `Plan purpose: ${c.purpose}`,
+    c.tone && `Register: tone=${c.tone} — if gentle: warm, precise, zero games or pep-talk.`,
     c.taskTitle && `Current task: ${c.taskTitle}`,
     c.beatKey && `Current page (beat): ${c.beatKey}`,
     c.beatContent && `WHAT'S ON THE PAGE THEY'RE READING:\n${String(c.beatContent).slice(0, 2500)}`,
