@@ -31,6 +31,21 @@ The form adapts per door. Interview mode's fields, in order:
 - Company honesty, sharpened: do not assert company specifics EVEN FROM OWN KNOWLEDGE — frame as the user's to verify ("commonly reported — check their careers page"), even when confident. Stale-confident beats invented for danger.
 - Optional ammunition field: "Anything you're already planning to lean on — projects, stories, wins? (optional)" — curated highlights ≠ resume; feeds the answer bank as raw material; if their strongest resume story is missing from their own list, the diagnostic hands it back.
 
+## The interviewer layer + Simulated Live Interview (Sissi, Jul 15, round 3)
+
+**Input door, optional section:** "Who's interviewing you? Paste anything you know — names, titles, their LinkedIn 'about', publications. (Optional, powerful.)" Multi-interviewer supported: a panel is three question styles, and knowing that IS the prep.
+
+**Four rules (one is an ethical line):**
+1. **Archetype, never impersonation.** Build the simulator FROM the background ("VP Medical Affairs, ex-epi, publishes on data quality — expect hard probes on your limitations section"); never roleplay AS the named person. Name organizes; background calibrates; no name in the roleplay voice.
+2. **Paste-only, local-only.** User pastes what they know; we never fetch/scrape LinkedIn; third-party info stays in their browser, this plan only, and the UI says so.
+3. **Inference labeled, with receipts.** Every predicted question cites the background line that spawned it ("led claims studies 6 yrs → expect depth on enrollment/observability"). Always "an interviewer with this background tends to…", never "she will ask."
+4. **Graceful degradation:** nothing → generic round persona; title only → light calibration; full background → calibrated simulation. Each tier honest about its basis.
+
+**Where it lands:**
+- Question Map gains the interviewer lens (questions tagged by who'd ask; cram order weighted by the round's actual interviewer).
+- **The mock runner's finale = the SIMULATED LIVE INTERVIEW**: the dynamic-pushback engine voiced by the archetype from the real interviewer's background — the peer pushes depth, HR pushes behavioral consistency, the exec pushes business-impact. Pushes come from where THIS interviewer would push.
+- Questions-you-ask-them goes per-interviewer, referencing their actual work where pasted ("I saw your team published on X…") — honest because the user brought the source.
+
 ## The journey
 
 1. **Entry (lighter than the form):** paste the job posting + the interview date (resume optional but urged — "add it and every answer gets built from your life"). Date drives everything: countdown identity, cram ordering, cheat-sheet timing.
