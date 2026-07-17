@@ -1,4 +1,5 @@
 import { client, PLAN_MODEL } from "@/lib/ai";
+import { SCHEMA } from "@/lib/planSchema";
 
 // Generates the onboarding plan from the captured input (Option A: a single
 // AI synthesis, no grounded skill graph yet). Resources are model-suggested and
@@ -138,37 +139,8 @@ DIVISION OF LABOR: You produce the plan's structure and prose — the topics, th
 // compiled grammars — our rich nested schema hit that wall. So generation uses a
 // FLAT shape (strings + string-arrays are grammar-cheap; nested objects are
 // not), and toRichPlan() below adapts it to the nested shape the app consumes.
-const S = { type: "string" };
-const I = { type: "integer" };
-const ARR = { type: "array", items: { type: "string" } };
-const MODULE = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    topic: S, archetype: S, closesGapIndex: I, why: S, context: S, bridgeFromBackground: S,
-    askYourTeam: ARR, searchLinks: ARR,
-    checkQuestion: S, checkOptions: ARR, checkAnswerIndex: I, checkExplanation: S,
-    conceptExplanation: S, keyTerms: ARR, traps: ARR,
-    exampleSetup: S, exampleWalkThrough: ARR, exampleTakeaway: S,
-    taskTitle: S, managerRequest: S, givenInputs: ARR, steps: ARR,
-    deliverable: S, timebox: S, timeEstimateMin: I, doneWhen: S, stakeholders: S,
-    selfCheckCriteria: ARR, redFlags: ARR,
-  },
-  required: ["topic","archetype","closesGapIndex","why","context","bridgeFromBackground","askYourTeam","searchLinks","checkQuestion","checkOptions","checkAnswerIndex","checkExplanation","conceptExplanation","keyTerms","traps","exampleSetup","exampleWalkThrough","exampleTakeaway","taskTitle","managerRequest","givenInputs","steps","deliverable","timebox","timeEstimateMin","doneWhen","stakeholders","selfCheckCriteria","redFlags"],
-};
-const SCHEMA = {
-  type: "object",
-  additionalProperties: false,
-  properties: {
-    entitySheet: S, trims: ARR,
-    hook: S, northStar: S,
-    transferableStrengths: ARR, knowledgeGaps: ARR,
-    learningSequence: { type: "array", items: MODULE },
-    readinessTitle: S, readinessWhy: S, horizon: S,
-    horizonAssumed: { type: "boolean" }, phases: ARR, timelineNote: S,
-  },
-  required: ["entitySheet","trims","hook","northStar","transferableStrengths","knowledgeGaps","learningSequence","readinessTitle","readinessWhy","horizon","horizonAssumed","phases","timelineNote"],
-};
+// MODULE/SCHEMA themselves live in lib/planSchema.js (see ADR-0001) so the
+// checker registry can assert against the real shape, not a copy.
 
 // Adapt the flat generated shape to the rich nested plan the whole app consumes.
 function splitPair(str, sep) {

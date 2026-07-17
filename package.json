@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "check": "node scripts/check-fixtures.mjs"
+    "check": "node scripts/check-fixtures.mjs && node scripts/check-rule-fixtures.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.110.0",
