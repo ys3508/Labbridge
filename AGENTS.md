@@ -125,6 +125,13 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 - Commit style: imperative subject, a short body explaining *why*. End Claude's
   commits with its `Co-Authored-By` trailer; Codex should use its own author
   identity so history shows who did what.
+- **Commit after each coherent action** so the other agent can pull state instead
+  of asking Sissi to copy/paste context. Include code, specs, and coordination
+  docs together when they explain the same change: `AGENTS.md`, `TASKS.md`,
+  `JOURNEY.md`, `revise/*.md`, and source edits should stay in sync.
+- **Use commit messages as mini handoffs.** The subject says what changed; the
+  body says why, what was verified, and what remains open. Future CC/Codex
+  sessions should be able to orient from the last few commits plus the docs.
 - Don't commit `.env.local`, `.next`, `node_modules`, `.vercel`, `deploy.sh`
   (all gitignored). Don't commit secrets.
 - Match existing formatting; keep comments at the density of the file you're in.
@@ -147,3 +154,25 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
   before merge. The human (Sissi) is final decision-maker; when we disagree, the
   tie-breaker is "which change preserves LabBridge's core product contract?"
   (See `TASKS.md` → Integration & review.)
+- **Review cost is real.** Claude reviewing every small Codex PR is good for
+  quality, but it can quietly eat the Claude usage that Codex was meant to save.
+  Batch Codex reviews when possible, and reserve mandatory Claude product-rule
+  review for changes touching the non-negotiables above (grounding, facts vs
+  fluency, fidelity, honesty/degrade behavior) or high-churn product surfaces.
+  Isolated new files such as checker/fixture utilities can usually get lighter
+  review unless they affect those rules.
+- **Before CC/Codex review conversations, pull/read the branch instead of
+  re-pasting context.** Default prompt shape:
+  `"Pull latest codex/planview-density-polish, read the last 3 commits plus
+  JOURNEY.md tail, then review only for product-rule risks."`
+  Adjust the branch name and review scope, but keep reviews targeted rather than
+  asking for full re-understanding.
+- **Codex should prompt Sissi when Claude Code review is worth it.** If a change
+  touches product-rule risk, high-churn prompts/rendering, paid-call behavior, or
+  user trust surfaces, say so and draft a targeted CC prompt. Prefer:
+  `"Review this branch for product-rule alignment around X"` over broad prompts
+  like `"Understand everything and tell me what you think."`
+- **Keep the picture current.** When something ships, mark it done in `TASKS.md`
+  and tell the story in `JOURNEY.md`; when something is designed but not built,
+  leave it in `TASKS.md` / `revise/` with date, owner, and the next trigger.
+  The docs are the shared memory; chat is only the working room.
