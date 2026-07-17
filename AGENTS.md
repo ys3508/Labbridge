@@ -103,6 +103,21 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 | `lib/stubs.js` | `looksLikeUrl`, `detectSource`, `readMaterials` |
 | `revise/` | Planning/spec docs (design history; not shipped code) |
 
+## Operating mode: execute end-to-end
+
+Default to executing coding work end to end, not stopping mid-task to check in.
+Only stop and ask when one of these is true:
+
+- **A real blocker** — an OPEN gate in `OPEN.md` is in the way (see its
+  stop-condition rule), or the work genuinely can't proceed without a decision
+  only Sissi can make.
+- **The environment requires permission** — an action the harness itself gates
+  (e.g. a destructive git operation, a push the user hasn't pre-authorized,
+  anything outside normal edit/commit/test flow).
+
+Anything else — writing the code, running it, iterating until it works — do
+without a mid-task check-in.
+
 ## Running it
 
 - Dev server: the Claude preview launches `.claude/launch.json` → **`labbridge-dev`**
