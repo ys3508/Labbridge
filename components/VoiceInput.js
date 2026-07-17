@@ -16,8 +16,21 @@ function countMatches(text, pattern) {
 }
 
 function computeMetrics({ text, startedAt, endedAt, takeNumber, longPauseCount, mode }) {
-  const durationSec = Math.max(1, Math.round((endedAt - startedAt) / 1000));
   const wordCount = words(text);
+  if (mode === "typed") {
+    return {
+      mode,
+      takeNumber,
+      durationSec: null,
+      wordCount,
+      wordsPerMinute: null,
+      fillerCount: countMatches(text, FILLERS),
+      longPauseCount: null,
+      falseStartCount: countMatches(text, FALSE_STARTS),
+      pacingMeasured: false,
+    };
+  }
+  const durationSec = Math.max(1, Math.round((endedAt - startedAt) / 1000));
   return {
     mode,
     takeNumber,
@@ -27,11 +40,21 @@ function computeMetrics({ text, startedAt, endedAt, takeNumber, longPauseCount, 
     fillerCount: countMatches(text, FILLERS),
     longPauseCount,
     falseStartCount: countMatches(text, FALSE_STARTS),
+    pacingMeasured: true,
   };
 }
 
 function metricsLine(metrics) {
   if (!metrics) return "";
+  if (metrics.mode === "typed") {
+    return [
+      "input=typed",
+      "pacing=not_measured",
+      `words=${metrics.wordCount}`,
+      `fillers=${metrics.fillerCount}`,
+      `false_starts=${metrics.falseStartCount}`,
+    ].join("; ");
+  }
   return [
     `input=${metrics.mode}`,
     `take=${metrics.takeNumber}`,
@@ -218,11 +241,8 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
     if (listening) stop();
     setMode(nextMode);
     if (nextMode === "type" && value.trim()) {
-      const now = Date.now();
       const nextMetrics = computeMetrics({
         text: value,
-        startedAt: now - 60000,
-        endedAt: now,
         takeNumber: takes.length || 1,
         longPauseCount: 0,
         mode: "typed",
@@ -234,12 +254,9 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
   const updateTyped = (text) => {
     onChange(text);
     transcriptRef.current = text;
-    const now = Date.now();
     setMetrics(
       computeMetrics({
         text,
-        startedAt: now - 60000,
-        endedAt: now,
         takeNumber: takes.length || 1,
         longPauseCount: 0,
         mode: "typed",
@@ -354,9 +371,9 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
 
       {metrics && (
         <p className="mt-2 text-xs leading-relaxed text-ink-faint">
-          Delivery signal: {metrics.durationSec}s, {metrics.wordsPerMinute} wpm, {metrics.fillerCount} filler
-          {metrics.fillerCount === 1 ? "" : "s"}, {metrics.longPauseCount} long pause
-          {metrics.longPauseCount === 1 ? "" : "s"}.
+          {metrics.mode === "typed"
+            ? `Text signal: ${metrics.wordCount} words, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.falseStartCount} restart cue${metrics.falseStartCount === 1 ? "" : "s"}. Pacing is not measured for typed answers.`
+            : `Delivery signal: ${metrics.durationSec}s, ${metrics.wordsPerMinute} wpm, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.longPauseCount} long pause${metrics.longPauseCount === 1 ? "" : "s"}.`}
         </p>
       )}
     </div>
