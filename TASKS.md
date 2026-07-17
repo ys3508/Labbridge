@@ -67,6 +67,39 @@ implemented; see JOURNEY.md for the story.)*
 - [ ] **Deploy the public demo** — Vercel, NO ANTHROPIC_API_KEY set (zero spend
       risk; demo fully works, generation degrades honestly). CI is in place.
 
+### Proposal only — relocate volatile AGENTS facts (Sissi decides)
+AGENTS.md is read every session, so it should keep six-month truths and point to
+near-code homes for facts that drift. Do not move these yet; proposal only.
+
+- [ ] **Stack/package versions** (`Next.js 14.2.15`, React 18, Tailwind 3.4,
+      `@anthropic-ai/sdk` ^0.110) — source of truth should be `package.json` /
+      lockfile; AGENTS keeps only "Next.js App Router, React, Tailwind, Anthropic
+      SDK; check package.json for exact versions."
+- [ ] **Model strings** (`claude-haiku-4-5`, `claude-opus-4-8`, future Sonnet
+      fallback names) — source of truth should stay in `lib/ai.js` beside
+      `MODEL` / `PLAN_MODEL`; AGENTS keeps only "import model constants from
+      `lib/ai.js`; never hard-code model names elsewhere."
+- [ ] **Plan `max_tokens` value** (`16384`) — source of truth should live beside
+      the plan request/schema in `app/api/plan/route.js`, ideally as a named
+      constant plus the truncation guard; AGENTS keeps only "large structured
+      outputs must budget tokens near the route/schema, not in this guide."
+- [ ] **Anthropic API quirks that can age** (`output_config` shape, no `effort`
+      on Haiku 4.5, `web_search_20260209`, `pause_turn`) — source of truth should
+      be small comments next to the calls that use them: `lib/ai.js`,
+      `app/api/*/route.js`, and `lib/verify.js`; AGENTS keeps only "Claude API
+      call conventions are documented beside the call sites."
+- [ ] **Preview port / launch details** (`labbridge-dev`, port 3100) — source of
+      truth should be `.claude/launch.json` and any local preview script; AGENTS
+      keeps only "use the project preview config for the current port."
+- [ ] **Local Node path** (`$HOME/.local/node-v22.23.1-darwin-arm64/bin`) —
+      source of truth should be a local setup note or launcher config, not the
+      shared agent guide; AGENTS keeps only "ensure Node is on PATH; see local
+      setup/preview config for machine-specific paths."
+
+Proposed AGENTS one-line pointer after relocation:
+"Volatile runtime/API values live next to the code or launch config they govern;
+AGENTS names the rule, not the current number/string."
+
 ### Talked about, never done (the honest ledger — Sissi asked for this)
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
