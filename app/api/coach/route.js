@@ -72,11 +72,14 @@ export async function POST(request) {
   const materials = (body?.materials || "").toString();
   const canon = (body?.canon || "").toString();
   const purpose = (body?.purpose || "starting_role").toString();
+  const tone = (body?.tone || "").toString();
 
   if (!draft) return Response.json({ error: "Nothing to review — the draft is empty." }, { status: 400 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "No API key." }, { status: 500 });
 
   const parts = [
+    tone === "gentle" &&
+      "REGISTER: the person disclosed something vulnerable at intake. Be warm and precise — deliver every hard truth kindly, zero games, zero pep-talk, no exclamation marks.",
     `Task: ${taskTitle}`,
     deliverable && `Deliverable: ${deliverable}`,
     doneWhen && `Done when: ${doneWhen}`,

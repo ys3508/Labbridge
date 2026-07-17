@@ -96,10 +96,10 @@ export default function Page() {
     const b = intake || {};
     const block = [
       "INTERVIEW INTAKE",
-      fields.company && `Company: ${fields.company}`,
-      fields.roundWorry && `Round/format/worry: ${fields.roundWorry}`,
+      fields.company && `Company: ${fields.company}${fields.website ? ` (${fields.website})` : ""}`,
+      (fields.round || fields.format) && `Round/format: ${[fields.round, fields.format].filter(Boolean).join(" · ")}`,
+      fields.seniority && `Seniority, in their words: ${fields.seniority}`,
       fields.challenge && `Their stated challenge: ${fields.challenge}`,
-      fields.ammunition && `Material they plan to lean on: ${fields.ammunition}`,
       fields.interviewers && `Interviewers (pasted by the user): ${fields.interviewers}`,
       b.contentFears?.length && `Signals — content fears: ${b.contentFears.join("; ")}`,
       b.obstacles?.length && `Signals — personal obstacles: ${b.obstacles.join("; ")}`,

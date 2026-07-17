@@ -41,7 +41,7 @@ function AxisBar({ label, verdict }) {
   );
 }
 
-function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, onGraded }) {
+function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, onGraded, tone }) {
   const [answer, setAnswer] = useState("");
   const [busy, setBusy] = useState(false);
   const [review, setReview] = useState(null);
@@ -60,6 +60,7 @@ function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, 
           taskTitle: `Interview diagnostic: ${question}`,
           deliverable: "A spoken-style interview answer, typed.",
           purpose: "interview",
+          tone: tone || "",
           criteria: [substanceKey, deliveryKey],
           redFlags: [],
         }),
@@ -112,6 +113,7 @@ function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, 
 
 export default function DiagnosticFlow({ intake, onDone, onSkip }) {
   const [results, setResults] = useState({}); // {q1:{answer,review}, q2:{...}}
+  const [hoping, setHoping] = useState("");
   const bundle = intake?.intake || {};
   const contract =
     (bundle.contractLine || "").trim() || templateContract(bundle.obstacles || []);
@@ -128,6 +130,7 @@ export default function DiagnosticFlow({ intake, onDone, onSkip }) {
         `${k.toUpperCase()}: substance=${s?.status || "?"} (${s?.note || ""}) delivery=${d?.status || "?"} (${d?.note || ""})`
       );
     }
+    if (hoping.trim()) lines.push(`HOPING TO WORK IN (their chosen story — build answers around it): ${hoping.trim()}`);
     return lines.join("\n");
   };
 
@@ -143,7 +146,26 @@ export default function DiagnosticFlow({ intake, onDone, onSkip }) {
         substanceKey={bundle.q1SubstanceKey || "Connects their background to this role with specific evidence."}
         deliveryKey={bundle.q1DeliveryKey || "Result reached early; under ~90 seconds; ends pointed at this job."}
         onGraded={record("q1")}
+        tone={bundle.tone}
       />
+
+      {results.q1 && (
+        // The ammunition question, asked where people are talking instead of
+        // filling boxes — right after the tool showed it noticed what they
+        // left out. Feeds the answer bank; no grading, no pressure.
+        <label className="block rounded-xl border border-slate-200 bg-white p-4 fade-up">
+          <span className="text-sm font-medium text-ink">
+            Anything you were hoping to work in that didn't fit?{" "}
+            <span className="text-xs font-normal text-ink-faint">one line is enough — optional</span>
+          </span>
+          <input
+            value={hoping}
+            onChange={(e) => setHoping(e.target.value)}
+            placeholder="The project you're proud of, the save, the thing you'd bring up if they let you."
+            className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none"
+          />
+        </label>
+      )}
 
       <DiagnosticQuestion
         title="Question 2 — the one you might not"
@@ -155,6 +177,7 @@ export default function DiagnosticFlow({ intake, onDone, onSkip }) {
         substanceKey={bundle.q2SubstanceKey || "Shows the core idea and names its limits honestly."}
         deliveryKey={bundle.q2DeliveryKey || "Answer first, reasoning second; no hedging spiral."}
         onGraded={record("q2")}
+        tone={bundle.tone}
       />
 
       <div className="flex flex-wrap items-center justify-between gap-3">

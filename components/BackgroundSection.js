@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from "react";
 import { Section, Chip, Hint, Note } from "./ui";
 import { FIELD_SUGGESTIONS, FIELD_POOL, FIELD_ALIASES, SKILL_SUGGESTIONS, poolMatches } from "@/lib/constants";
 
-export default function BackgroundSection({ value, onChange }) {
+export default function BackgroundSection({ value, onChange, embedded = false }) {
   const [analyzing, setAnalyzing] = useState(false);
   const [error, setError] = useState(null);
   const [showFallback, setShowFallback] = useState(false);
@@ -95,12 +95,21 @@ export default function BackgroundSection({ value, onChange }) {
     aliases: FIELD_ALIASES,
   });
 
+  // Embedded mode (interview door): the host provides its own section header —
+  // rendering our numbered card inside it doubled the label and orphaned the ①.
+  const Wrapper = embedded
+    ? ({ children }) => <div>{children}</div>
+    : ({ children }) => (
+        <Section
+          number={1}
+          title="Your background"
+          subtitle="Everything here is optional. Blank just means we'll start you from scratch."
+        >
+          {children}
+        </Section>
+      );
   return (
-    <Section
-      number={1}
-      title="Your background"
-      subtitle="Everything here is optional. Blank just means we'll start you from scratch."
-    >
+    <Wrapper>
       {/* Resume paste */}
       <label className="mb-1.5 block text-sm font-medium text-ink">
         Paste your resume
@@ -242,7 +251,7 @@ export default function BackgroundSection({ value, onChange }) {
           </div>
         </div>
       )}
-    </Section>
+    </Wrapper>
   );
 }
 

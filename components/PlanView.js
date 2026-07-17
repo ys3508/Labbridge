@@ -2925,6 +2925,13 @@ function FreeTextCheck({ comprehension, task, step, moduleIndex, purpose }) {
           doneWhen: "The answer demonstrates the understanding described in the grading key.",
           steps: [],
           purpose: purpose || "starting_role",
+          tone: (() => {
+            try {
+              return JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
+            } catch {
+              return "";
+            }
+          })(),
           criteria: [comprehension.explanation || "The answer addresses the question correctly."],
           redFlags: (step.concept?.traps || []).slice(0, 2),
           context: (step.concept?.explanation || "").slice(0, 600),
@@ -3026,6 +3033,13 @@ function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, con
           ],
           context: step.context || "",
           purpose: purpose || "starting_role",
+          tone: (() => {
+            try {
+              return JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
+            } catch {
+              return "";
+            }
+          })(),
           canon: (() => {
             try {
               return localStorage.getItem(canonKey(plan)) || "";
@@ -3978,7 +3992,7 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
                       : "text-ink-faint ring-1 ring-slate-200 hover:text-ink"
                   }`}
                 >
-                  {stop.isTrimmed ? "keep it after all" : "I already know this"}
+                  {stop.isTrimmed ? "keep it after all" : purpose === "interview" ? "I've got this cold" : "I already know this"}
                 </button>
               )}
             </div>
