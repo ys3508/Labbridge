@@ -120,8 +120,21 @@ export async function POST(request) {
       q2DeliveryKey: clean(p.q2DeliveryKey, fallback.q2DeliveryKey),
       contractLine: typeof p.contractLine === "string" ? p.contractLine.trim() : "",
     };
+    const applyGenericQ2 = () => {
+      out.q2 = fallback.q2;
+      out.q2Receipt = "";
+      out.q2SubstanceKey = fallback.q2SubstanceKey;
+      out.q2DeliveryKey = fallback.q2DeliveryKey;
+    };
     // Sanity: a generated Q2 that ignores the posting is worse than the fallback.
-    if (jd.trim() && out.q2 !== fallback.q2 && out.q2.length < 20) out.q2 = fallback.q2;
+    if (jd.trim() && out.q2 !== fallback.q2 && out.q2.length < 20) applyGenericQ2();
+    // Receipt guard: with a pasted JD, a role-specific Q2 must cite the posting.
+    // If the model cannot produce a receipt, use the honest generic instead of
+    // shipping an unsupported "posting-derived" question.
+    if (jd.trim() && !out.q2Receipt) {
+      applyGenericQ2();
+      out.receiptGuard = true;
+    }
     return Response.json(out);
   } catch (err) {
     // Total failure degrades to the deterministic bundle — the door still works.

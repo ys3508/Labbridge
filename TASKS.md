@@ -71,12 +71,25 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
-- [~] **INTERVIEW MODE = the front door** — Session A SHIPPED Jul 15 (doors, intake, diagnostic, receipts, gap marker); Session B remaining (runner, Simulated Live, walk-in card, post-interview loop) — full design in
+- [~] **INTERVIEW MODE = the front door** — Session A SHIPPED Jul 15 and diagnostic
+      hardening shipped Jul 17 (doors, intake, diagnostic, receipts, gap marker,
+      Phase-1 trust copy/partial skip/receipt guard, Phase-2 `VoiceInput` with typed
+      fallback, no-audio promise, delivery metrics, transcript confirmation, and
+      browser-local baseline capture); Session B remaining (runner, Simulated Live,
+      walk-in card, post-interview loop) — full design in
       `revise/interview-mode-spec.md`: diagnostic-first opening (2 cold questions,
       map generates FROM them), Question Map with posting-line receipts, named-not-
       dreaded gap question, graduated exposure ramp, dynamic-pushback mock runner
       (now AHEAD of DuckDB), walk-in card, post-interview loop, win→onboarding
       handoff. Two-axis rubric authoring deferred by Sissi. (Jul 15)
+- [ ] Interview baseline deletion path — saved diagnostic transcript/coaching signals
+      are sensitive; add a real "delete this plan's data" path when persistence grows
+      beyond browser-local plan state. Never surface the "before" snapshot alone; show
+      it only paired with improvement. (Jul 17)
+- [ ] Retake persistence decision — current stance: earlier take history is session-only
+      coaching signal; final confirmed transcript + final delivery metrics are saved
+      for the plan. If retake count/first-vs-final metrics become persistent, disclose
+      it in coaching language before recording it. (Jul 17)
 - [ ] Interactive check variants — drag-to-classify / click-the-error / pick-the-codes,
       rendered client-side from the same check data (one checkGenre enum max). After
       the DuckDB workspace. (Jul 15)

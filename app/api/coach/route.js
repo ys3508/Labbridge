@@ -27,6 +27,7 @@ Rules:
 - nextEdits: the 2-3 highest-value concrete edits, imperative voice, each ≤ 20 words, ordered by impact.
 - overall: 2-3 sentences. Honest read first (is this usable work?), then the single biggest strength and the single biggest gap. No grade inflation, no rubric restating, no "great job" filler.
 - If the task is INTERVIEW REHEARSAL (the deliverable is an answer to an interviewer's question), judge it as the interviewer would: would this answer land in the room? Note where they'd push back, and whether it survives the push.
+- If the task is an INTERVIEW DIAGNOSTIC and includes DIAGNOSTIC DELIVERY METRICS in context, use those metrics ONLY for the delivery criterion. Judge substance from the confirmed transcript alone.
 - If the draft is only a template or placeholder bullets with nothing filled in, say exactly that in overall, mark criteria accordingly, and make nextEdits about doing the work — never pretend effort you don't see.`;
 
 const S = { type: "string" };
