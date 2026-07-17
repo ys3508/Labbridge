@@ -92,7 +92,8 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 | File | What |
 |---|---|
 | `app/page.js` | Input flow + form state (`background`, `headed`, `goals`, `timeline`) |
-| `components/InterviewDoor.js` `DiagnosticFlow.js` `VoiceInput.js` | Interview front door, two-question diagnostic, browser voice/typed input |
+| `components/InterviewDoor.js` `DiagnosticFlow.js` `VoiceInput.js` `TriageView.js` | Interview front door, two-question diagnostic, browser voice/typed input, post-diagnostic triage |
+| `lib/triage.js` | Pure interview triage ranking + output-contract helpers |
 | `components/BackgroundSection.js` `HeadedSection.js` `GoalsSection.js` `TimelineSection.js` `ReviewScreen.js` | The 4-section input + review |
 | `components/PlanView.js` | The workspace (briefing, moments, folder, drawer) + client orchestration of the pipeline |
 | `components/MockGate.js` + `lib/mockResponses.js` | Demo mode — fetch interceptor + canned data (zero API) |

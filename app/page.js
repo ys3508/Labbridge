@@ -9,6 +9,7 @@ import ReviewScreen from "@/components/ReviewScreen";
 import PlanView from "@/components/PlanView";
 import InterviewDoor from "@/components/InterviewDoor";
 import DiagnosticFlow from "@/components/DiagnosticFlow";
+import TriageView from "@/components/TriageView";
 import { Note } from "@/components/ui";
 import { inferGoals, detectDeadline } from "@/lib/stubs";
 
@@ -26,8 +27,10 @@ const INITIAL = {
 
 export default function Page() {
   const [form, setForm] = useState(INITIAL);
-  const [stage, setStage] = useState("landing"); // landing | interview | diagnostic | form | review | done
+  const [stage, setStage] = useState("landing"); // landing | interview | diagnostic | triage | form | review | done
   const [intakeBundle, setIntakeBundle] = useState(null);
+  const [interviewMeta, setInterviewMeta] = useState(null);
+  const [diagnosticState, setDiagnosticState] = useState(null);
 
   // Mock mode is for offline UI work. Reopen the generated workspace directly
   // after refresh so local progress/draft state can be verified without API.
@@ -108,6 +111,8 @@ export default function Page() {
       .filter(Boolean)
       .join("\n");
     setIntakeBundle(b);
+    setInterviewMeta(fields);
+    setDiagnosticState(null);
     setForm((f) => ({
       ...f,
       headed: {
@@ -123,16 +128,30 @@ export default function Page() {
     }));
     setStage("diagnostic");
   };
-  const finishDiagnostic = (summaryText) => {
+  const appendInterviewNotes = (extraText) => {
     setForm((f) => ({
       ...f,
       headed: {
         ...f.headed,
         instructions:
           f.headed.instructions +
-          (summaryText ? `\nDIAGNOSTIC RESULTS (build the map FROM these):\n${summaryText}` : "\nDIAGNOSTIC: skipped by user."),
+          extraText,
       },
     }));
+  };
+  const finishDiagnostic = (summaryText, results) => {
+    if (summaryText && results) {
+      setDiagnosticState({ summaryText, results });
+      setStage("triage");
+      return;
+    }
+    appendInterviewNotes("\nDIAGNOSTIC: skipped by user.");
+    setStage("done");
+  };
+  const finishTriage = ({ instructions }) => {
+    appendInterviewNotes(
+      `\nDIAGNOSTIC RESULTS (build the map FROM these):\n${diagnosticState?.summaryText || ""}\n\n${instructions}`
+    );
     setStage("done");
   };
 
@@ -213,8 +232,23 @@ export default function Page() {
       <Shell>
         <DiagnosticFlow
           intake={{ intake: intakeBundle }}
-          onDone={(summaryText) => finishDiagnostic(summaryText)}
+          onDone={(summaryText, results) => finishDiagnostic(summaryText, results)}
           onSkip={() => finishDiagnostic("")}
+        />
+      </Shell>
+    );
+  }
+
+  if (stage === "triage") {
+    return (
+      <Shell>
+        <TriageView
+          diagnosticSummary={diagnosticState?.summaryText || ""}
+          diagnosticResults={diagnosticState?.results || {}}
+          intake={intakeBundle || {}}
+          meta={interviewMeta || {}}
+          onCommit={finishTriage}
+          onBack={() => setStage("diagnostic")}
         />
       </Shell>
     );

@@ -71,6 +71,14 @@ implemented; see JOURNEY.md for the story.)*
 *Everything discussed in sessions that never became code. Date = when discussed.*
 
 **From the great review cycle + the "combine with real work" conversation (Jul 14-15):**
+- [x] **The Triage v1** (post-diagnostic stage) — DESIGNED + BUILT Jul 17, spec in
+      `revise/triage-spec.md`: `components/TriageView.js` + pure `lib/triage.js`
+      ranking helper, wired between DiagnosticFlow.onDone and generation. Ships the
+      correction door (reorderable dims — "we interpret; you correct"), runway
+      volume fork, tone-preserving copy, honest-expectations plant, and mutable
+      `priority[]` output contract into the existing instructions block/localStorage.
+      No new plan schema. Still open before calling diagnostic shipped: Q2-relevance
+      live gate (~5 intake calls). (Jul 17)
 - [~] **INTERVIEW MODE = the front door** — Session A SHIPPED Jul 15 and diagnostic
       hardening shipped Jul 17 (doors, intake, diagnostic, receipts, gap marker,
       Phase-1 trust copy/partial skip/receipt guard, Phase-2 `VoiceInput` with typed
