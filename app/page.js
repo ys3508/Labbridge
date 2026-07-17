@@ -144,14 +144,14 @@ export default function Page() {
           <button
             type="button"
             onClick={() => setStage("interview")}
-            className="rounded-2xl border-2 border-brand-200 bg-white p-6 text-left transition hover:border-brand-400 hover:shadow-md"
+            className="rounded-2xl border-2 border-brand-400 bg-brand-50 p-7 text-left shadow-sm transition hover:border-brand-500 hover:shadow-md"
           >
-            <p className="text-lg font-semibold text-ink">I have an interview</p>
-            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-              Paste the posting. See every likely question — then walk in with answers rehearsed against
-              pushback, built from your real background.
+            <p className="text-xl font-semibold text-ink">I have an interview</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink">
+              See what they'll likely ask — every question traced to a line of the posting.
             </p>
-            <p className="mt-3 text-xs font-medium text-brand-700">Start prepping →</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">Then rehearse it against real pushback.</p>
+            <p className="mt-4 text-sm font-semibold text-brand-700">Start here →</p>
           </button>
           <button
             type="button"
@@ -162,11 +162,9 @@ export default function Page() {
             className="rounded-2xl border border-slate-200 bg-white p-6 text-left transition hover:border-brand-300 hover:shadow-md"
           >
             <p className="text-lg font-semibold text-ink">I'm starting a new role</p>
-            <p className="mt-1 text-sm leading-relaxed text-ink-soft">
-              Ramp into real work: manager-assigned tasks, practice materials, honest review — your first
-              month, rehearsed.
-            </p>
-            <p className="mt-3 text-xs font-medium text-brand-700">Build my onboarding →</p>
+            <p className="mt-2 text-sm leading-relaxed text-ink-soft">Your first month, rehearsed.</p>
+            <p className="mt-1 text-sm leading-relaxed text-ink-soft">Real tasks, practice materials, honest review.</p>
+            <p className="mt-4 text-xs font-medium text-brand-700">Build my onboarding →</p>
           </button>
         </div>
         <p className="mt-6 text-center text-sm text-ink-soft">
@@ -316,11 +314,11 @@ function Hero() {
         <span className="text-lg font-bold tracking-tight">LabBridge</span>
       </div>
       <h1 className="mt-4 text-3xl font-semibold tracking-tight text-ink sm:text-4xl">
-        Build your onboarding plan
+        Walk in ready.
       </h1>
       <p className="mt-3 text-ink-soft">
-        Tell us where you're starting and where you're headed. We interpret; you correct. Whatever your
-        background — engineer, analyst, clinician, designer — this is for you.
+        We interpret; you correct. Whatever your background — engineer, analyst, clinician, designer —
+        this is for you.
       </p>
     </header>
   );
