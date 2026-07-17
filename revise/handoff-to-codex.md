@@ -1,132 +1,34 @@
-# Handoff to Codex — Moments rework + what's next
+# Handoff to Codex — the Jul 12–16 arc (read this first)
 
-Written by Claude for Codex. Context: we agreed a division of labor — Claude
-designs + specs + reviews; Codex implements. This is the spec + status so you can
-pick up the remaining work. Full contract in `AGENTS.md`; moment design in
-`revise/moments-spec.md`.
+Written by Claude for Codex, Jul 16. (The previous version of this file was a Jul-9 handoff about the moments rework — long since shipped; see git history if curious.) The product changed more in these five days than in the month before. This is the map; the full story is in JOURNEY.md (read the entries top-down from "Q: 'You've got a list based on my review right?'"), and each feature has a spec in `revise/`. Everything below is MERGED TO MAIN and pushed (`ab4dbea`).
 
----
+## The one-paragraph version
 
-## 1. Current state (read first)
+Sissi + you (your reviews were relayed in throughout) ran a 101-item page-by-page review of the first paid generated plan. Fixing it produced, in order: the **honest loop** (earned checkmarks, real AI review via /api/coach, Try→Draft→Coach reshuffle), the **materials engine** (every task's "you're given" files are generated synthetic practice data with a plan-scoped world canon so entities can't drift; Opus fact-check on coding references), **four purpose grammars** (starting_role / interview / career_move / curious are different plan SHAPES — same flat schema, reinterpreted fields), **gap-derived task counts** (no more always-5; stops = the actual gaps, fitted to the time budget, deferrals explicit in `trims[]`), **within-plan variety** (scaffolding fade, task archetypes incl. critique/shadow_reproduce/plot_twist, free-text graded question genres), a **time tracker** (active-minutes, idle-capped), a **split-pane context-injected assistant** (✳ on the Toolbox rail), a **feedback layer** (purpose-aware coach tone incl. a reflective non-grading mode for career_move, a zero-cost draft linter, beat-level 👍/👎 capture, tap-a-term), and finally **interview mode as the product's front door** (two-door landing, diagnostic-first intake with an intake router and tone dial, Question Map with posting-line receipts, named-not-dreaded gap question). Vercel now deploys from main; a template-literal backtick broke the first build (fixed in `ab4dbea` — lesson: dev compiles routes lazily; only `next build` sees everything).
 
-- **Branch:** `codex/planview-density-polish` (Codex's PlanView redesign).
-- **Uncommitted** on that branch right now (Claude's moments work, NOT pushed):
-  - `components/PlanView.js` (+337/−163) — the Moments rework
-  - `app/api/plan/route.js` (+12) — `comprehensionCheck` schema + prompt
-  - `lib/mockResponses.js` (+31) — `comprehensionCheck` in the 3 mock modules
-  - `revise/moments-spec.md` (new) — the agreed spec
-- **Verified** working offline in **mock mode** (`?mock=1`, zero API). See §3.
-- Nothing here is committed yet — Sissi will decide when to commit and merge.
+## Where things are (files you'll touch or read)
 
-### Branch map (avoid confusion — none merged to main)
-| Branch | What | State |
-|---|---|---|
-| `main` | at `2671301` (collab setup) | baseline |
-| `codex/planview-density-polish` | your workspace redesign **+ Claude's moments rework (uncommitted) + a local merge of mock mode** | local only |
-| `claude/mock-mode` | offline mock mode (MockGate + mockResponses) | **pushed**, off `main` |
-| `codex/module-quality-checker` | your static checker | pushed; **has a pending review fix** (see §5) |
+- `app/api/plan/route.js` — the generation contract. Heavily expanded: purpose grammars, gap-derived counts, scaffolding fade, archetypes, question genres, interview-intake rules, and `entitySheet` / `trims` / `timeEstimateMin` / `archetype` in the schema (still ONE flat schema — the compiled-grammar-limit wall stands; all new fields are strings/ints). ⚠ It's long; a consolidation pass is calendared (see Codex tasks).
+- `app/api/materials|coach|assist|intake/route.js` — four new endpoints: synthetic practice materials (world canon + reference fact-check), draft grading (purpose- and tone-aware; criteria verdicts with quoted evidence), the side-panel assistant, and the interview intake router (fused-sentence splitting into contentFears/obstacles, tone ∈ playful|neutral|gentle, Q2 + grading keys, hybrid model-written contract line for vulnerable intake, per-element fallbacks).
+- `components/PlanView.js` — grew a lot: TaskMaterials, CoachReview, FreeTextCheck, AssistantPanel, TimeMeter, DraftLinter, BeatFeedback, TermChips, purpose beat identities, curious door wrap, roadmap receipts/gap-marker/trims/"your background made it shorter". It wants splitting into files (good Codex task, via proposal).
+- `components/InterviewDoor.js`, `components/DiagnosticFlow.js`, `app/page.js` — the landing two doors + the interview intake (chips for round/format/seniority; the challenge field is fear's single home; repeatable interviewer rows with honest LinkedIn-blocks warning) + the two-question diagnostic (Acknowledge→Adapt→Explain contract line; two-axis substance/delivery grading; the "hoping to work in" prompt after Q1).
+- Specs: `revise/interview-mode-spec.md` (complete design incl. the un-built Session B), `revise/purpose-grammars-spec.md`, `revise/data-workspace-spec.md` (DuckDB workspace, deferred), `revise/review-consolidation.md` + `revise/plan-review-notes.md` (the 101-item review, resolved).
+- `TASKS.md` — the honest ledger is current; everything deferred is dated there.
 
----
+## Conventions that changed
 
-## 2. What Claude changed (this session)
+- **Push with every commit now.** Five unpushed days left GitHub stale and CI blind — the backtick bug reached Vercel because CI never saw the code. Branch→main merges remain Sissi-approved (she approved all of these).
+- The one-schema rule is load-bearing everywhere: purposes/archetypes/receipts all REINTERPRET existing fields. Before adding a field, ask why you can't reinterpret; if you must, strings and ints only.
+- Honesty patterns now extend to: marketing copy (no "exactly", no "every answer" — see the landing-page JOURNEY entry), synthetic data (labeled, canon-consistent, reference docs must be correct), interviewer info (archetype never impersonation; paste-only), and grader promises (what the intake contract line grants — e.g. layoff-omission — the grader must honor).
 
-Implemented `revise/moments-spec.md` in `components/PlanView.js`:
+## Good Codex tasks (mostly your lanes)
 
-- **Rewrote `buildMoments`** into the fixed-grammar / variable-inclusion model:
-  `Brief → Question → Model → Visual → Practice → Coach → Artifact → Reward`.
-  Code assembles the beats a task has content for (always: Brief, Coach, Artifact,
-  Reward; conditional: Question/Model/Visual/Practice). The model never chooses.
-- **Coach is honest by construction** — the fake-AI buttons ("Check my answer" etc.)
-  are gone. Coach is now **user-ticked checkboxes** against `selfCheck.criteria` +
-  a "Watch for" list + a dashed "AI review is coming" note. Nothing auto-responds.
-- **Reward reads live state** — `checks` (ticked count) + `draft` (saved?) + the
-  real next task title. Coach's ticks feed Reward's "Self-check: N/M confirmed".
-- **Question** = a real per-task MCQ from a new `comprehensionCheck` field.
-- **Model** shows the **full, un-truncated** concept (+ keyTerms + misconception + bridge).
-- **Visual** = the worked example as a clean card.
-- **Restored `plan.hook`** in `MissionBrief` (it was being generated but not rendered).
-- **Removed `MentorPanel`** (the sidebar fake-AI panel) and its render.
-- Plumbing: `checks`/`toggleCheck` state in `MomentFlow`; `nextLabel` threaded
-  PlanView → Module → MomentFlow → buildMoments.
+1. **Back-review this arc** — you have standing review rights; commits are well-messaged and chronological.
+2. **Golden fixtures for interview mode** (your fixtures lane) — an interview-purpose input fixture + expected-shape checks (archetype ∈ interview kinds, why=receipt non-empty when a posting exists, gap_defense exactly once). Sissi's first interview generation will be the reference output.
+3. **CI hardening** — the workflow exists (lint+check+build) but was blind for days; consider PR-gating and a badge so silence is visible.
+4. **PlanView.js split proposal** — render lane is Claude's; a mechanical module-split proposal via `revise/proposal-planview-split.md` per the ownership rule would be very welcome.
+5. **The prompt consolidation pass** (calendared, unstarted): plan/route.js's SYSTEM grew by accretion and stacked soft rules degrade instruction-following — the honesty/tone constraints are the ones most at risk of being dropped under load. Needs one careful rewrite + a golden-fixture regression run. Plan-generation lane is Claude's — coordinate via revise/ before touching.
 
-In `app/api/plan/route.js`: added `comprehensionCheck { question, options[],
-answerIndex, explanation }` to the module schema (**optional** — not in the module
-`required` list) and a prompt bullet describing it.
+## Open with Sissi
 
-In `lib/mockResponses.js`: authored a `comprehensionCheck` for each of the 3 RWE
-mock modules so the Question beat renders offline.
-
----
-
-## 3. How to verify (offline, no API)
-
-`http://localhost:3100/?mock=1` → build → walk a task through the 8 moments.
-Confirmed by Claude: 8 beats render; hook restored; MCQ gives correct/incorrect
-feedback; Coach criteria tick; **Reward shows the live ticked count** (tick 2 of 3 →
-Reward reads "2/3 confirmed"); no console errors.
-
-Dev server: `.claude/launch.json` → `labbridge-dev` on port 3100 (Node at
-`~/.local/node-v22.23.1-darwin-arm64/bin`).
-
----
-
-## 4. Remaining work for Codex (specced, prioritized)
-
-### A. Dead-code cleanup (do first — pure removal, low risk)
-These are now defined but **never rendered** in `components/PlanView.js` (leftovers
-from earlier iterations). Remove their definitions:
-`QuickWin`, `LearningLayer`, `CoachChecklist`, `WorkPath`, `FlowBox`, `FlowArrow`,
-and then `ModulePanel` + `SubLabel` (which only `LearningLayer` used).
-- **Acceptance:** `grep -c "function <Name>"` = 0 for each; app compiles; `?mock=1`
-  still renders all 8 moments with no console errors.
-- **Watch:** remove in dependency order (LearningLayer before ModulePanel before
-  SubLabel; WorkPath before FlowBox/FlowArrow) so you don't leave a dangling ref.
-
-### B. Verify `comprehensionCheck` against the live model (when API balance is back)
-The UI + schema + prompt are done, but the model has **not** actually generated a
-`comprehensionCheck` yet (Claude authored the mock ones by hand).
-- Regenerate a plan; confirm the model emits, per module: a question tied to the
-  concept, 3–4 options with **plausible** distractors, a correct 0-based
-  `answerIndex`, and an explanation.
-- If weak, tune the prompt bullet in `app/api/plan/route.js`.
-- **Acceptance:** a fresh real plan shows the Question beat with a sensible MCQ.
-
-### C. `/api/coach` — the real AI review socket (LATER; costs API per submission)
-The Coach beat currently ends with "AI review is coming." When Sissi greenlights
-spend: add a route `POST /api/coach { draft, criteria, redFlags, task }` →
-returns structured feedback (which criteria the draft meets/misses, one concrete
-suggestion). Wire it **above** the self-check in the Coach beat ("…or ask LabBridge
-to check it") — do not remove the self-check.
-- **Do not build until Sissi approves the API cost.** Honesty rule: never show
-  AI-looking output that didn't run a real call.
-
-### D. Variable-inclusion demo (optional)
-All 3 mock modules currently have every field, so all show 8 moments. If useful for
-testing, add a thin mock module (no `comprehensionCheck`, no `workedExample`) to
-prove a 5–6 moment task renders correctly.
-
----
-
-## 5. Separate: your checker branch has a pending review fix
-
-On `codex/module-quality-checker`, Claude's review found one blocker (documented
-when it was reviewed): **`checkBannedPhrases` scans the whole module**, so a healthy
-concept that says "learn about…" gets flagged as an `error` (→ `checkPlan.ok=false`).
-- **Fix:** scope the banned-phrase scan to the **task assignment** only
-  (`task.title`, `managerRequest`, `steps`, `deliverable`, `givenInputs`,
-  `doneWhen`) — not the taught `concept`/`workedExample`.
-- Then finish the other two golden fixtures (`golden-growth-equity-input.json`,
-  `golden-beginner-input.json`) per `TASKS.md`.
-
----
-
-## 6. Contract reminders (keep code aligned)
-
-From `AGENTS.md` — the non-negotiables your code must preserve:
-- **Grounding / verify-and-drop** — never show an unverified resource.
-- **Facts vs fluency** — generated teaching prose must not invent precise
-  clinical/coding/regulatory specifics.
-- **Fidelity** — role verbatim; UI owns the factual deadline; horizon derived.
-- **Honest Coach** — no auto-responding fake AI offline.
-- **Code assembles Moments**, the model doesn't choose the flow.
-- **Reward reads live state** — never a canned "you're done" banner.
+Interview-mode **Session B** is next by priority (mock runner with dynamic pushback from the actual answer, Simulated Live Interview voiced by interviewer archetypes, walk-in card, post-interview loop); the DuckDB workspace after. Her first interview-purpose generation (~$0.40) is still pending and doubles as the validation run for the entire prompt layer above. Vercel env-var check pending: the public deploy should be keyless (demo works fully; generation degrades honestly) unless she's set a spend cap.
