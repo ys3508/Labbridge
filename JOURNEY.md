@@ -312,6 +312,9 @@ Batch 2 (her go: "Yes"): a plan-scoped **world canon** — the first materials g
 Her "role-only" screenshots turned out to be the DEMO being served against real inputs — `lb_mock=1` had persisted from old demo links, so the sample plan's Persona-1 content (epi background, Meridian) looked like a wild hallucination from a role-only input. It wasn't; no model had run. Then she ran the real thing: a genuine role-only generation — the cold-start test, answered early — and the live generator **passed the hard part**: "✓ Starting fresh," no invented background, no invented employer, horizon labeled "assumed default." Codex's remaining catches were real and went on the ledger: the conditional-wearing-a-checkmark ("✓ *If* you have ANY spreadsheet experience"), a genuine dependency-order bug (cohort definition sequenced before the codes it's made of), beginner depth calibration (confounding adjustment at "1–2 days" for a fresh starter), and timeboxes still calibrated to an epi persona. One hardcoded cheque got fixed on the spot: the roadmap's "Nothing on this road assumes anything you don't already have" — a promise the app printed regardless of content — scoped down to the defensible "each stop is built from the one before it."
 The day also bought two pieces of spend armor the hard way: (1) Claude's own test fetch with an empty `{}` body sailed past the plan route's validation and billed ~two real generations — `/api/plan` now refuses effectively-empty payloads before touching the API (0.18s, $0, tested); (2) with two real plans now saved in her browser, the restore gate became a **picker** — every saved plan listed with date, hook line, and task count, each loadable free, the paid path explicit at the bottom. Also logged: refreshing mid-generation double-bills (the cache only saves on completion) — an in-flight guard is on the ledger.
 
+**Checker harness became the future enforcement frame, without writing rules yet.**
+Codex refactored `lib/moduleCheck.js` around a rule registry shape (`id`, `severity`, `describe`, `check(ctx)`), a runner over `ctx = { input, output, pool, purpose }`, and a fixture script that exits non-zero on any `severity: "error"` violation. CI already ran `npm run check`, so the harness is now build-blocking the moment rules are registered. The old plan-quality checks (`checkModule` / `checkPlan`) stayed as legacy exports because the app route still calls them and they do not map cleanly to the new cross-product non-negotiable rule context yet. Fixture coverage now spans all four purposes and includes negative cases for future rules: resource not in pool, invented output date, role re-categorization, and unreadable-link honesty. No product-rule logic was registered in this pass; the frame is ready, the rules remain Sissi/Claude-reviewed decisions.
+
 ---
 
 ## Where it stands
@@ -347,7 +350,7 @@ input  → /api/plan         structure only: strengths, gaps, task-modules, caps
 - `lib/ai.js` — Anthropic client + model constants (`MODEL` = Haiku for cheap calls, `PLAN_MODEL` = Opus for plan/select)
 - `lib/verify.js` — resource verification (Open Library, OpenAlex, web search)
 - `components/MockGate.js` + `lib/mockResponses.js` — demo mode (zero API)
-- `lib/moduleCheck.js` + `fixtures/` — static plan-quality checker + golden inputs
+- `lib/moduleCheck.js` + `fixtures/` — rule-registry checker harness + golden/negative inputs
 - `lib/constants.js` — pools, options, and the `WEB_AUGMENT` toggle
 
 **Knobs:** `WEB_AUGMENT = false` (in `lib/constants.js`) for fast/cheap runs · swap `MODEL`/`PLAN_MODEL` to trade cost vs. quality · `ANTHROPIC_API_KEY` lives in `.env.local` (gitignored).

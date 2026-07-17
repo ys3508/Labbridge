@@ -1,0 +1,37 @@
+{
+  "_comment": "Negative fixture waiting for rule id: date_fidelity. Output prints a date that does not appear in input.",
+  "purpose": "interview",
+  "input": {
+    "background": {
+      "field": ["Finance"],
+      "sector": ["Investment banking"],
+      "skills": ["financial modeling"],
+      "skillEvidence": [],
+      "resume": "",
+      "isBeginner": false
+    },
+    "target": {
+      "role": "Private Equity Associate",
+      "artifacts": [],
+      "realTask": "",
+      "instructions": "",
+      "jobFields": null,
+      "unreadableLink": false,
+      "hasTarget": true
+    },
+    "goals": {
+      "depth": "functional",
+      "purpose": "interview"
+    },
+    "timeline": {
+      "mode": null,
+      "deadline": "",
+      "weeklyHrs": ""
+    }
+  },
+  "pool": [],
+  "output": {
+    "hook": "You can be ready by August 7, 2026.",
+    "learningSequence": []
+  }
+}

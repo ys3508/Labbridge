@@ -1,37 +1,81 @@
-// CI smoke: fixtures parse with the buildPayload shape, and the static checker
-// passes a healthy Shift-1 module (teaching prose may say "learn about") while
-// flagging pointer-style assignments. Zero API. Run: npm run check
 import fs from "node:fs";
-import { checkModule } from "../lib/moduleCheck.js";
+import path from "node:path";
+import { RULES, runRules } from "../lib/moduleCheck.js";
 
-let failures = 0;
-const fail = (msg) => { console.error("✗", msg); failures++; };
-const ok = (msg) => console.log("✓", msg);
+const FIXTURE_DIR = path.resolve("fixtures");
+const VALID_PURPOSES = new Set(["starting_role", "interview", "career_move", "curious"]);
 
-for (const f of fs.readdirSync("fixtures").filter((x) => x.endsWith(".json"))) {
-  const p = JSON.parse(fs.readFileSync(`fixtures/${f}`, "utf8"));
-  if (p.background && p.target && p.goals && p.timeline) ok(`${f} parses with payload shape`);
-  else fail(`${f} missing payload sections`);
+// fixtures/negative/ holds fixtures that are SUPPOSED to trip a rule — they are
+// checked separately by scripts/check-rule-fixtures.mjs, which asserts each one
+// is caught. Sweeping them in here would make this "must stay clean" golden
+// scan permanently fail the moment a rule catches what it was built to catch.
+function collectJsonFiles(dir) {
+  if (!fs.existsSync(dir)) return [];
+  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  return entries.flatMap((entry) => {
+    if (entry.isDirectory() && entry.name === "negative") return [];
+    const fullPath = path.join(dir, entry.name);
+    if (entry.isDirectory()) return collectJsonFiles(fullPath);
+    if (entry.isFile() && entry.name.endsWith(".json")) return [fullPath];
+    return [];
+  });
 }
 
-const healthy = {
-  concept: { explanation: "Here you learn about enrollment spans. Read about the claims lifecycle. ".repeat(8) },
-  workedExample: { setup: "Patient 104: continuous enrollment Jan-Dec, two E11 claims, one metformin fill, one endocrinology visit in May." },
-  task: {
-    title: "Data orientation memo",
-    managerRequest: "Your RWE lead says: profile this extract.",
-    givenInputs: ["claims_sample.csv"],
-    steps: ["Profile tables", "Trace a patient", "List limitations"],
-    deliverable: "One-page memo", doneWhen: "Counts reproduce", stakeholders: "RWE lead",
-  },
-  selfCheck: { criteria: ["a", "b", "c"], redFlags: ["x"] },
-};
-const bad = structuredClone(healthy);
-bad.task.steps = ["Find a dataset online", "Simulate your own claims"];
+function readFixture(filePath) {
+  const raw = fs.readFileSync(filePath, "utf8");
+  const fixture = JSON.parse(raw);
+  const input = fixture.input || fixture;
+  const purpose = fixture.purpose || input?.goals?.purpose;
+  return {
+    name: path.relative(process.cwd(), filePath),
+    ctx: {
+      input,
+      output: fixture.output || null,
+      pool: fixture.pool || [],
+      purpose,
+    },
+  };
+}
 
-if (checkModule(healthy, 0).filter((x) => x.severity === "error").length === 0) ok("healthy module passes (teaching prose may say 'learn about')");
-else fail("healthy module flagged");
-if (checkModule(bad, 0).some((x) => x.code === "banned_phrase")) ok("pointer-style assignment flagged");
-else fail("bad assignment not flagged");
+function fail(message) {
+  console.error(`✗ ${message}`);
+  process.exitCode = 1;
+}
 
-process.exit(failures ? 1 : 0);
+function logViolation(fixtureName, violation) {
+  const location = violation.path ? ` (${violation.path})` : "";
+  console.error(`✗ ${fixtureName}: [${violation.ruleId}] ${violation.message}${location}`);
+}
+
+const files = collectJsonFiles(FIXTURE_DIR);
+if (!files.length) {
+  fail("No JSON fixtures found.");
+  process.exit();
+}
+
+const fixtures = files.map(readFixture);
+const purposes = new Set(fixtures.map((fixture) => fixture.ctx.purpose).filter(Boolean));
+
+for (const purpose of VALID_PURPOSES) {
+  if (!purposes.has(purpose)) {
+    fail(`Missing fixture coverage for purpose "${purpose}".`);
+  }
+}
+
+for (const fixture of fixtures) {
+  if (!VALID_PURPOSES.has(fixture.ctx.purpose)) {
+    fail(`${fixture.name} has invalid or missing purpose "${fixture.ctx.purpose}".`);
+  }
+
+  const result = runRules(fixture.ctx);
+  for (const violation of result.violations) {
+    if (violation.severity === "error") {
+      logViolation(fixture.name, violation);
+      process.exitCode = 1;
+    }
+  }
+}
+
+if (!process.exitCode) {
+  console.log(`✓ ${fixtures.length} fixtures checked with ${RULES.length} registered rules`);
+}

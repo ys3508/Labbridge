@@ -1,0 +1,33 @@
+{
+  "background": {
+    "field": ["Operations", "Customer Success"],
+    "sector": ["B2B SaaS"],
+    "skills": ["customer interviews", "process mapping", "retention analysis"],
+    "skillEvidence": [
+      {
+        "skill": "customer interviews",
+        "evidence": "ran renewal-risk interviews and summarized patterns for account teams"
+      }
+    ],
+    "resume": "Customer success manager exploring a move into product operations. Strong at customer discovery and process mapping; new to product rituals, roadmap tradeoffs, and analytics instrumentation.",
+    "isBeginner": false
+  },
+  "target": {
+    "role": "Product Operations Manager",
+    "artifacts": [],
+    "realTask": "",
+    "instructions": "Help me decide if product operations is a good move before I commit to interviewing.",
+    "jobFields": null,
+    "unreadableLink": false,
+    "hasTarget": true
+  },
+  "goals": {
+    "depth": "landscape",
+    "purpose": "career_move"
+  },
+  "timeline": {
+    "mode": "pace",
+    "deadline": "",
+    "weeklyHrs": "3"
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "_comment": "Negative fixture waiting for rule id: unreadable_link_honesty. Input says the job link was unreadable, but output claims posting-specific grounding.",
+  "purpose": "curious",
+  "input": {
+    "background": {
+      "field": [],
+      "sector": [],
+      "skills": [],
+      "skillEvidence": [],
+      "resume": "",
+      "isBeginner": true
+    },
+    "target": {
+      "role": "Data Analyst",
+      "artifacts": [
+        {
+          "type": "job_link",
+          "url": "https://www.linkedin.com/jobs/view/example"
+        }
+      ],
+      "realTask": "",
+      "instructions": "",
+      "jobFields": null,
+      "unreadableLink": true,
+      "hasTarget": true
+    },
+    "goals": {
+      "depth": "landscape",
+      "purpose": "curious"
+    },
+    "timeline": {
+      "mode": null,
+      "deadline": "",
+      "weeklyHrs": ""
+    }
+  },
+  "pool": [],
+  "output": {
+    "hook": "From the LinkedIn posting, this role emphasizes dashboard ownership.",
+    "learningSequence": []
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "_comment": "Negative fixture waiting for rule id: role_verbatim. Input role is re-categorized in output instead of preserved verbatim.",
+  "purpose": "career_move",
+  "input": {
+    "background": {
+      "field": ["Customer Success"],
+      "sector": ["B2B SaaS"],
+      "skills": ["customer discovery"],
+      "skillEvidence": [],
+      "resume": "",
+      "isBeginner": false
+    },
+    "target": {
+      "role": "Product Operations Manager",
+      "artifacts": [],
+      "realTask": "",
+      "instructions": "",
+      "jobFields": null,
+      "unreadableLink": false,
+      "hasTarget": true
+    },
+    "goals": {
+      "depth": "landscape",
+      "purpose": "career_move"
+    },
+    "timeline": {
+      "mode": "pace",
+      "deadline": "",
+      "weeklyHrs": "3"
+    }
+  },
+  "pool": [],
+  "output": {
+    "targetRole": "Product Manager",
+    "hook": "Explore whether Product Management fits you.",
+    "learningSequence": []
+  }
+}

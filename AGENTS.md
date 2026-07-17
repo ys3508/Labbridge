@@ -95,7 +95,7 @@ Supporting routes: `analyze` (resume → field/sector/skills+evidence),
 | `components/BackgroundSection.js` `HeadedSection.js` `GoalsSection.js` `TimelineSection.js` `ReviewScreen.js` | The 4-section input + review |
 | `components/PlanView.js` | The workspace (briefing, moments, folder, drawer) + client orchestration of the pipeline |
 | `components/MockGate.js` + `lib/mockResponses.js` | Demo mode — fetch interceptor + canned data (zero API) |
-| `lib/moduleCheck.js` + `fixtures/` | Static plan-quality checker + golden regression inputs |
+| `lib/moduleCheck.js` + `fixtures/` | Rule-registry checker harness + golden/negative regression inputs |
 | `app/api/*/route.js` | Server routes (above) |
 | `lib/ai.js` | Anthropic client + `MODEL` / `PLAN_MODEL` |
 | `lib/verify.js` | Resource verification (Open Library, OpenAlex, web search) |

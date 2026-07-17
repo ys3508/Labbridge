@@ -1,0 +1,51 @@
+{
+  "_comment": "Negative fixture waiting for rule id: resource_in_pool. Output cites a resource that is absent from pool.",
+  "purpose": "starting_role",
+  "input": {
+    "background": {
+      "field": ["Public Health"],
+      "sector": ["County health department"],
+      "skills": ["cohort definitions"],
+      "skillEvidence": [],
+      "resume": "",
+      "isBeginner": false
+    },
+    "target": {
+      "role": "Real World Evidence Analyst",
+      "artifacts": [],
+      "realTask": "",
+      "instructions": "",
+      "jobFields": null,
+      "unreadableLink": false,
+      "hasTarget": true
+    },
+    "goals": {
+      "depth": "functional",
+      "purpose": "starting_role"
+    },
+    "timeline": {
+      "mode": "pace",
+      "deadline": "",
+      "weeklyHrs": "5"
+    }
+  },
+  "pool": [
+    {
+      "title": "RECORD reporting statement",
+      "url": "https://www.record-statement.org/"
+    }
+  ],
+  "output": {
+    "learningSequence": [
+      {
+        "title": "Read the evidence workflow",
+        "resources": [
+          {
+            "title": "Invented RWE Handbook",
+            "url": "https://example.com/invented-rwe-handbook"
+          }
+        ]
+      }
+    ]
+  }
+}
