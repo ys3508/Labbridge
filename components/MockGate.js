@@ -16,6 +16,12 @@ function safeParse(body) {
 }
 
 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+const PERSONAS = ["rwe", "growth", "interview"];
+const PERSONA_LABELS = {
+  rwe: "RWE analyst",
+  growth: "growth equity",
+  interview: "interview prep",
+};
 
 export default function MockGate() {
   const [on, setOn] = useState(false);
@@ -26,10 +32,10 @@ export default function MockGate() {
     const q = params.get("mock");
     if (q === "1") localStorage.setItem("lb_mock", "1");
     if (q === "0") localStorage.removeItem("lb_mock");
-    // Two demo personas (RWE analyst / growth equity) — switchable from the banner.
+    // Demo personas — switchable from the banner.
     const p = params.get("persona");
-    if (p) localStorage.setItem("lb_persona", p === "growth" ? "growth" : "rwe");
-    setPersona(localStorage.getItem("lb_persona") === "growth" ? "growth" : "rwe");
+    if (p) localStorage.setItem("lb_persona", PERSONAS.includes(p) ? p : "rwe");
+    setPersona(PERSONAS.includes(localStorage.getItem("lb_persona")) ? localStorage.getItem("lb_persona") : "rwe");
 
     const enabled = localStorage.getItem("lb_mock") === "1";
     setOn(enabled);
@@ -56,10 +62,11 @@ export default function MockGate() {
   }, []);
 
   if (!on) return null;
+  const nextPersona = PERSONAS[(PERSONAS.indexOf(persona) + 1) % PERSONAS.length] || "rwe";
   return (
     <div className="fixed bottom-3 left-1/2 z-50 -translate-x-1/2 rounded-full border border-amber-300 bg-amber-50 px-3 py-1 text-xs font-medium text-amber-800 shadow-sm">
-      Sample plan ({persona === "growth" ? "growth equity" : "RWE analyst"}) — explore freely ·{" "}
-      <a href={`/?mock=1&persona=${persona === "growth" ? "rwe" : "growth"}`} className="underline">
+      Sample plan ({PERSONA_LABELS[persona] || "RWE analyst"}) — explore freely ·{" "}
+      <a href={`/?mock=1&persona=${nextPersona}`} className="underline">
         switch sample
       </a>{" "}
       ·{" "}

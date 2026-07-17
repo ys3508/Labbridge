@@ -66,6 +66,10 @@ implemented; see JOURNEY.md for the story.)*
 ### Next up
 - [ ] **Deploy the public demo** — Vercel, NO ANTHROPIC_API_KEY set (zero spend
       risk; demo fully works, generation degrades honestly). CI is in place.
+- [x] **Question Map render §1-6** — Jul 17 Codex pass: interview purpose now
+      uses `section`/`tag` instead of interview archetypes, intake splits round
+      from interviewer kind, demo has an interview persona, and map render shows
+      receipts/tags/order/skip rules. §7 model beat remains blocked.
 
 ### Talked about, never done (the honest ledger — Sissi asked for this)
 *Everything discussed in sessions that never became code. Date = when discussed.*

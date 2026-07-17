@@ -1,0 +1,54 @@
+{
+  "background": {
+    "field": ["Public Health", "Epidemiology"],
+    "sector": ["County health department"],
+    "skills": ["cohort definitions", "bias/confounding", "stakeholder memos", "Excel", "R", "basic SQL"],
+    "skillEvidence": [
+      {
+        "skill": "cohort definitions",
+        "evidence": "comfortable with study design basics, bias/confounding, cohort definitions"
+      },
+      {
+        "skill": "stakeholder memos",
+        "evidence": "wrote short reports for program managers"
+      }
+    ],
+    "resume": "I have 3 years of experience in public health and epidemiology. I worked on a county health department analytics team where I cleaned survey and registry data, summarized trends, and wrote short reports for program managers. One project I led was a vaccination access analysis combining appointment data with census tract demographics.",
+    "isBeginner": false
+  },
+  "target": {
+    "role": "Real World Evidence Analyst",
+    "artifacts": [
+      {
+        "type": "job_posting",
+        "text": "Role: Real World Evidence Analyst\nCompany: Meridian Therapeutics\nResponsibilities:\n- Support observational research projects using claims, EHR, and registry datasets\n- Translate clinical questions into cohort definitions, index dates, inclusion/exclusion criteria, outcomes, and covariates\n- Document assumptions, limitations, and data-quality concerns clearly\n- Create concise evidence summaries for medical affairs and HEOR stakeholders"
+      }
+    ],
+    "realTask": "",
+    "instructions": "INTERVIEW INTAKE\nCompany: Meridian Therapeutics\nRound step: First round\nInterviewer kind: Engineer / peer\nFormat: Video\nSeniority, in their words: Same level, new field\nTheir stated challenge: I freeze when they ask why I have not worked in pharma.\nInterviewers (pasted by the user): Alex Chen — Senior RWE engineer: works on claims data quality and reproducible cohort pipelines.\nSignals — content fears: claims cohort definition\nSignals — personal obstacles: freezing under pressure\nSignals — tone: gentle\nDIAGNOSTIC RESULTS (build the map FROM these):\nQ1: substance=met (clear public-health bridge) structure=thin (buried the result)\nQ2: substance=thin (named cohort rules but missed limitations) structure=met (answer first)",
+    "jobFields": {
+      "company": "Meridian Therapeutics",
+      "role": "Real World Evidence Analyst",
+      "sector": "Biopharma / Medical Affairs",
+      "seniority": "",
+      "responsibilities": [
+        "Support observational research projects using claims, EHR, and registry datasets",
+        "Translate clinical questions into cohort definitions, index dates, inclusion/exclusion criteria, outcomes, and covariates",
+        "Document assumptions, limitations, and data-quality concerns clearly",
+        "Create concise evidence summaries for medical affairs and HEOR stakeholders"
+      ],
+      "requiredSkills": ["Epidemiology", "Health data", "SQL or statistical programming", "Stakeholder communication"]
+    },
+    "unreadableLink": false,
+    "hasTarget": true
+  },
+  "goals": {
+    "depth": "functional",
+    "purpose": "interview"
+  },
+  "timeline": {
+    "mode": "deadline",
+    "deadline": "2026-08-07",
+    "weeklyHrs": ""
+  }
+}

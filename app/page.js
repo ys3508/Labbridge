@@ -34,7 +34,12 @@ export default function Page() {
   useEffect(() => {
     try {
       const params = new URLSearchParams(window.location.search);
-      if (params.get("mock") === "1" || localStorage.getItem("lb_mock") === "1") setStage("done");
+      if (params.get("mock") === "1" || localStorage.getItem("lb_mock") === "1") {
+        if ((params.get("persona") || localStorage.getItem("lb_persona")) === "interview") {
+          setForm((f) => ({ ...f, goals: { ...f.goals, purpose: "interview", purposeTouched: true } }));
+        }
+        setStage("done");
+      }
     } catch {}
   }, []);
 
@@ -97,7 +102,9 @@ export default function Page() {
     const block = [
       "INTERVIEW INTAKE",
       fields.company && `Company: ${fields.company}${fields.website ? ` (${fields.website})` : ""}`,
-      (fields.round || fields.format) && `Round/format: ${[fields.round, fields.format].filter(Boolean).join(" · ")}`,
+      fields.round && `Round step: ${fields.round}`,
+      fields.interviewerKind && `Interviewer kind: ${fields.interviewerKind}`,
+      fields.format && `Format: ${fields.format}`,
       fields.seniority && `Seniority, in their words: ${fields.seniority}`,
       fields.challenge && `Their stated challenge: ${fields.challenge}`,
       fields.interviewers && `Interviewers (pasted by the user): ${fields.interviewers}`,

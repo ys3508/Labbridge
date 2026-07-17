@@ -2,7 +2,7 @@
 // passes a healthy Shift-1 module (teaching prose may say "learn about") while
 // flagging pointer-style assignments. Zero API. Run: npm run check
 import fs from "node:fs";
-import { checkModule } from "../lib/moduleCheck.js";
+import { checkModule, checkPlan } from "../lib/moduleCheck.js";
 
 let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
@@ -33,5 +33,22 @@ if (checkModule(healthy, 0).filter((x) => x.severity === "error").length === 0) 
 else fail("healthy module flagged");
 if (checkModule(bad, 0).some((x) => x.code === "banned_phrase")) ok("pointer-style assignment flagged");
 else fail("bad assignment not flagged");
+
+const interviewMap = {
+  learningSequence: [
+    { section: "fit", tag: "start_here", why: "JD: role asks for stakeholder summaries", concept: healthy.concept, workedExample: healthy.workedExample, task: healthy.task, selfCheck: healthy.selfCheck },
+    { section: "capability", tag: "", why: "JD: cohort definitions", concept: healthy.concept, workedExample: healthy.workedExample, task: healthy.task, selfCheck: healthy.selfCheck },
+    { section: "judgment", tag: "blind_spot", why: "Diagnostic: missed limitations", concept: healthy.concept, workedExample: healthy.workedExample, task: healthy.task, selfCheck: healthy.selfCheck },
+  ],
+};
+const badInterviewMap = structuredClone(interviewMap);
+badInterviewMap.learningSequence[0].tag = "";
+badInterviewMap.learningSequence[1].why = "";
+
+if (checkPlan(interviewMap, { purpose: "interview" }).findings.filter((x) => x.severity === "error").length === 0) ok("healthy interview map passes map rules");
+else fail("healthy interview map flagged");
+const badFindings = checkPlan(badInterviewMap, { purpose: "interview" }).findings;
+if (badFindings.some((x) => x.code === "interview_start_here_count") && badFindings.some((x) => x.code === "interview_missing_receipt")) ok("bad interview map flags start_here and missing receipt");
+else fail("bad interview map did not flag map rules");
 
 process.exit(failures ? 1 : 0);
