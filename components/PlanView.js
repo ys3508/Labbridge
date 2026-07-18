@@ -547,8 +547,9 @@ export default function PlanView({ form, isBeginner, onBack }) {
     (payload.background.sector || []).join(", ") ||
     "";
   const modules = plan.learningSequence || [];
+  const purpose = form.goals.purpose;
   const activeModule = modules[activeIndex] || modules[0];
-  const activeMeta = activeModule ? getMomentMeta(activeModule, form.goals.purpose) : [];
+  const activeMeta = activeModule ? getMomentMeta(activeModule, purpose) : [];
   const activeMomentKey = activeMeta.length
     ? activeMeta[Math.min(Number(momentsByTask[activeIndex] || 0), activeMeta.length - 1)]?.key
     : null;
@@ -659,7 +660,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           {plan.hook && (
             <p className="mt-3 max-w-prose text-sm leading-relaxed text-ink-soft">{firstSentence(plan.hook)}</p>
           )}
-          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} purpose={form.goals.purpose} deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""} />
+          <Roadmap plan={plan} modules={modules} done={done} trims={trims} onToggleTrim={toggleTrim} roleName={roleName} purpose={purpose} deadline={payload.timeline.mode === "deadline" ? (payload.timeline.deadline || "").trim() : ""} />
         </header>
 
         <div className="mt-6 space-y-3">
@@ -725,7 +726,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
               <p className="mt-1 max-w-3xl truncate text-sm text-ink-soft">{missionLine}</p>
             </div>
             <div className="shrink-0 space-y-2 lg:w-64">
-              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact purpose={form.goals.purpose} />
+              <ProgressBar modules={modules} done={done} momentsByTask={momentsByTask} drafts={drafts} compact purpose={purpose} />
               <TimeMeter modules={modules} timeSpent={timeSpent} deadline={deadline} />
               <div className="flex flex-wrap justify-start gap-2 lg:justify-end">
                 <button
@@ -777,6 +778,16 @@ export default function PlanView({ form, isBeginner, onBack }) {
             <p className="mt-3 rounded-lg bg-white/70 px-3 py-2 text-xs text-ink-soft ring-1 ring-brand-100">
               {welcomeBack}
             </p>
+          )}
+          {purpose === "interview" && !focused && (
+            <QuestionMap
+              modules={modules}
+              done={done}
+              trims={trims}
+              activeIndex={activeIndex}
+              onOpen={openTask}
+              onToggleTrim={toggleTrim}
+            />
           )}
         </>
           )}
@@ -849,7 +860,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   onToggleCheck={(key) => toggleTaskCheck(activeIndex, key)}
                   prevDraft={activeIndex > 0 ? drafts[activeIndex - 1] || "" : null}
                   allDrafts={drafts}
-                  purpose={form.goals.purpose}
+                  purpose={purpose}
                   onDiscuss={(seed) => {
                     setAssistantSeed(seed);
                     setAssistantOpen(true);
@@ -875,7 +886,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           beatKey={activeMomentKey}
           plan={plan}
           draft={drafts[activeIndex] || ""}
-          purpose={form.goals.purpose}
+          purpose={purpose}
         />
       )}
       <Toolbox
@@ -1553,15 +1564,18 @@ function buildProjectMarkdown(projectTitle, modules, files, drafts, done, notes 
 function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, drafts = {}, compact = false, purpose }) {
   const total = modules.length;
   const doneCount = done.size;
+  const noun = purpose === "interview" ? "answer" : "project file";
   /* a11y: expose the earned count to assistive tech. */
   return (
-    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={doneCount} aria-label={`${doneCount} of ${total} ${purpose === "interview" ? "answers banked" : "project files built"}`}>
+    <div role="progressbar" aria-valuemin={0} aria-valuemax={total} aria-valuenow={doneCount} aria-label={`${doneCount} of ${total} ${noun}${total === 1 ? "" : "s"} ${purpose === "interview" ? "banked" : "built"}`}>
       <div className="text-xs text-ink-soft">
         {total > 0 && doneCount >= total ? (
-          <span>All {total} files built — your readiness project is open ★</span>
+          <span>
+            All {total} {noun}{total === 1 ? "" : "s"} {purpose === "interview" ? "banked" : "built"} — your {purpose === "interview" ? "mock interview" : "readiness project"} is open ★
+          </span>
         ) : (
           <span>
-            {doneCount} of {total} project file{total === 1 ? "" : "s"} built
+            {doneCount} of {total} {noun}{total === 1 ? "" : "s"} {purpose === "interview" ? "banked" : "built"}
           </span>
         )}
       </div>
@@ -1586,6 +1600,185 @@ function ProgressBar({ modules = [], done = new Set(), momentsByTask = {}, draft
         })}
       </div>
     </div>
+  );
+}
+
+const QUESTION_SECTIONS = {
+  fit: "Fit",
+  track_record: "Track record",
+  capability: "Capability",
+  judgment: "Judgment",
+};
+const QUESTION_TAGS = {
+  start_here: { label: "start here", cls: "bg-emerald-50 text-emerald-800 ring-emerald-200" },
+  you_named_this: { label: "you named this", cls: "bg-brand-50 text-brand-700 ring-brand-200" },
+  blind_spot: { label: "blind spot", cls: "bg-amber-50 text-amber-800 ring-amber-200" },
+};
+const TAG_PRIORITY = { you_named_this: 0, blind_spot: 1, start_here: 2 };
+const SECTION_PRIORITY = { fit: 0, track_record: 1, capability: 2, judgment: 3 };
+
+function questionSection(module) {
+  return QUESTION_SECTIONS[module?.section] ? module.section : "capability";
+}
+
+function questionTag(module) {
+  return QUESTION_TAGS[module?.tag] ? module.tag : "";
+}
+
+function questionReceipt(module) {
+  return (module?.why || "").trim();
+}
+
+function isQuestionSkippable(module) {
+  const tag = questionTag(module);
+  return tag !== "you_named_this" && tag !== "blind_spot";
+}
+
+function orderQuestionItems(items, orderMode) {
+  const sorted = [...items];
+  if (orderMode === "room") return sorted.sort((a, b) => a.index - b.index);
+  return sorted.sort((a, b) => {
+    const tagDelta = (TAG_PRIORITY[questionTag(a.module)] ?? 4) - (TAG_PRIORITY[questionTag(b.module)] ?? 4);
+    if (tagDelta) return tagDelta;
+    const sectionDelta = (SECTION_PRIORITY[questionSection(a.module)] ?? 9) - (SECTION_PRIORITY[questionSection(b.module)] ?? 9);
+    if (sectionDelta) return sectionDelta;
+    return a.index - b.index;
+  });
+}
+
+function groupedQuestionItems(modules, orderMode) {
+  const items = orderQuestionItems(
+    modules.map((module, index) => ({ module, index })),
+    orderMode
+  );
+  return items.reduce((groups, item) => {
+    const section = questionSection(item.module);
+    if (!groups.find((g) => g.section === section)) groups.push({ section, items: [] });
+    groups.find((g) => g.section === section).items.push(item);
+    return groups;
+  }, []);
+}
+
+function QuestionTag({ tag }) {
+  const meta = QUESTION_TAGS[tag];
+  if (!meta) return null;
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[11px] font-semibold ring-1 ${meta.cls}`}>
+      {meta.label}
+    </span>
+  );
+}
+
+function QuestionMap({ modules = [], done = new Set(), trims = [], activeIndex, onOpen, onToggleTrim }) {
+  const [orderMode, setOrderMode] = useState("worry");
+  if (!modules.length) return null;
+  const groups = groupedQuestionItems(modules, orderMode);
+  const askQuestions = modules.flatMap((m) => m.askYourTeam || []).filter(Boolean).slice(0, 8);
+
+  return (
+    <section className="mt-4 rounded-xl border border-brand-100 bg-brand-50/40 px-4 py-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div className="min-w-0">
+          <p className="t-label text-brand-700">Question Map</p>
+          <p className="mt-1 max-w-3xl text-xs leading-relaxed text-ink-soft">
+            The questions this round is likely to ask. Not a guarantee — but nothing here is guessed; each one traces to something real.
+          </p>
+        </div>
+        <div className="flex shrink-0 rounded-full bg-white p-0.5 text-xs ring-1 ring-brand-100">
+          {[
+            ["worry", "Prep order"],
+            ["room", "Interview order"],
+          ].map(([key, label]) => (
+            <button
+              key={key}
+              type="button"
+              onClick={() => setOrderMode(key)}
+              className={`rounded-full px-3 py-1 font-medium transition ${
+                orderMode === key ? "bg-brand-600 text-white" : "text-ink-soft hover:text-ink"
+              }`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-3 lg:grid-cols-2">
+        {groups.map((group) => (
+          <div key={group.section} className="rounded-lg bg-white px-3 py-2 ring-1 ring-brand-100">
+            <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">{QUESTION_SECTIONS[group.section]}</p>
+            <div className="mt-2 space-y-2">
+              {group.items.map(({ module, index }) => {
+                const tag = questionTag(module);
+                const receipt = questionReceipt(module);
+                const skipped = trims.includes(index) && !done.has(index);
+                const skippable = isQuestionSkippable(module);
+                return (
+                  <div
+                    key={index}
+                    className={`rounded-md border px-3 py-2 text-left transition ${
+                      activeIndex === index
+                        ? "border-brand-200 bg-brand-50/60"
+                        : skipped
+                          ? "border-slate-100 bg-slate-50 opacity-60"
+                          : "border-slate-100 bg-white"
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-start justify-between gap-2">
+                      <button
+                        type="button"
+                        onClick={() => onOpen(index)}
+                        className="min-w-0 flex-1 text-left text-sm font-medium leading-snug text-ink hover:text-brand-700"
+                      >
+                        {module.task?.managerRequest || module.topic || `Question ${index + 1}`}
+                      </button>
+                      <div className="flex shrink-0 flex-wrap gap-1">
+                        <QuestionTag tag={tag} />
+                        {done.has(index) && (
+                          <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[11px] font-semibold text-emerald-700 ring-1 ring-emerald-200">
+                            banked
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                    {receipt && <p className="mt-1 text-xs italic leading-relaxed text-ink-faint">receipt: “{shorten(receipt, 120)}”</p>}
+                    <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                      <button type="button" onClick={() => onOpen(index)} className="text-xs font-semibold text-brand-700 hover:underline">
+                        Rehearse →
+                      </button>
+                      {!done.has(index) && (
+                        skippable ? (
+                          <button
+                            type="button"
+                            onClick={() => onToggleTrim(index)}
+                            className="text-xs text-ink-faint underline decoration-slate-300 underline-offset-2 hover:text-ink"
+                          >
+                            {skipped ? "Put back in prep" : "You don't need to practice this — but you will be asked. Skip?"}
+                          </button>
+                        ) : (
+                          <span className="text-xs text-ink-faint">Not skippable — this is why the map exists.</span>
+                        )
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      {askQuestions.length > 0 && (
+        <div className="mt-3 rounded-lg bg-white px-3 py-2 ring-1 ring-brand-100">
+          <p className="text-xs font-semibold uppercase tracking-wide text-ink-faint">Questions to ask them</p>
+          <ul className="mt-2 grid gap-1.5 text-xs leading-relaxed text-ink-soft sm:grid-cols-2">
+            {askQuestions.map((q, i) => (
+              <li key={i}>• {q}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </section>
   );
 }
 
@@ -1646,11 +1839,6 @@ function Module({
                   critique: "find the flaws",
                   shadow_reproduce: "reproduce it",
                   plot_twist: "expect a twist",
-                  concept: "drill",
-                  behavioral: "tell me about a time",
-                  story: "your story",
-                  gap_defense: "the gap question",
-                  ask_them: "you ask them",
                 }[step.archetype] || step.archetype.replace(/_/g, " ")}
               </span>
             )}
@@ -3972,16 +4160,12 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
               {/* Named, not dreaded (decided): the gap question is visible from
                   minute one, calm, with the promise attached. One register only —
                   no game language here, so the tone dial has nothing to leak. */}
-              {purpose === "interview" && modules[stop.i]?.archetype === "gap_defense" && (
-                <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs font-medium text-brand-700 ring-1 ring-brand-200">
-                  the gap question — we'll be ready
-                </span>
-              )}
+              {purpose === "interview" && <QuestionTag tag={questionTag(modules[stop.i])} />}
               {stop.timebox && !stop.isDone && !stop.isTrimmed && (
                 <span className="rounded-full bg-slate-100 px-2 py-0.5 text-xs text-ink-soft">{stop.timebox}</span>
               )}
               {stop.isDone && <span className="text-xs font-medium text-emerald-700">done</span>}
-              {!stop.isDone && (
+              {!stop.isDone && (purpose !== "interview" || isQuestionSkippable(modules[stop.i])) && (
                 <button
                   type="button"
                   onClick={() => onToggleTrim(stop.i)}
@@ -3994,6 +4178,9 @@ function Roadmap({ plan, modules = [], done = new Set(), trims = [], onToggleTri
                 >
                   {stop.isTrimmed ? "keep it after all" : purpose === "interview" ? "I've got this cold" : "I already know this"}
                 </button>
+              )}
+              {!stop.isDone && purpose === "interview" && !isQuestionSkippable(modules[stop.i]) && (
+                <span className="text-xs text-ink-faint">required prep</span>
               )}
             </div>
             {purpose === "interview" && (modules[stop.i]?.why || "").trim() && !stop.isTrimmed && (

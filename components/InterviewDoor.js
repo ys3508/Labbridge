@@ -1,9 +1,9 @@
 "use client";
 
 // The interview door (interview-mode-spec §input door, revised after the form
-// review): facts and feelings don't share a box. Round/format are CHIPS (the
-// chip IS the structured data — no parsing); the challenge field stands alone
-// as fear's single home, visually distinct; interviewers are repeatable rows
+// review): facts and feelings don't share a box. Round/interviewer kind/format
+// are CHIPS (the chip IS the structured data — no parsing); the challenge field
+// stands alone as fear's single home, visually distinct; interviewers are repeatable rows
 // (a panel is several people with several styles); ammunition moved into the
 // diagnostic (asked warm, after Q1's feedback, where people are talking).
 // Grouped into four short sections with an honest time promise up top.
@@ -14,7 +14,8 @@ import BackgroundSection from "@/components/BackgroundSection";
 const field =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none";
 
-const ROUNDS = ["Recruiter screen", "Hiring manager", "Technical", "Case / exercise", "Final panel", "Not sure yet"];
+const ROUNDS = ["First round", "Middle", "Final", "Not sure"];
+const INTERVIEWER_KINDS = ["Recruiter", "Hiring manager", "Engineer / peer", "Exec", "Panel", "Not sure"];
 const FORMATS = ["Phone", "Video", "In person", "Panel", "Take-home"];
 const SENIORITY = ["First role in this field", "Stepping up", "Same level, new field", "Senior in this field"];
 
@@ -52,6 +53,7 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
   const [role, setRole] = useState("");
   const [seniority, setSeniority] = useState("");
   const [round, setRound] = useState("");
+  const [interviewerKind, setInterviewerKind] = useState("");
   const [format, setFormat] = useState("");
   const [challenge, setChallenge] = useState("");
   const [interviewers, setInterviewers] = useState([{ ...EMPTY_INTERVIEWER }]);
@@ -94,7 +96,9 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
         body: JSON.stringify({
           jd,
           challenge,
-          round: [round, format].filter(Boolean).join(" · "),
+          round,
+          interviewer_kind: interviewerKind,
+          format,
           seniority,
           resume: background?.resume || "",
         }),
@@ -115,7 +119,7 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
       );
     } catch {}
     onContinue(
-      { jd, company, website, role, seniority, round, format, challenge, interviewers: interviewerText, date },
+      { jd, company, website, role, seniority, round, interviewerKind, format, challenge, interviewers: interviewerText, date },
       intake
     );
     setBusy(false);
@@ -159,8 +163,13 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
           </label>
           <div>
             <span className="text-sm font-medium text-ink">What round is it?</span>
-            <span className="ml-2 text-xs text-ink-faint">this shapes the whole prep</span>
+            <span className="ml-2 text-xs text-ink-faint">breadth vs. depth</span>
             <Chips options={ROUNDS} value={round} onChange={setRound} />
+          </div>
+          <div>
+            <span className="text-sm font-medium text-ink">Who's leading the room?</span>
+            <span className="ml-2 text-xs text-ink-faint">one tap shapes the question mix</span>
+            <Chips options={INTERVIEWER_KINDS} value={interviewerKind} onChange={setInterviewerKind} />
           </div>
           <div>
             <span className="text-sm font-medium text-ink">What format?</span>

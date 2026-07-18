@@ -10,7 +10,7 @@ import { client, MODEL } from "@/lib/ai";
 // - Every element gets a server-side sanity check + fallback, so one weak field
 //   degrades THAT field — a confident-looking bundle must not hide a bad Q2.
 
-const SYSTEM = `You read a job interview candidate's intake and return structured prep signals. Fields you receive: the job description, their challenge ("the hardest part of this for you" — the SINGLE home for both content fears and personal obstacles), the round/format (already structured — chips, not prose), their stated seniority, and optionally their resume.
+const SYSTEM = `You read a job interview candidate's intake and return structured prep signals. Fields you receive: the job description, their challenge ("the hardest part of this for you" — the SINGLE home for both content fears and personal obstacles), the round step, interviewer kind, format (already structured — chips, not prose), their stated seniority, and optionally their resume.
 
 Return:
 - contentFears: topics/questions they fear (from the challenge — a fused sentence like "scared of the system design question because I freeze" yields BOTH a contentFear ("system design") and an obstacle ("freezing under pressure"). Never classify a fused sentence as only one type.)
@@ -64,6 +64,8 @@ export async function POST(request) {
   const seniority = (body?.seniority || "").toString();
   const challenge = (body?.challenge || "").toString();
   const round = (body?.round || "").toString();
+  const interviewerKind = (body?.interviewer_kind || body?.interviewerKind || "").toString();
+  const format = (body?.format || "").toString();
   const resume = (body?.resume || "").toString();
 
   if (!jd.trim() && !challenge.trim()) {
@@ -73,7 +75,9 @@ export async function POST(request) {
 
   const parts = [
     jd && `JOB DESCRIPTION:\n${jd.slice(0, 5000)}`,
-    round && `Round/format (structured): ${round.slice(0, 200)}`,
+    round && `Round step (structured): ${round.slice(0, 100)}`,
+    interviewerKind && `Interviewer kind (structured): ${interviewerKind.slice(0, 100)}`,
+    format && `Format (structured): ${format.slice(0, 100)}`,
     seniority && `Their stated seniority for this role: ${seniority.slice(0, 100)} — calibrate q2 difficulty and grading keys to it.`,
     challenge && `Their challenge: ${challenge.slice(0, 800)}`,
     resume && `Their resume:\n${resume.slice(0, 3000)}`,
