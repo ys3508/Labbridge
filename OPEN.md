@@ -90,3 +90,25 @@ nothing currently arbitrates.
 *(G7 — Pre-diagnostic tone dial — CLOSED 2026-07-18 as neutral; see the Closed
 table above and [ADR-0007](decisions/ADR-0007-q1-tone-default.md). Rule: tone dials
 on evidence, not on arrival.)*
+
+### Q2 derivation — posting-only vs. collision (gap-targeted)
+
+**Status:** OPEN
+**Blocks:** Q2 derivation policy and likely the Question Map receipt/gap policy
+
+Live gate run 2 (dense JD, 2026-07-18): Q2 was correctly posting-derived and landed on
+the one posting demand the resume already covers — three-statement operating modeling,
+which the user has done at unit level on a 115-unit franchisee. Freebie; criterion 3
+failed. The buried quality-of-earnings / working-capital-peg line, which the resume does
+not cover, went untouched.
+
+Posting-only derivation cannot reliably satisfy "answerable-but-stretching" because it
+has no way to know which posting demands the user already owns. Run 3 passed criterion 3
+only because that posting body happened to have no overlap with the history — luck, not
+design.
+
+Fork: does Q2 derivation get resume-awareness in the **gap** direction — posting-anchored
+receipt, gap-targeted question ("the posting has the associate owning QoE end to end;
+your resume shows modeling and IC materials but no QoE — walk me through how you'd run
+one")? Distinct from run 1's failure, where the resume was used *instead of* the posting
+and mislabeled as it. Same question likely applies to the question map.
