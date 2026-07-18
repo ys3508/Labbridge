@@ -216,11 +216,6 @@ export default function DiagnosticFlow({ intake, onDone, onSkip, onBack, q2Reset
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 fade-up">
-      {onBack && (
-        <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
-          ← Back to interview details
-        </button>
-      )}
       <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
         <p className="max-w-prose text-sm leading-relaxed text-ink">{contract}</p>
       </div>
@@ -295,7 +290,12 @@ export default function DiagnosticFlow({ intake, onDone, onSkip, onBack, q2Reset
         </div>
       )}
 
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-3">
+        {onBack && (
+          <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+            ← Back to interview details
+          </button>
+        )}
         <button
           type="button"
           onClick={() => onSkip()}
@@ -307,7 +307,7 @@ export default function DiagnosticFlow({ intake, onDone, onSkip, onBack, q2Reset
           type="button"
           onClick={() => onDone(summary(), results)}
           disabled={!results.q1 && !results.q2}
-          className="rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
+          className="ml-auto rounded-xl bg-emerald-600 px-6 py-3 text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50"
         >
           {results.q2Skipped ? "Build my map from what I gave you →" : "Build my map from what you heard →"}
         </button>

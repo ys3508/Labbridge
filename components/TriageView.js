@@ -119,10 +119,6 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 fade-up">
-      <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
-        Back to questions
-      </button>
-
       <section className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-4">
         <p className="t-label text-brand-700">Triage</p>
         <h1 className="mt-1 text-2xl font-semibold tracking-tight text-ink">
@@ -252,7 +248,10 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
         </details>
       )}
 
-      <div className="flex justify-end">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+          ← Back to questions
+        </button>
         <button
           type="button"
           onClick={commit}

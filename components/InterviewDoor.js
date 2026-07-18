@@ -161,10 +161,7 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
 
   return (
     <div className="mx-auto max-w-2xl fade-up">
-      <button onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
-        ← Back
-      </button>
-      <h1 className="mt-3 text-2xl font-semibold tracking-tight text-ink">Your interview</h1>
+      <h1 className="text-2xl font-semibold tracking-tight text-ink">Your interview</h1>
       <p className="mt-1 max-w-prose text-sm leading-relaxed text-ink-soft">
         About two minutes. The more real material you give, the more your answers can be built from your
         actual life — and nothing here is stored anywhere but your browser.
@@ -310,14 +307,19 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
           </label>
         </div>
 
-        <button
-          type="button"
-          disabled={!canContinue || busy}
-          onClick={go}
-          className="w-full rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50 sm:w-auto sm:px-8"
-        >
-          {busy ? "Reading your intake…" : "Continue — two questions before anything else →"}
-        </button>
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+            ← Back
+          </button>
+          <button
+            type="button"
+            disabled={!canContinue || busy}
+            onClick={go}
+            className="rounded-xl bg-brand-500 px-4 py-3 text-sm font-semibold text-white hover:bg-brand-600 disabled:opacity-50 sm:px-8"
+          >
+            {busy ? "Reading your intake…" : "Continue — two questions before anything else →"}
+          </button>
+        </div>
       </div>
     </div>
   );
