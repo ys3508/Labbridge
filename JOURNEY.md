@@ -361,6 +361,23 @@ Codex ran the gated cost probe only — no speak-runner build. The measurement s
 **Q (Sissi): "Finish drill today" — the merge backlog cleared, the last forks closed, the honesty pieces built.**
 GitHub's `main` looked empty because it had sat at Jul 16 while the whole Jul-17 arc — question map, triage, diagnostic hardening, voice honesty — lived on unmerged feature branches. First that got untangled: the question map (`c0fac5b`) fast-forwarded onto `main` and pushed; `main` on the voice-freeze branch merged in as the drill build base (the drill drills the map's questions, so the base needs both — merged, not rebased, to avoid forking the five commits shared with `codex/planview-density-polish`). Then Sissi closed the drill grammar's remaining forks in one pass and CC built the bounded, honesty-critical half. **Fork 6:** the interview `model`/`visual` beats ("Answer"/"Hear it") are gone from `BEAT_IDENTITY` and every consumer gates on the label existing — a fantasy answer shown before you speak contaminates, so it can never render even if the model emits a concept, enforced in code not prompt-trust (verified live). **Fork 4 (axis separation):** the coach prompt now holds a spoken-answer axis-separation rule — grammar/accent/fluency are delivery-only and may never lower the substance verdict, judged as if the transcript were cleaned into fluent English; `fixtures/coach-axis-l2.json` pins the L2 case (strong substance, broken English → substance met, delivery thin) and a zero-API lock keeps the rule from vanishing. This is the guard that lets full-sentence dig serve second-language users without a language collapse being misread as a knowledge gap. **Dig's back door:** the interview coaching conversation routes through the split-pane assistant, where a helpful bot writes the whole answer — so Rules 1 & 2 (hints range wide, sentences must trace to the user's own material; a hint never carries its own answer) now live in the assistant PROMPT, with resume + the two diagnostic answers wired into its context as the sources a sentence may trace to. **Decided and recorded (build remaining):** STT = browser Web Speech (free, transcription cost → ~0); push = an on-screen text interrupt, one per take, fixed-and-dumb in v1 (no adaptive escalation — that's G6, unneeded to ship one honest push); bank on existence (full take + push response + explicit tap), badge on quality (verdict-backed, and "survived two pushes in one take" belongs to the non-retriable mock); the Full-sentence help becomes a per-item "Say this in English" tap; reusability becomes cross-question retrieval, not a user-set marker. What's left is one focused build — the live `speak` runner that replaces the interview draft box, the multi-turn coach, the dig UI, tap-to-notes, the banking gate, and the cheatsheet — gated only by Codex's end-to-end cost probe. Full record: `revise/2026-07-17-drill-grammar-spec.md` (Jul-18 addendum).
 
+**Q (Sissi): "Turn the drill REMAINING list into an ordered build spec I can review against."**
+The drill grammar spec had all the rulings but no build order — hard to hand to a builder or
+review a PR against. CC turned the REMAINING list into `revise/2026-07-18-drill-speak-runner-build-spec.md`:
+an ordered, checkbox build (`0 trust copy → 1 speak loop → 2 multi-turn coach → 3 push →
+4 dig UI → 5 tap-to-notes → 6 banking gate → 7 cheatsheet → 8 cost UI`), each phase naming the
+real seams it touches (`VoiceInput` props, `drafts[i]`/`setTaskDraft` in PlanView, `/api/coach`'s
+single-draft contract, `/api/assist`'s spark-stance prompt) and its acceptance criteria, plus a
+fast PR-review checklist for Sissi. Two corrections baked in so a builder can't drift: the dig
+criteria follow the **spark stance** (`bb23341`), not the superseded "sentences must trace" rule
+the grammar spec's body still shows; and Phase 8 (meter-vs-bundle) is resolved to **bundle** by
+Codex's just-landed cost probe (0.76-0.85¢/loop, ~0.08¢ spread — `8c22f3b`). `1→2→3` is a hard
+chain; `4-7` overlap. Phase 0 (trust copy) and the green light remain Sissi's. This session also
+diagnosed the two "generation failed / already in progress" screens as a dead dev server (not the
+reuse-fingerprint change — `dba002e` is on the intake path; the plan route was untouched), verified
+the flow healthy at zero cost, and drafted the OPEN.md G8/G9 map-receipt gates (landed by Codex as
+`eb2d08d`).
+
 ---
 
 ## Where it stands
