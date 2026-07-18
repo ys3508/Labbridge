@@ -47,6 +47,21 @@ does not block the storybank build.
 
 ---
 
+### Grading visibility — shown-to-user vs. stored
+
+**Status:** OPEN *(opened alongside the trust copy, 2026-07-18)*
+**Blocks:** any *shown-to-user* grading clause in the trust copy — **not** the storage
+disclosure, which is settled (grading is plan-scoped, on the plan-stamped provenance event:
+`revise/2026-07-18-storybank-provenance-events.md`).
+
+Whether an answer's grading (delivery scores + substance) is **shown** to the user is a
+separate decision from whether it is **stored**. The trust copy discloses storage and says
+nothing either way about visibility. Surfacing grading would add a shown-to-user clause to the
+copy and a UI surface; keeping it internal leaves the copy as drafted. The storage clause ships
+regardless — it does not wait on this fork.
+
+---
+
 ## Closed
 
 | Gate | Decision | ADR | Date |

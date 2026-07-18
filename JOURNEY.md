@@ -378,6 +378,22 @@ reuse-fingerprint change — `dba002e` is on the intake path; the plan route was
 the flow healthy at zero cost, and drafted the OPEN.md G8/G9 map-receipt gates (landed by Codex as
 `eb2d08d`).
 
+**Q (Sissi): "Close the grading-disclosure gap and collapse the trust copy to one register."**
+The trust copy draft enumerated what we keep — transcripts, takes, delivery signals, the story
+bank, the not-total delete — but never that the **assessment** formed from an answer (delivery
+scores + substance grading) is also kept. Added it as a must-be-true item and folded it into the
+neutral copy's "what we keep" line: grading is **plan-scoped** — it rides the plan-stamped
+provenance event and is purged with the plan, so it does NOT follow a claim into the per-user bank
+and item 6's completeness claim stays true with no new delete door. Recorded that as a decision in
+`revise/2026-07-18-storybank-provenance-events.md` (cross-plan scoring would buy improvement-tracking
+that has no design and would force a score-without-claim delete door; revisit only if that capability
+is wanted). The **Gentle register is deleted** — ADR-0007 (tone dials on evidence, not arrival) means
+a disclosure whose facts are identical for every user has nothing to dial on, and two texts double
+the seam surface where drift becomes an invisible trust bug; Neutral ships. New OPEN.md fork: grading
+**shown-to-user** vs **stored** — storage is settled, visibility is not, and it does not block the
+storage clause. Still gating: the copy ships with drill retained-takes + storybank persistence and
+cannot ship until storybank has a surface for item 4 to point at. No green light. Docs/draft-copy only.
+
 ---
 
 ## Where it stands

@@ -29,6 +29,22 @@ the observation no longer exists.
 - No event is ever mutated. Corrections are new events or nothing.
 - Confirmation still gates entry into the bank, never tier — unchanged from §3.
 
+## Grading on the event — DECIDED (2026-07-18)
+
+An answer's **assessment** — delivery scores (pace, pauses, restarts) and substance grading —
+attaches to the **plan-stamped provenance event**, not to the claim. It is therefore
+plan-scoped: deleting a plan deletes its events and their grading with them, so item 6's
+completeness claim (nothing kept you can't remove) stays true with no new delete door.
+
+Why not on the claim: cross-plan scoring would buy a cross-interview improvement-tracking
+capability that has no design yet, and it would force a new delete door — remove a score
+without removing the claim — which the completeness claim would otherwise make false. Grading
+rides the plan-stamped event and shares its lifecycle. If cross-interview improvement tracking
+is later wanted, this is the decision to revisit.
+
+(Disclosure scope: the trust copy discloses that grading is *stored* and plan-scoped. Whether
+grading is *shown* to the user is a separate open product decision — see OPEN.md.)
+
 ## Open behavior (not schema)
 
 Re-seeding: replacing a resume re-extracts claims, including near-identical ones the user
