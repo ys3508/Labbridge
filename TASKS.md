@@ -83,8 +83,11 @@ implemented; see JOURNEY.md for the story.)*
       hardening shipped Jul 17 (doors, intake, diagnostic, receipts, gap marker,
       Phase-1 trust copy/partial skip/receipt guard, Phase-2 `VoiceInput` with typed
       fallback, no-audio promise, delivery metrics, transcript confirmation, and
-      browser-local baseline capture); Session B remaining (runner, Simulated Live,
-      walk-in card, post-interview loop) — full design in
+      browser-local baseline capture); voice honesty pass Jul 18 (typed pacing keys
+      absent-not-null, mode-scoped grading instruction, freeze-on-mic lifeline at 10s
+      tone-dialed, no browser auto-stop, `freezes_10s_plus` delivery signal — spec of
+      record `revise/voice-input-honesty-spec.md`); Session B remaining (runner,
+      Simulated Live, walk-in card, post-interview loop) — full design in
       `revise/interview-mode-spec.md`: diagnostic-first opening (2 cold questions,
       map generates FROM them), Question Map with posting-line receipts, named-not-
       dreaded gap question, graduated exposure ramp, dynamic-pushback mock runner

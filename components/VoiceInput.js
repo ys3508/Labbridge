@@ -15,17 +15,16 @@ function countMatches(text, pattern) {
   return (text.match(pattern) || []).length;
 }
 
-function computeMetrics({ text, startedAt, endedAt, takeNumber, longPauseCount, mode }) {
+function computeMetrics({ text, startedAt, endedAt, takeNumber, longPauseCount, freezeCount, mode }) {
   const wordCount = words(text);
   if (mode === "typed") {
+    // Typed answers carry NO pacing-derived keys — absent, not null. The clock
+    // never ran, so nothing downstream may render or reason about it.
     return {
       mode,
       takeNumber,
-      durationSec: null,
       wordCount,
-      wordsPerMinute: null,
       fillerCount: countMatches(text, FILLERS),
-      longPauseCount: null,
       falseStartCount: countMatches(text, FALSE_STARTS),
       pacingMeasured: false,
     };
@@ -39,6 +38,7 @@ function computeMetrics({ text, startedAt, endedAt, takeNumber, longPauseCount, 
     wordsPerMinute: Math.round((wordCount / durationSec) * 60),
     fillerCount: countMatches(text, FILLERS),
     longPauseCount,
+    freezeCount,
     falseStartCount: countMatches(text, FALSE_STARTS),
     pacingMeasured: true,
   };
@@ -63,6 +63,7 @@ function metricsLine(metrics) {
     `wpm=${metrics.wordsPerMinute}`,
     `fillers=${metrics.fillerCount}`,
     `long_pauses=${metrics.longPauseCount}`,
+    `freezes_10s_plus=${metrics.freezeCount || 0}`,
     `false_starts=${metrics.falseStartCount}`,
   ].join("; ");
 }
@@ -83,7 +84,7 @@ export function formatDeliveryMetrics(metrics, takes = [], { includeHistory = tr
     .join("\n");
 }
 
-export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQuestion, tone }) {
+export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQuestion, tone, question }) {
   const [supported, setSupported] = useState(null);
   const [mode, setMode] = useState(tone === "gentle" ? "type" : "voice");
   const [listening, setListening] = useState(false);
@@ -91,6 +92,7 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
   const [takes, setTakes] = useState([]);
   const [metrics, setMetrics] = useState(null);
   const [nudge, setNudge] = useState("");
+  const [lifeline, setLifeline] = useState(false);
   const [retakeNote, setRetakeNote] = useState(false);
   const [unavailableReason, setUnavailableReason] = useState("");
   const recognitionRef = useRef(null);
@@ -100,6 +102,8 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
   const lastSpeechAtRef = useRef(0);
   const pauseCountRef = useRef(0);
   const pauseArmedRef = useRef(true);
+  const freezeCountRef = useRef(0);
+  const freezeArmedRef = useRef(true);
 
   useEffect(() => {
     const ok = Boolean(SpeechCtor());
@@ -128,7 +132,19 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
         pauseCountRef.current += 1;
         pauseArmedRef.current = false;
       }
-      if (silentFor <= 1500) pauseArmedRef.current = true;
+      // Freeze-on-mic (the decided rule: wait 10s, then a lifeline — no
+      // auto-stop, no countdown, no reaction before the threshold). Mid-answer
+      // only: start-of-answer silence has its own gentler ramp below.
+      if (!noWordsYet && silentFor >= 10000 && freezeArmedRef.current) {
+        freezeCountRef.current += 1;
+        freezeArmedRef.current = false;
+        setLifeline(true);
+      }
+      if (silentFor <= 1500) {
+        pauseArmedRef.current = true;
+        freezeArmedRef.current = true;
+        setLifeline(false);
+      }
       if (noWordsYet && silentFor > (tone === "gentle" ? 6000 : 8000) && silentFor < 19000) {
         setNudge(tone === "gentle" ? "Take your time. One plain sentence is enough." : "Take your time. One sentence is a fine start.");
       } else if (noWordsYet && silentFor >= 19000) {
@@ -143,11 +159,12 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
   }, [interim, listening, onSkipQuestion, tone]);
 
   const stop = () => {
-    recognitionRef.current?.stop?.();
     setListening(false);
     listeningRef.current = false;
+    recognitionRef.current?.stop?.();
     setInterim("");
     setNudge("");
+    setLifeline(false);
     const endedAt = Date.now();
     const nextMetrics = computeMetrics({
       text: transcriptRef.current,
@@ -155,6 +172,7 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       endedAt,
       takeNumber: takes.length + 1,
       longPauseCount: pauseCountRef.current,
+      freezeCount: freezeCountRef.current,
       mode: "voice",
     });
     const nextTake = { transcript: transcriptRef.current, metrics: nextMetrics };
@@ -200,13 +218,22 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
         const next = `${transcriptRef.current} ${finalText}`.replace(/\s+/g, " ").trim();
         transcriptRef.current = next;
         onChange(next);
+      }
+      // ANY speech resets the silence clock — interim results included, so a
+      // slow speaker, a false start, or an "um" is never treated as dead air.
+      if (finalText.trim() || interimText.trim()) {
         lastSpeechAtRef.current = Date.now();
         pauseArmedRef.current = true;
+        freezeArmedRef.current = true;
+        setLifeline(false);
       }
       setInterim(interimText.trim());
     };
     recognition.onerror = (event) => {
       if (event?.error === "no-speech") {
+        // Mid-answer, silence is the lifeline's moment, not a session end —
+        // onend will restart recognition and the take stays open.
+        if (words(transcriptRef.current)) return;
         setListening(false);
         listeningRef.current = false;
         setNudge(tone === "gentle" ? "Take your time. One plain sentence is enough." : "Take your time. One sentence is a fine start.");
@@ -215,7 +242,13 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       markVoiceUnavailable("Voice could not start in this browser. Open this page in Chrome or Edge to test the mic, or type here.");
     };
     recognition.onend = () => {
-      if (listeningRef.current) {
+      if (!listeningRef.current) return;
+      // The browser times recognition out on long silence. That would be an
+      // auto-stop — forbidden. Restart to keep the take open; only the user's
+      // own "Stop and confirm" ends it.
+      try {
+        recognition.start();
+      } catch {
         setListening(false);
         listeningRef.current = false;
       }
@@ -225,6 +258,9 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
     lastSpeechAtRef.current = Date.now();
     pauseCountRef.current = 0;
     pauseArmedRef.current = true;
+    freezeCountRef.current = 0;
+    freezeArmedRef.current = true;
+    setLifeline(false);
     setInterim("");
     setNudge("");
     setListening(true);
@@ -244,7 +280,6 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       const nextMetrics = computeMetrics({
         text: value,
         takeNumber: takes.length || 1,
-        longPauseCount: 0,
         mode: "typed",
       });
       setMetrics(nextMetrics);
@@ -258,7 +293,6 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       computeMetrics({
         text,
         takeNumber: takes.length || 1,
-        longPauseCount: 0,
         mode: "typed",
       })
     );
@@ -336,6 +370,17 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
               .
             </div>
           )}
+          {lifeline && listening && (
+            // The freeze lifeline: static strings, tone-dialed. A re-anchor to
+            // the question — never "are you still there?", never a score word,
+            // no countdown, nothing auto-stops.
+            <div className="mt-2 rounded-lg bg-brand-50 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+              {tone === "gentle"
+                ? "No rush — the thread will keep. Here's the question again, whenever you want it:"
+                : "Pick the thread back up whenever you're ready. The question, again:"}
+              {question && <span className="mt-1 block font-medium text-ink">{question}</span>}
+            </div>
+          )}
           {retakeNote && (
             <p className="mt-2 text-xs leading-relaxed text-ink-faint">
               I keep earlier take transcripts and metrics for this session only; they show where pressure bites. Audio is discarded.
@@ -372,8 +417,8 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       {metrics && (
         <p className="mt-2 text-xs leading-relaxed text-ink-faint">
           {metrics.mode === "typed"
-            ? `Text signal: ${metrics.wordCount} words, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.falseStartCount} restart cue${metrics.falseStartCount === 1 ? "" : "s"}. Pacing is not measured for typed answers.`
-            : `Delivery signal: ${metrics.durationSec}s, ${metrics.wordsPerMinute} wpm, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.longPauseCount} long pause${metrics.longPauseCount === 1 ? "" : "s"}.`}
+            ? `Text signal: ${metrics.wordCount} words, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.falseStartCount} restart cue${metrics.falseStartCount === 1 ? "" : "s"}. Typed answers are read for structure, not delivery speed.`
+            : `Delivery signal: ${metrics.durationSec}s, ${metrics.wordsPerMinute} wpm, ${metrics.fillerCount} filler${metrics.fillerCount === 1 ? "" : "s"}, ${metrics.longPauseCount} long pause${metrics.longPauseCount === 1 ? "" : "s"}${metrics.freezeCount ? `, ${metrics.freezeCount} freeze${metrics.freezeCount === 1 ? "" : "s"} over 10s` : ""}.`}
         </p>
       )}
     </div>

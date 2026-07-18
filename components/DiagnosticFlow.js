@@ -82,7 +82,7 @@ function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, 
           deliverable: "A spoken-style interview answer, confirmed by the user before grading.",
           purpose: "interview",
           tone: tone || "",
-          context: deliveryFacts ? `DIAGNOSTIC DELIVERY METRICS (use only for the delivery criterion; judge substance from the transcript). If input=typed, pacing is not measured; judge delivery only on structure and word choice, never on speed:\n${deliveryFacts}` : "",
+          context: deliveryFacts ? `DIAGNOSTIC DELIVERY METRICS (use only for the delivery criterion; judge substance from the transcript). If input=typed, pacing was never measured: ignore any pace, duration, or seconds wording in the delivery criterion, and judge typed delivery only on structure and word choice — never critique a speed you did not observe:\n${deliveryFacts}` : "",
           criteria: [substanceKey, deliveryKey],
           redFlags: [],
         }),
@@ -108,6 +108,7 @@ function DiagnosticQuestion({ title, question, note, substanceKey, deliveryKey, 
         onMetricsChange={updateDelivery}
         onSkipQuestion={onSkipQuestion}
         tone={tone}
+        question={question}
       />
       <div className="mt-2 flex items-center gap-3">
         <button

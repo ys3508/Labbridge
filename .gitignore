@@ -30,3 +30,6 @@ next-env.d.ts
 # local deploy helper (machine-specific node path)
 deploy.sh
 .vercel
+
+# R session history (machine-local)
+.Rhistory
