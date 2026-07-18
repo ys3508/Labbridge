@@ -97,6 +97,24 @@ implemented; see JOURNEY.md for the story.)*
       dreaded gap question, graduated exposure ramp, dynamic-pushback mock runner
       (now AHEAD of DuckDB), walk-in card, post-interview loop, win→onboarding
       handoff. Two-axis rubric authoring deferred by Sissi. (Jul 15)
+- [~] **The Question Map + Drills** (one stage — map is the container, drills are what
+      happens inside one question) — Question Map BUILT Jul 17 (`c0fac5b`, on `main`):
+      section/tag taxonomy, round/interviewer-kind split, receipt-backed tags, order
+      toggle, demo persona + fixture. Drill grammar DESIGNED + rulings closed Jul 18,
+      spec of record `revise/2026-07-17-drill-grammar-spec.md` (`decode → dig → speak
+      (with push) → replay + self-read → feedback → re-speak`; `model` cut, draft box
+      replaced by live voice). **Part-built Jul 18:** fork 6 (interview model/visual
+      beats killed, enforced in code), coach axis separation (fork 4, + `fixtures/
+      coach-axis-l2.json` + zero-API lock), dig honesty (assistant Rules 1 & 2 in the
+      prompt) + dig plumbing (resume + diagnostic answers into assist context).
+      **Remaining — the speak-runner build (one focused session):** convert interview
+      artifact/coach beats from typed draft box to the live speak loop; mid-recording
+      text-interrupt push (one per take); multi-turn `/api/coach` (currently grades one
+      static draft); dig UI (Keywords/Full-sentences toggle, "Say this in English" tap,
+      per-tap empty guard, cross-question retrieval); tap-to-notes (AI-condensed bullets);
+      banking gate (bank on existence, badge on quality) + verdict-backed badge; notes →
+      cheatsheet. **Gated:** cost probe (Codex measures the full loop; meter-vs-bundle UI
+      waits on the number). STT = browser Web Speech (v1). (Jul 18)
 - [ ] Interview baseline deletion path — saved diagnostic transcript/coaching signals
       are sensitive; add a real "delete this plan's data" path when persistence grows
       beyond browser-local plan state. Never surface the "before" snapshot alone; show

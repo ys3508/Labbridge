@@ -436,4 +436,122 @@ re-litigation of this — the reason it lost is contamination, and the reason is
 
 - **Fork 2 — cost.** One fork left, and it is a measurement, not a decision. Codex probes
   one real drill end to end; the meter-vs-bundle call follows the number. **Also surfaces
-  an unrecorded fork: we have no STT decision.**
+  an unrecorded fork: we have no STT decision.** — RESOLVED below (Web Speech), which
+  collapses the transcription term to ~0. The measurement now sizes push + feedback only.
+
+---
+
+# Addendum — Jul 18 rulings + build status (Sissi ruled; CC recorded and part-built)
+
+Sissi closed the last mechanism forks on Jul 18. This addendum records each decision with
+its reasoning (a gate that closes into prose gets re-litigated) and its **build status**:
+`BUILT` = landed + verified this session; `REMAINING` = specced, awaits the speak-runner
+build; `GATED` = blocked on the cost probe.
+
+## Build sequence (merge order)
+
+1. Question map → `main`. **DONE** (fast-forwarded `c0fac5b`, pushed to origin).
+2. Voice-input typed-honesty + freeze → `main`. **BUILT** on `claude/voice-freeze-honesty`
+   (this branch supersedes `codex/voice-input-honesty`, per `revise/voice-input-honesty-spec.md`);
+   the map is merged into this branch as the drill base, awaiting its own merge to `main`.
+3. Recorder branch rebased as the **starting point of the drill build**, not a standalone
+   feature. (This branch is that base.)
+
+## STT — Web Speech API for v1 — DECIDED
+
+Browser Web Speech: free, already used by the recorder, and it does not violate the
+Anthropic-only rule. Its weakness (accented English) is mitigated by a step already
+decided — **confirm-before-grading** — so a bad transcript is a correctable step, not a
+wrong verdict. Revisit paid STT only if real users cannot rescue their transcripts. This
+resolves fork 2's hidden STT sub-fork and makes transcription ~free.
+
+## Push — delivery, trigger, and cadence — DECIDED
+
+- **Delivery: a text interrupt on screen, not voice.** There is no TTS in the codebase and
+  none is needed to create pressure — an interrupt banner mid-recording ("— hold on. You
+  said you'd prioritize. How?") is buildable today. TTS is a Session B upgrade. **REMAINING.**
+- **Trigger: fixed and dumb in v1.** One push per take, fired at a natural pause once the
+  answer has enough material, generated from the transcript so far. **No adaptive escalation**
+  — that is G6, and shipping one honest push does not require deciding G6. **REMAINING.**
+- **Per retake, a new push** built from that take's words — falls out of the mechanism for
+  free. **REMAINING.**
+
+## Fork 6 — empty-and-vanish — BUILT
+
+The plan prompt already orders the model/example fields empty for interview purpose; the
+`model`/`visual` labels are now **removed from `BEAT_IDENTITY.interview`** and every consumer
+gates on the label existing, so the "Answer"/"Hear it" beats can never render — enforced in
+code, not by trusting prompt compliance. Verified live. (`decode` teaches; `dig` supplies
+material; `dig` itself is runtime UI, not generated content.)
+
+## Axis separation — BUILT
+
+`ruling 4 is false until this lands` — it has landed. The coach prompt gained a
+**SPOKEN-ANSWER AXIS SEPARATION** paragraph: fluency/grammar/disfluency belong only to the
+delivery verdict; substance is judged as if the transcript were cleaned into fluent English.
+One L2 fixture (`fixtures/coach-axis-l2.json`) pins the case; a zero-API lock in
+`scripts/check-fixtures.mjs` keeps the rule from silently vanishing. (The ~90s pacing keys
+are already fixed on this branch — see `revise/voice-input-honesty-spec.md`.)
+
+## Dig plumbing — BUILT (plumbing) + REMAINING (dig UI)
+
+- **BUILT:** diagnostic results already persist structurally (`saveDiagnosticBaseline` →
+  plan-scoped `lb_intake_last.diagnostic`); resume now rides into the same store; the
+  interview assistant's context carries resume + the two diagnostic answers. Rules 1 & 2
+  (hints range wide, sentences must trace; a hint never carries its answer) now live in the
+  **assistant prompt** — the back door is guarded.
+- **REMAINING (dig UI, part of the speak-runner build):** the **Keywords / Full-sentences**
+  toggle (default Keywords; STAR-from-resume gated behind it — ruling D); the per-item
+  **"Say this in English"** tap (ruling B); the per-tap empty-material guard; and
+  cross-question retrieval (ruling C).
+
+## Ruling A — bank on existence, badge on quality — DECIDED, REMAINING
+
+Auto-banking on completion would be `doneAsIf`. **Gate on existence, badge on quality**,
+exactly the draft-gate pattern:
+- **Bank = a full take + a push response + an explicit tap.** "Survived" is the wrong verb
+  for the gate — weak-but-honest work still happened and belongs to them (the empty-draft
+  amber philosophy). The gate requires the work to be *real*, not good.
+- **Badge = earned separately, verdict-backed.** The badge may say "survived the push" when
+  the coach's verdict supports it.
+- **Drills = one push per take, banked per take.** The mock is not retriable, so **surviving
+  two pushes in one take** is the harder, honest claim that belongs to the mock — an
+  amendment to the parent's badge, noted here. The badge split falls out naturally.
+
+## Ruling B — per-item tap replaces the global mode — DECIDED, REMAINING
+
+The per-item **"Say this in English"** tap is *more* honest than a global full-sentence
+switch: every sentence exists because they asked for *that one*, and audits to its bullet by
+construction. Provenance-perfect L2 support — their content, their sentence, our rendering.
+Constraints: with no global mode, the empty-material guard moves to **each tap** (a bullet
+with no substance gets "nothing to build from yet — answer the hint first," never a filled
+gap); and the coach notices recitation **at the push**, not via a tap counter.
+
+## Ruling C — cross-question retrieval, not a "reusable" marker — DECIDED, REMAINING
+
+Users cannot judge reusability at note-time (they have not seen question 6 yet), and the
+system already knows. So instead of a marker: **dig, when surfacing hints on question N, may
+reference notes from questions 1..N-1.** One retrieval-scope change in the dig prompt. The
+story bank emerges from behavior; when the cheatsheet build arrives, the cross-references
+*are* the story-bank spec, observed rather than guessed.
+
+## Cost probe — GATED (Codex measures) 
+
+Codex measures the **full loop** — two takes + push + grade + one condense-tap — itemized,
+with real token counts. The 3–5¢ single-take number is not the real unit. With Web Speech
+making transcription free, the probe sizes push + feedback only. The meter-vs-bundle UI call
+follows the number; **do not start Session B until it lands.**
+
+## What is BUILT this session vs what REMAINS
+
+- **BUILT + verified:** fork 6 (interview model/visual beats killed), axis separation (coach
+  rule + L2 fixture + lock), dig honesty (assistant Rules 1 & 2) + dig plumbing (resume +
+  diagnostic answers into assist context). Base consolidated: map merged into the drill branch.
+- **REMAINING — the speak-runner build (one focused session):** convert the interview
+  `artifact`/`coach` beats from a typed draft box into the live `speak → replay + self-read →
+  feedback → re-speak` loop; the mid-recording **text-interrupt push** (one per take); the
+  **multi-turn `/api/coach`** extension (it currently grades one static draft); the dig UI
+  (Keywords/Full-sentences toggle, "Say this in English" tap, per-tap empty guard,
+  cross-question retrieval); **tap-to-notes** (AI-condensed bullets); the **banking gate**
+  (ruling A) and the verdict-backed badge; **notes → cheatsheet** assembly.
+- **GATED:** the cost probe (Codex), which the meter-vs-bundle UI waits on.
