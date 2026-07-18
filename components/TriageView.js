@@ -3,11 +3,13 @@
 import { useEffect, useMemo, useState } from "react";
 import {
   buildTriagePriorities,
+  diagnosticFingerprint,
   runwayBucket,
   runwayPlan,
   serializePriority,
   statusWord,
   triageInstructions,
+  triageRestoreDecision,
   triageStorageKey,
 } from "@/lib/triage";
 
@@ -46,27 +48,37 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
     () => buildTriagePriorities({ diagnosticResults, intake, meta }),
     [diagnosticResults, intake, meta]
   );
+  const fingerprint = useMemo(() => diagnosticFingerprint(diagnosticResults), [diagnosticResults]);
   const [priority, setPriority] = useState(computed);
   const [overrode, setOverrode] = useState(false);
+  // A prior user correction whose diagnostic read has since changed. Held so it can
+  // be re-offered (not silently restored over a different weakness profile, and not
+  // silently discarded either). Null when there's nothing to re-offer.
+  const [staleCorrection, setStaleCorrection] = useState(null);
 
   useEffect(() => {
+    // A saved order restores ONLY when it is a user correction AND the diagnostic
+    // read that produced it is unchanged (fingerprint match). A correction from a
+    // DIFFERENT read is re-offered, never silently restored — the staleness axis,
+    // not override-ness, is what makes a saved order wrong (Sissi, 2026-07-18).
+    let saved = null;
+    let decision = "recompute";
     try {
-      // Only a USER-CORRECTED order is restored across revisits. A non-overridden
-      // saved order is just a cache of a deterministic compute — restoring it
-      // would shadow a fresh diagnostic read (e.g. the user went Back, re-answered
-      // a question under the same interview meta, and returned). Recompute in that
-      // case; preserve only what the user deliberately changed. ("We interpret;
-      // you correct" — the correction is what persists, not our first read.)
-      const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-      if (saved?.userOverride && Array.isArray(saved.priority) && saved.priority.length) {
-        setPriority(saved.priority);
-        setOverrode(true);
-        return;
-      }
+      saved = JSON.parse(localStorage.getItem(storageKey) || "null");
+      decision = triageRestoreDecision(saved, fingerprint);
     } catch {}
+    if (decision === "restore") {
+      setPriority(saved.priority);
+      setOverrode(true);
+      setStaleCorrection(null);
+      return;
+    }
+    // "reoffer" | "recompute": the fresh read wins the render; on reoffer we keep the
+    // prior correction in memory so one tap can re-apply its ORDER to the fresh rows.
     setPriority(computed);
     setOverrode(false);
-  }, [computed, storageKey]);
+    setStaleCorrection(decision === "reoffer" ? saved.priority : null);
+  }, [computed, storageKey, fingerprint]);
 
   useEffect(() => {
     try {
@@ -78,11 +90,25 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
             return { ...full, ...p };
           }),
           userOverride: overrode,
+          fingerprint,
           updatedAt: Date.now(),
         })
       );
     } catch {}
-  }, [overrode, priority, storageKey]);
+  }, [fingerprint, overrode, priority, storageKey]);
+
+  // Re-apply a re-offered correction: the user's chosen ORDER, mapped onto the
+  // FRESH read's rows (current evidence/status), not the stale rows wholesale.
+  const applyStaleOrder = () => {
+    if (!staleCorrection) return;
+    const order = staleCorrection.map((r) => r.dimension);
+    const reordered = [...computed]
+      .sort((a, b) => order.indexOf(a.dimension) - order.indexOf(b.dimension))
+      .map((row, index) => ({ ...row, rank: index + 1, source: "user-override" }));
+    setPriority(reordered);
+    setOverrode(true);
+    setStaleCorrection(null);
+  };
 
   const top = priority[0];
   const overrideNote = overrode ? `Got it — you know yourself. Starting with ${top?.label || top?.dimension}.` : "";
@@ -149,6 +175,27 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
           </div>
           {overrode && <p className="text-xs font-medium text-brand-700">{overrideNote}</p>}
         </div>
+        {staleCorrection && (
+          <div className="mt-3 rounded-lg border border-brand-200 bg-brand-50/60 px-3 py-2 text-xs leading-relaxed text-ink-soft">
+            <p>You reordered these last time — but your answers changed since, so this is a fresh read. Same call?</p>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                type="button"
+                onClick={applyStaleOrder}
+                className="rounded-md bg-brand-500 px-3 py-1.5 font-semibold text-white hover:bg-brand-600"
+              >
+                Use my previous order
+              </button>
+              <button
+                type="button"
+                onClick={() => setStaleCorrection(null)}
+                className="rounded-md border border-slate-200 px-3 py-1.5 font-semibold text-ink-soft hover:bg-slate-50"
+              >
+                No — use this fresh read
+              </button>
+            </div>
+          </div>
+        )}
         <div className="mt-4 space-y-2">
           {priority.map((row, index) => (
             <div key={row.dimension} className="flex items-center gap-2 rounded-lg border border-slate-200 bg-white px-3 py-2">
@@ -163,6 +210,7 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
                   onClick={() => {
                     setPriority((p) => move(p, index, index - 1));
                     setOverrode(true);
+                    setStaleCorrection(null);
                   }}
                   disabled={index === 0}
                   className="h-8 w-8 rounded-md border border-slate-200 text-sm text-ink-soft hover:bg-slate-50 disabled:opacity-30"
@@ -175,6 +223,7 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
                   onClick={() => {
                     setPriority((p) => move(p, index, index + 1));
                     setOverrode(true);
+                    setStaleCorrection(null);
                   }}
                   disabled={index === priority.length - 1}
                   className="h-8 w-8 rounded-md border border-slate-200 text-sm text-ink-soft hover:bg-slate-50 disabled:opacity-30"

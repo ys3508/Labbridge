@@ -31,7 +31,9 @@ A wrong triage is worse than a flat map, because narrowing steers the user AWAY 
 
 ## Two invariants (from the review, carve in)
 - RUNWAY forks VOLUME, never WARMTH. Runway and challenge are orthogonal: runway sets how much (tomorrow → one lever + one mock + card; few days → top 2-3; weeks → full map), the tone dial sets how kind. A fragile tomorrow-user gets "we don't have long, so we'll be focused — one thing at a time, and kind about it." Fast ≠ cold. Never let the sprint drop the warmth dial.
-- HONEST-EXPECTATIONS PLANT. The Triage names, per dimension, what the runway can and cannot move ("delivery we'll shift a lot; your accent we won't change and won't try to — we'll make it a non-issue"). This is the sentence the walk-in card pays off later; only the Triage is positioned to set it. Setting it here is what lets the card show a FLAT LINE at the end without it reading as failure (review point #3).
+- HONEST-EXPECTATIONS PLANT. The Triage names — **for the top dimension only** — what the runway can and cannot move ("delivery we'll shift a lot; your accent we won't change and won't try to — we'll make it a non-issue"). This is the sentence the walk-in card pays off later; only the Triage is positioned to set it. Setting it here is what lets the card show a FLAT LINE at the end without it reading as failure (review point #3).
+
+  **Top dimension only — not per dimension (amended 2026-07-18; the code was right, this spec was wrong).** The plant renders for the biggest lever alone. Triage exists to NARROW to one lever; rendering an expectation across every dimension re-broadens exactly what the stage just narrowed — the user leaves holding four things to expect, which is the state triage was built to end. The per-row `expectation` data stays in the model (later stages may consume it); it is simply not all rendered. This is a deliberate design decision, not a rendering oversight — do not "fix" it to per-dimension.
 
 ## Output contract
 - `priority[]`: { dimension, rank, rationale, source: "computed" | "user-override" }.
@@ -49,4 +51,4 @@ Read → **Triage (this doc)** → Map → Drills (difficulty by seniority, moda
 - A pure ranking helper (leverScore) — unit-testable, no API.
 - Wire between DiagnosticFlow's onDone and plan generation in app/page.js: Triage consumes the diagnostic summary, emits priority[] into the instructions block + localStorage.
 - No new /api/plan schema fields. No mock runner yet (that's Session B).
-- Honesty checks: basis line always present; named challenge always shown; runway never overrides warmth; expectations plant rendered.
+- Honesty checks: basis line always present; named challenge always shown; runway never overrides warmth; top-dimension expectations plant rendered (not per-dimension — see the plant invariant above).

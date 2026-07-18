@@ -55,6 +55,7 @@ does not block the storybank build.
 | G3 — Mock difficulty | Fixed baseline; escalation default-on with a visible stop; de-escalation always on; resolver seam mandatory | [ADR-0004](decisions/ADR-0004-mock-difficulty.md) | 2026-07-17 |
 | G4 — Freeze on mic | Wait 10s; marks silent-then-shown-and-correctable; tone-dialed lifeline; freeze is delivery signal | [ADR-0005](decisions/ADR-0005-freeze-on-mic.md) | 2026-07-17 |
 | G5 — Data deletion | Real deletion, per plan, reaching retakes | [ADR-0006](decisions/ADR-0006-data-deletion.md) | 2026-07-17 |
+| G7 — Q1 tone default | Neutral; tone dials on evidence, not arrival | [ADR-0007](decisions/ADR-0007-q1-tone-default.md) | 2026-07-18 |
 
 ---
 
@@ -86,13 +87,6 @@ justifies a push is undecided. Getting it wrong pushes a struggling user, which
 is the failure ADR-0005 exists to prevent — the two mechanisms meet here and
 nothing currently arbitrates.
 
-### G7 — Pre-diagnostic tone dial
-
-**Status:** OPEN
-**Blocks:** the freeze path's register selection at Q1
-
-Challenge (intake, open text) sets the dial. But the freeze path is live during
-the **diagnostic**, which is where the dial's input is thinnest — the user has
-told us "nerves" in a text box and nothing more. Which register does the lifeline
-use before any coaching signal exists? Defaulting to standard means the gentle
-user meets the wrong string first, which is precisely the leak ADR-0005 names.
+*(G7 — Pre-diagnostic tone dial — CLOSED 2026-07-18 as neutral; see the Closed
+table above and [ADR-0007](decisions/ADR-0007-q1-tone-default.md). Rule: tone dials
+on evidence, not on arrival.)*

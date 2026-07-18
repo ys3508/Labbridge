@@ -3,6 +3,7 @@
 // flagging pointer-style assignments. Zero API. Run: npm run check
 import fs from "node:fs";
 import { checkModule, checkPlan } from "../lib/moduleCheck.js";
+import { diagnosticFingerprint, triageRestoreDecision } from "../lib/triage.js";
 
 let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
@@ -84,5 +85,36 @@ if (/FREEZE_MS\s*=\s*10000/.test(voiceSrc)) ok("freeze threshold is a named 10s 
 else fail("freeze threshold is not a named 10s constant (ADR-0005 §5)");
 if (/No rush/.test(voiceSrc) && /Pick the thread back up/.test(voiceSrc)) ok("freeze lifeline keeps both gentle and neutral registers (ADR-0005 dial coverage)");
 else fail("freeze lifeline lost a tone register (ADR-0005 dial coverage)");
+
+// Triage stale-restore fix (post-audit item 2). The restore decision keys on the
+// diagnostic READ, not just interview meta: same read → restore a correction,
+// changed read → re-offer (never silently restore a stale order over a different
+// weakness profile). Pure functions, zero API.
+const readA = {
+  q1: { review: { criteria: [{ status: "met" }, { status: "thin" }] } },
+  q2: { review: { criteria: [{ status: "thin" }, { status: "missing" }] } },
+};
+const readB = structuredClone(readA);
+readB.q2.review.criteria[0].status = "met"; // a materially different substance read
+const fpA = diagnosticFingerprint(readA);
+const fpB = diagnosticFingerprint(readB);
+if (fpA === diagnosticFingerprint(structuredClone(readA))) ok("diagnostic fingerprint is stable for the same read");
+else fail("diagnostic fingerprint not stable for the same read");
+if (fpA !== fpB) ok("diagnostic fingerprint changes when a verdict changes");
+else fail("diagnostic fingerprint blind to a changed verdict");
+const correction = { userOverride: true, priority: [{ dimension: "delivery" }], fingerprint: fpA };
+if (triageRestoreDecision(correction, fpA) === "restore") ok("unchanged read restores the user's correction");
+else fail("unchanged read did not restore the correction");
+if (triageRestoreDecision(correction, fpB) === "reoffer") ok("changed read re-offers the stale correction (never silent restore)");
+else fail("changed read did not re-offer the stale correction");
+if (triageRestoreDecision({ userOverride: false, priority: [{}], fingerprint: fpA }, fpA) === "recompute") ok("a non-correction recomputes from the fresh read");
+else fail("a non-correction did not recompute");
+
+// G7 — Q1 tone default closes as NEUTRAL (ADR-0007: tone dials on evidence, not
+// arrival). The no-signal case is the intake router's fallback tone; lock it to
+// neutral so the closed gate can't re-open into prose.
+const intakeSrc = fs.readFileSync("app/api/intake/route.js", "utf8");
+if (/const fallback[\s\S]*?tone:\s*"neutral"/.test(intakeSrc)) ok("intake no-signal default tone is neutral (ADR-0007 / G7)");
+else fail("intake no-signal default tone is not neutral (ADR-0007 / G7)");
 
 process.exit(failures ? 1 : 0);
