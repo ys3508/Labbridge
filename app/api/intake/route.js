@@ -1,4 +1,5 @@
 import { client, MODEL } from "@/lib/ai";
+import { receiptMatchesSource } from "@/lib/textFingerprint";
 
 // The interview door's intake router (one Haiku call, ~1-2¢): reads the human
 // fields and returns everything the diagnostic needs. Design rules from review:
@@ -132,10 +133,10 @@ export async function POST(request) {
     };
     // Sanity: a generated Q2 that ignores the posting is worse than the fallback.
     if (jd.trim() && out.q2 !== fallback.q2 && out.q2.length < 20) applyGenericQ2();
-    // Receipt guard: with a pasted JD, a role-specific Q2 must cite the posting.
-    // If the model cannot produce a receipt, use the honest generic instead of
-    // shipping an unsupported "posting-derived" question.
-    if (jd.trim() && !out.q2Receipt) {
+    // Receipt guard: with a pasted JD, a role-specific Q2 must cite the posting
+    // document itself. A quote found in the resume but attributed to the posting
+    // is still unsupported, so use the honest generic rather than relabeling it.
+    if (jd.trim() && (!out.q2Receipt || !receiptMatchesSource({ receipt: out.q2Receipt, sourceText: jd }))) {
       applyGenericQ2();
       out.receiptGuard = true;
     }

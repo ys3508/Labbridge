@@ -4,6 +4,12 @@
 import fs from "node:fs";
 import { checkModule, checkPlan } from "../lib/moduleCheck.js";
 import { diagnosticFingerprint, triageRestoreDecision } from "../lib/triage.js";
+import {
+  receiptMatchesSource,
+  shouldAcknowledgeQ2Reset,
+  shouldReuseFingerprint,
+  stableFingerprint,
+} from "../lib/textFingerprint.js";
 
 let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
@@ -109,6 +115,49 @@ if (triageRestoreDecision(correction, fpB) === "reoffer") ok("changed read re-of
 else fail("changed read did not re-offer the stale correction");
 if (triageRestoreDecision({ userOverride: false, priority: [{}], fingerprint: fpA }, fpA) === "recompute") ok("a non-correction recomputes from the fresh read");
 else fail("a non-correction did not recompute");
+
+// Intake reuse + receipt attribution (revise/2026-07-18-reuse-fingerprint-and-
+// receipt-attribution.md). One normalized payload fingerprint drives the re-fetch
+// guard; Q2 answer discard is separate and fires only when the actual Q2 text
+// changed AND there is a real prior answer to discard.
+const intakePayloadA = {
+  jd: "Own quality of earnings diligence for sponsor-backed deals.",
+  challenge: "I freeze on accounting questions.",
+  round: "Middle",
+  interviewer_kind: "Hiring manager",
+  format: "Video",
+  seniority: "First role in this field",
+  resume: "Built three-statement operating models for 115 franchise units.",
+};
+const intakePayloadWhitespace = {
+  ...intakePayloadA,
+  jd: "  Own   quality of earnings diligence\nfor sponsor-backed deals.  ",
+  challenge: "I freeze   on accounting questions.",
+};
+const intakePayloadSenior = { ...intakePayloadA, seniority: "Senior in this field" };
+const intakeFp = stableFingerprint(intakePayloadA);
+if (shouldReuseFingerprint(intakeFp, intakePayloadWhitespace)) ok("intake payload fingerprint is stable under whitespace normalization");
+else fail("intake payload fingerprint changed for whitespace-only edits");
+if (!shouldReuseFingerprint(intakeFp, intakePayloadSenior)) ok("intake payload fingerprint changes on seniority-only edit");
+else fail("intake payload fingerprint reused after seniority-only edit");
+if (!shouldAcknowledgeQ2Reset({ oldQ2: "Old question?", newQ2: "Old question?", priorDiagnostic: { q2: { answer: "My answer" } } })) ok("identical Q2 after re-fetch does not discard or acknowledge");
+else fail("identical Q2 after re-fetch triggered discard acknowledgment");
+if (!shouldAcknowledgeQ2Reset({ oldQ2: "Old question?", newQ2: "New question?", priorDiagnostic: { q2Skipped: true } })) ok("skip-Q2 path does not render discard acknowledgment");
+else fail("skip-Q2 path rendered a discard acknowledgment");
+if (shouldAcknowledgeQ2Reset({ oldQ2: "Old question?", newQ2: "New question?", priorDiagnostic: { q2: { answer: "My answer" } } })) ok("changed Q2 with a prior answer renders discard acknowledgment");
+else fail("changed Q2 with a prior answer did not render discard acknowledgment");
+
+const jdReceiptSource = [
+  "Own quality of earnings diligence for sponsor-backed deals, including add-on integration scenarios.",
+  "Evaluate working capital peg assumptions before investment committee.",
+].join("\n");
+const resumeOnlyLine = "Execute middle-market sell-side M&A and strategic advisory engagements";
+if (!receiptMatchesSource({ receipt: resumeOnlyLine, sourceText: jdReceiptSource })) ok("receipt attributed to JD fails when quote only exists in resume");
+else fail("receipt guard accepted a resume-only quote attributed to the JD");
+if (receiptMatchesSource({ receipt: "Own quality of earnings diligence for sponsor-backed deals", sourceText: jdReceiptSource })) ok("receipt guard accepts a correct contiguous JD prefix");
+else fail("receipt guard rejected a correct contiguous JD prefix");
+if (!receiptMatchesSource({ receipt: "Own quality of earnings diligence for sponsor-backed deals Evaluate working capital peg assumptions", sourceText: jdReceiptSource })) ok("receipt guard rejects stitched non-adjacent JD lines");
+else fail("receipt guard accepted a stitched receipt");
 
 // G7 — Q1 tone default closes as NEUTRAL (ADR-0007: tone dials on evidence, not
 // arrival). The no-signal case is the intake router's fallback tone; lock it to

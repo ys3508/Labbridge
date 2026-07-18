@@ -1,4 +1,5 @@
 import { client, PLAN_MODEL } from "@/lib/ai";
+import { receiptMatchesSource } from "@/lib/textFingerprint";
 
 // Generates the onboarding plan from the captured input (Option A: a single
 // AI synthesis, no grounded skill graph yet). Resources are model-suggested and
@@ -313,6 +314,51 @@ function buildPrompt(p) {
   return lines.join("\n");
 }
 
+function receiptBody(text = "") {
+  const raw = String(text).trim();
+  const match = raw.match(/^(?:from\s+the\s+)?(?:jd|job posting|posting|resume|diagnostic|round convention|interviewer(?: background)?)\s*(?:line)?\s*[:—-]\s*["“]?(.+?)["”]?\s*$/i);
+  return (match ? match[1] : raw).trim();
+}
+
+function receiptSourceLabel(text = "") {
+  const raw = String(text).trim().toLowerCase();
+  if (/^(from\s+the\s+)?(jd|job posting|posting)\b/.test(raw)) return "posting";
+  if (/^resume\b/.test(raw)) return "resume";
+  if (/^interviewer(?: background)?\b/.test(raw)) return "interviewer";
+  return "";
+}
+
+function sourceTextForReceipt(label, payload = {}) {
+  if (label === "posting") {
+    return (payload.target?.artifacts || [])
+      .filter((a) => !a.type || a.type === "job_posting" || a.type === "description")
+      .map((a) => a.text || "")
+      .join("\n");
+  }
+  if (label === "resume") return payload.background?.resume || "";
+  if (label === "interviewer") return payload.target?.instructions || "";
+  return "";
+}
+
+function hasValidNamedReceipt(module, payload = {}) {
+  const why = module?.why || "";
+  const label = receiptSourceLabel(why);
+  if (!label) return true;
+  const sourceText = sourceTextForReceipt(label, payload);
+  if (!sourceText.trim()) return false;
+  return receiptMatchesSource({ receipt: receiptBody(why), sourceText });
+}
+
+function dropInvalidInterviewReceipts(plan, payload = {}) {
+  if (!Array.isArray(plan.learningSequence)) return plan;
+  const isInterview = plan.learningSequence.some((m) => m?.section || m?.tag) || payload.goals?.purpose === "interview";
+  if (!isInterview) return plan;
+  return {
+    ...plan,
+    learningSequence: plan.learningSequence.filter((m) => hasValidNamedReceipt(m, payload)),
+  };
+}
+
 export async function POST(request) {
   let payload;
   try {
@@ -359,7 +405,7 @@ export async function POST(request) {
       console.error("plan route: response hit max_tokens; plan too large to fit.");
       return Response.json({ error: "Plan was too long to finish. Try again, or narrow the scope." }, { status: 500 });
     }
-    const plan = toRichPlan(JSON.parse(block.text));
+    const plan = dropInvalidInterviewReceipts(toRichPlan(JSON.parse(block.text)), payload);
     if (!Array.isArray(plan.learningSequence) || !plan.learningSequence.length || !plan.learningSequence.every((m) => m && m.topic && m.task?.title)) {
       console.error("plan route: shape check failed on learningSequence");
       return Response.json({ error: "The plan came back malformed. Retry — this one didn't bill correctly-shaped output." }, { status: 500 });

@@ -10,6 +10,7 @@
 
 import { useState } from "react";
 import BackgroundSection from "@/components/BackgroundSection";
+import { shouldAcknowledgeQ2Reset, shouldReuseFingerprint, stableFingerprint } from "@/lib/textFingerprint";
 
 const field =
   "w-full rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none";
@@ -96,29 +97,25 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
   const go = async () => {
     setBusy(true);
     const resume = background?.resume || "";
-    // Re-derive Q2 only on a material change to the JD or resume (the two inputs
-    // Q2 is built from). Returning and continuing with those unchanged reuses the
-    // existing intake — no second paid /api/intake call. The payload is identical
-    // to before; only the decision to skip a redundant call is new.
-    const jdSame = jd.trim() === (init.jd || "").trim();
-    const resumeSame = resume.trim() === (init.resume || "").trim();
+    const intakePayload = {
+      jd,
+      challenge,
+      round,
+      interviewer_kind: interviewerKind,
+      format,
+      seniority,
+      resume,
+    };
+    const payloadFingerprint = stableFingerprint(intakePayload);
     let intake = null;
-    if (priorIntake && jdSame && resumeSame) {
+    if (priorIntake && shouldReuseFingerprint(priorIntake.payloadFingerprint, intakePayload)) {
       intake = priorIntake;
     } else {
       try {
         const res = await fetch("/api/intake", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            jd,
-            challenge,
-            round,
-            interviewer_kind: interviewerKind,
-            format,
-            seniority,
-            resume,
-          }),
+          body: JSON.stringify(intakePayload),
         });
         intake = await res.json();
         if (intake?.error) intake = null;
@@ -126,6 +123,7 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
         intake = null;
       }
     }
+    if (intake) intake = { ...intake, payloadFingerprint };
     const interviewerText = interviewers
       .filter((iv) => iv.name.trim() || iv.about.trim())
       .map((iv) => `${iv.name || "Interviewer"}: ${iv.about}`.trim())
@@ -133,15 +131,21 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
     // Did the second question actually change? Only then is a diagnostic answer
     // already given against the old Q2 stale (Sissi: discard it, and say so).
     const q2Changed = Boolean(priorIntake && intake && intake.q2 && intake.q2 !== priorIntake.q2);
+    let q2HadAnswer = false;
     try {
       const prev = JSON.parse(localStorage.getItem("lb_intake_last") || "{}");
+      q2HadAnswer = shouldAcknowledgeQ2Reset({
+        oldQ2: priorIntake?.q2,
+        newQ2: intake?.q2,
+        priorDiagnostic: prev.diagnostic,
+      });
       // Preserve any prior diagnostic answers (unchanged return keeps valid work);
       // drop only the Q2 answer + its skip flag when Q2 itself has changed.
       let diagnostic = prev.diagnostic;
       if (q2Changed && diagnostic) {
-        diagnostic = Object.fromEntries(
-          Object.entries(diagnostic).filter(([k]) => k !== "q2" && k !== "q2Skipped")
-        );
+        diagnostic = { ...diagnostic };
+        delete diagnostic.q2;
+        if (q2HadAnswer) delete diagnostic.q2Skipped;
       }
       localStorage.setItem(
         "lb_intake_last",
@@ -154,7 +158,7 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
       { jd, company, website, role, seniority, round, interviewerKind, format, challenge, interviewers: interviewerText, date },
       intake,
       { jd, company, website, role, seniority, round, interviewerKind, format, challenge, interviewers, date, resume },
-      { q2Changed }
+      { q2Changed: q2Changed && q2HadAnswer }
     );
     setBusy(false);
   };
