@@ -38,6 +38,15 @@ tone registers, fixture-covered.
 
 ---
 
+### Storybank re-offer on re-seeding
+§5's tombstone behavior (delete silently, re-offer when near-identical material reappears
+in a later transcript) was written for the transcript path. Replacing a resume is a
+non-transcript feed that also re-extracts. Does the re-offer path cover seeding, or do
+removed claims silently return on the first resume update? Behavior, not schema —
+does not block the storybank build.
+
+---
+
 ## Closed
 
 | Gate | Decision | ADR | Date |
