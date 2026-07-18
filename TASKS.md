@@ -82,7 +82,8 @@ implemented; see JOURNEY.md for the story.)*
       volume fork, tone-preserving copy, honest-expectations plant, and mutable
       `priority[]` output contract into the existing instructions block/localStorage.
       No new plan schema. Still open before calling diagnostic shipped: Q2-relevance
-      live gate (~5 intake calls). (Jul 17)
+      live gate (~5 intake calls) — protocol in `revise/q2-relevance-gate-spec.md`
+      (salvaged from the deleted `codex/voice-input-honesty` branch). (Jul 17)
 - [~] **INTERVIEW MODE = the front door** — Session A SHIPPED Jul 15 and diagnostic
       hardening shipped Jul 17 (doors, intake, diagnostic, receipts, gap marker,
       Phase-1 trust copy/partial skip/receipt guard, Phase-2 `VoiceInput` with typed
