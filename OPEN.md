@@ -112,3 +112,42 @@ receipt, gap-targeted question ("the posting has the associate owning QoE end to
 your resume shows modeling and IC materials but no QoE — walk me through how you'd run
 one")? Distinct from run 1's failure, where the resume was used *instead of* the posting
 and mislabeled as it. Same question likely applies to the question map.
+
+### G8 — Map receipt failure posture
+
+**Status:** OPEN *(opened by the receipt-attribution work, 2026-07-18)*
+**Blocks:** the map build's first hour: fallback labeling in the map surface
+
+When a map question's receipt (`why`) fails the attribution check — the quoted line
+does not appear in the source it names — fallback is chosen over silent drop.
+
+Why: drop kept the posting-derivation promise only vacuously — fewer questions, all
+traced — while making thin-JD failures invisible. That is the wrong honesty posture for
+the map: a user sees a smaller map, not a surfaced loss.
+
+Three sub-items remain open:
+
+1. **Fallback label in the map surface** — an unlabeled fallback looks traced and is not.
+   This blocks the map build's first hour.
+2. **Fallback-rate ceiling** — above what rate does the honest answer move to the map
+   level instead of per-question? Deferred until live map runs show the distribution.
+3. **Fallback content source** — generic-for-the-role or generic-anchored-to-what-little
+   the posting had? The second may feel better but risks reintroducing misattribution.
+
+### G9 — Map gate as a separate validation instrument
+
+**Status:** OPEN *(opened by the receipt-attribution work, 2026-07-18)*
+**Blocks:** declaring the **question map** validated / shipped
+**Blocks nothing today:** passing the Q2 gate says nothing about the map
+
+The Q2-relevance gate (`revise/q2-relevance-gate-spec.md`) validates the
+diagnostic's **single** Q2. The receipt guards are not shared between the intake/Q2 path
+and the map path, so a Q2 gate pass carries no information about the map. The map runs
+receipt attribution at ~10× surface area with different failure shapes: per-question
+attribution, a receipt-density floor, section/tag correctness, and the fallback-label /
+fallback-rate questions G8 leaves open. A green Q2 gate certifies none of that.
+
+**Close condition:** the map has its **own** instrument — its own fixture runs, its
+own pass criteria (attribution correct per question; no résumé line attributed to
+the posting; a receipt-density floor), and its own held-until list — before the map
+is called "shipped." Until then the map is built-but-unvalidated.
