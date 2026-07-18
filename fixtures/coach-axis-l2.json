@@ -1,0 +1,20 @@
+{
+  "case": "L2 speaker — strong substance, halting delivery. The coach axis-separation reference case (drill spec fork 4).",
+  "note": "The transcript is grammatically broken but the reasoning is complete and correct: defending a data finding against a stakeholder, with a concrete example and the right lesson. Expected axis-separated verdict — substance MET (judged as if the transcript were cleaned into fluent English), delivery THIN (grammar/fluency/pacing). Substance must NEVER be marked thin or missing because of the language. This is the exact misdiagnosis fork 4 exists to prevent. Run against /api/coach as a paid eval; the zero-API harness only locks that the prompt rule stays present.",
+  "purpose": "interview",
+  "tone": "gentle",
+  "taskTitle": "Interview diagnostic — Q2 (capability probe)",
+  "deliverable": "A spoken-style interview answer, confirmed by the user before grading.",
+  "criteria": [
+    "Substance: does the answer actually address the capability being probed, with real reasoning and a concrete example?",
+    "Delivery: pacing, structure, and clarity of the spoken answer"
+  ],
+  "redFlags": [],
+  "context": "DIAGNOSTIC DELIVERY METRICS (use only for the delivery criterion; judge substance from the transcript). input=voice; duration=95s; wpm=88; fillers=6; long_pauses=3; false_starts=4; freezes_10s_plus=1",
+  "draft": "So, the... how you say... when the data is disagree with what the stakeholder want, me I do not just say okay. One time in the vaccination project, the number for turnaround it is showing six week but the manager he think is fine already. I go back, I check the pipeline, and I find the... the counting is double some record. I fix it, and after is nine day, the real number. I tell the manager with the... the evidence, the table. He is not happy first but he see the data is correct. So for me the job is you must defend the number even when is uncomfortable, because if you not, the decision is build on a wrong thing.",
+  "expected": {
+    "substance": "met",
+    "delivery": "thin",
+    "must_not": "substance marked thin or missing because of grammar, accent, or fluency"
+  }
+}

@@ -8,7 +8,9 @@ let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
 const ok = (msg) => console.log("✓", msg);
 
-for (const f of fs.readdirSync("fixtures").filter((x) => x.endsWith(".json"))) {
+// Plan-input fixtures (the golden-*-input.json set) get the payload-shape check.
+// Other fixtures (e.g. coach eval cases) are validated separately below.
+for (const f of fs.readdirSync("fixtures").filter((x) => x.endsWith("-input.json"))) {
   const p = JSON.parse(fs.readFileSync(`fixtures/${f}`, "utf8"));
   if (p.background && p.target && p.goals && p.timeline) ok(`${f} parses with payload shape`);
   else fail(`${f} missing payload sections`);
@@ -50,5 +52,16 @@ else fail("healthy interview map flagged");
 const badFindings = checkPlan(badInterviewMap, { purpose: "interview" }).findings;
 if (badFindings.some((x) => x.code === "interview_start_here_count") && badFindings.some((x) => x.code === "interview_missing_receipt")) ok("bad interview map flags start_here and missing receipt");
 else fail("bad interview map did not flag map rules");
+
+// Coach axis separation (drill spec fork 4). The verdict itself is a paid eval;
+// here we lock the two things a zero-API run can prove: the L2 reference case
+// stays well-formed (strong substance, weak delivery), and the axis-separation
+// rule cannot silently vanish from the coach prompt.
+const l2 = JSON.parse(fs.readFileSync("fixtures/coach-axis-l2.json", "utf8"));
+if (l2.draft && l2.expected?.substance === "met" && l2.expected?.delivery === "thin") ok("L2 axis fixture well-formed (strong substance, weak delivery)");
+else fail("L2 axis fixture malformed");
+const coachPrompt = fs.readFileSync("app/api/coach/route.js", "utf8");
+if (/AXIS SEPARATION/.test(coachPrompt) && /never lower the SUBSTANCE/i.test(coachPrompt)) ok("coach prompt keeps the spoken-answer axis-separation rule");
+else fail("coach prompt lost the axis-separation rule");
 
 process.exit(failures ? 1 : 0);

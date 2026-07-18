@@ -1393,8 +1393,13 @@ const BEAT_IDENTITY = {
     coach: ["Coach", "Am I right?"], reward: ["Wrap", "What changed in my project?"],
   },
   interview: {
-    brief: ["Question", "Why do they ask this?"], model: ["Answer", "What's the strong answer?"],
-    visual: ["Hear it", "What does strong sound like?"], question: ["Rapid fire", "Can I answer cold?"],
+    // Fork 6 (drill grammar): no `model` beat — a strong answer shown before they
+    // speak is the fantasy answer parent §6 forbids, and it contaminates. No
+    // `visual` "hear it" beat either — there is no TTS and nothing to hear. Both
+    // keys are absent so the beats can never render (getMomentMeta / buildMoments
+    // gate on the label existing); the decode line teaches, dig supplies material.
+    brief: ["Question", "Why do they ask this?"],
+    question: ["Rapid fire", "Can I answer cold?"],
     practice: ["Rehearse", "Can I say it in my words?"], artifact: ["Bank it", "What's MY answer?"],
     coach: ["Score", "Would this land?"], reward: ["Banked", "What's in my answer bank?"],
   },
@@ -1422,8 +1427,8 @@ function getMomentMeta(step, purpose) {
   const example = step?.workedExample || {};
   const curious = purpose === "curious";
   const moments = [{ key: "brief", label: id.brief[0], objective: id.brief[1] }];
-  if (concept.explanation) moments.push({ key: "model", label: id.model[0], objective: id.model[1] });
-  if (example.setup) moments.push({ key: "visual", label: id.visual[0], objective: id.visual[1] });
+  if (concept.explanation && id.model) moments.push({ key: "model", label: id.model[0], objective: id.model[1] });
+  if (example.setup && id.visual) moments.push({ key: "visual", label: id.visual[0], objective: id.visual[1] });
   if (step?.comprehensionCheck?.question) {
     moments.push({ key: "question", label: id.question[0], objective: id.question[1] });
   }
@@ -2240,7 +2245,9 @@ function buildMoments({
   });
 
   // MODEL — What's the idea? (full concept, no truncation)
-  if (concept.explanation) {
+  // Gated on the label existing: interview purpose has no `model` beat (fork 6),
+  // so it never renders even if the model wrongly emits a concept.
+  if (concept.explanation && beatId.model) {
     moments.push({
       key: "model",
       label: beatId.model[0],
@@ -2317,7 +2324,8 @@ function buildMoments({
   }
 
   // VISUAL — What does it look like? (worked example as a clean card)
-  if (example.setup) {
+  // Gated on the label existing: interview purpose has no `visual` "hear it" beat.
+  if (example.setup && beatId.visual) {
     moments.push({
       key: "visual",
       label: beatId.visual[0],

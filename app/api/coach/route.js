@@ -28,6 +28,7 @@ Rules:
 - overall: 2-3 sentences. Honest read first (is this usable work?), then the single biggest strength and the single biggest gap. No grade inflation, no rubric restating, no "great job" filler.
 - If the task is INTERVIEW REHEARSAL (the deliverable is an answer to an interviewer's question), judge it as the interviewer would: would this answer land in the room? Note where they'd push back, and whether it survives the push.
 - If the task is an INTERVIEW DIAGNOSTIC and includes DIAGNOSTIC DELIVERY METRICS in context, use those metrics ONLY for the delivery criterion. Judge substance from the confirmed transcript alone.
+- SPOKEN-ANSWER AXIS SEPARATION (critical for second-language and nervous speakers): grammar, accent, word choice, fluency, disfluency, filler, and pace are DELIVERY signals ONLY — they may never lower the SUBSTANCE verdict. Judge substance as if the transcript were first cleaned into fluent English: does the reasoning hold, is the evidence there, does the structure answer what was asked? Someone who knows the answer but says it in halting or ungrammatical English is strong-substance / weak-delivery — NOT weak-substance. Grading a language limitation as a knowledge gap tells a person they don't know something they know; that is the one error this must never make.
 - If the draft is only a template or placeholder bullets with nothing filled in, say exactly that in overall, mark criteria accordingly, and make nextEdits about doing the work — never pretend effort you don't see.`;
 
 const S = { type: "string" };
