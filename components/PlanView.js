@@ -4336,11 +4336,23 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
           messages: nextMsgs.slice(-8),
           context: {
             purpose: purpose || "starting_role",
-            tone: (() => {
+            ...(() => {
+              // Dig material for the interview assistant (drill spec): the tone
+              // dial, their resume, and what they already said out loud in the two
+              // diagnostic questions. Sentences dig offers must trace to these.
               try {
-                return JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
+                const last = JSON.parse(localStorage.getItem("lb_intake_last") || "{}");
+                const tone = last?.intake?.tone || "";
+                if (purpose !== "interview") return { tone };
+                const dg = last?.diagnostic || {};
+                const diagnostic = ["q1", "q2"]
+                  .map((k) => (dg[k]?.answer || "").trim())
+                  .filter(Boolean)
+                  .map((a, i) => `Q${i + 1}: ${a}`)
+                  .join("\n\n");
+                return { tone, resume: last?.resume || "", diagnostic };
               } catch {
-                return "";
+                return { tone: "" };
               }
             })(),
             taskTitle: module?.task?.title || module?.topic || "",

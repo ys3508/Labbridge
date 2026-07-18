@@ -115,7 +115,9 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
     try {
       localStorage.setItem(
         "lb_intake_last",
-        JSON.stringify({ intake, company, website, interviewers: interviewerText, at: Date.now() })
+        // resume rides along so dig (the interview assistant) can trace SENTENCES
+        // to their real background — hints range wider, sentences must trace here.
+        JSON.stringify({ intake, company, website, interviewers: interviewerText, resume: background?.resume || "", at: Date.now() })
       );
     } catch {}
     onContinue(
