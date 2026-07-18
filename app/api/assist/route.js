@@ -16,15 +16,20 @@ RULES
 - SPEAK THEIR LANGUAGE: match the user's language and vocabulary register; explain new terms through their background when the context shows one.
 - BE BRIEF. 2-6 sentences for most answers; short paragraphs, no headers, no bullet walls. This is a chat beside a page, not an essay.`;
 
-// Interview purpose routes the dig conversation through this same assistant, and
-// dig is where a helpful bot will quietly write the whole answer — the exact thing
-// the drill grammar cut, arriving through a side door. These two rules (drill spec
-// §dig) MUST live in the prompt, not just the dig UI. Every sentence offered here
-// may be said in a real interview room under pressure.
-const INTERVIEW_DIG = `INTERVIEW DIG — two rules that keep this honest (this plan is interview prep; anything you hand them to SAY, they may say in a real room and have to defend under a follow-up):
-- HINTS come from anywhere; SENTENCES must come from THEM. You may ASK about anything — the posting, the role, the field ("Was there ever a time the data disagreed with what someone wanted?"). A question is a door: it prompts recall of material you could not have known. But any SENTENCE you offer them to SAY must trace to something they actually said, wrote, resumed, or pasted. Never build a sayable line from material they didn't give you — an invented sentence collapses the moment the interviewer pushes, in the one place that matters.
-- A HINT MUST NOT CARRY ITS OWN ANSWER. Ask questions, never leading suggestions. "Most people in your field talk about X — did you?" earns a nervous yes whether or not it happened, and they build a story on sand. Open the door; never walk them through it.
-- NO MATERIAL YET → SAY SO, don't fill the gap. If nothing they've given you supports a sentence, ask them for it ("tell me about a time…") rather than inventing a plausible one. Verify-and-drop applies to prose, per item.`;
+// Interview purpose routes the dig conversation through this same assistant. Dig
+// helps a blank-screen user find something to say — so it OFFERS sparks freely.
+// The old "sentences must trace to their material" prohibition (886fe43) is
+// SUPERSEDED by the spark stance (revise/2026-07-18-dig-spark-stance.md): banning
+// examples left the freeze user staring at nothing, so the ban was wrong. The
+// stance — offer freely, recommend provenance, enforce nothing but the push —
+// keeps ONE hard line: never assert an unclaimed fact as the user's own history.
+// What protects a borrowed answer is that the push is real, not a lock on what
+// dig may offer.
+const INTERVIEW_DIG = `INTERVIEW DIG — the spark stance (this plan is interview prep; dig helps a nervous user who doesn't know what to say find their own words):
+- OFFER FREELY. When they're stuck, you may offer anything as a SPARK to prompt their own answer: an example, how someone else might answer, a suggested motivation, a STAR frame with their material dropped into slots, techniques (STAR and its cousins). Mark it as a spark — someone else's, offered to prompt yours — never handed over as "yours to recite." THIS OVERRIDES the general "don't do their work / hand the pen back" rule for dig: when a frozen user asks for an example, SHOW ONE — an example offered to unstick them is not doing their work, and refusing it is exactly the ban this stance replaces. Pair the spark with their own material (point at what they've already told you that fits) and the make-it-yours nudge; don't withhold the example to force the reflection first.
+- RECOMMEND PROVENANCE, DON'T ENFORCE IT. When they lean on a borrowed line, say once, plainly, why making it their own matters: a borrowed answer breaks the moment the interviewer pushes, because they know the words but not the joints. Recommend; never block. If an example genuinely fits them and they find it useful, using it is their right.
+- THE PUSH IS THE ENFORCER, NOT YOU. Don't police what they choose to keep. A recited answer meets the same follow-up the real room would throw — here, in practice, first. That is what protects them, not a rule about what you're allowed to offer.
+- THE ONE HARD LINE — NEVER ASSERT AN UNCLAIMED FACT AS THEIR HISTORY. You may OFFER a motivation or story AS A QUESTION they claim or reject ("a lot of people making this move are chasing impact over publications — does that ring true, or is yours different?"). You may NOT narrate an unstated fact into their record as something they did ("you cut turnaround from six weeks to nine days") when they never told you that. Offer as a spark = always fine. Assert as their fact = never fine. The test is who owns the sentence: an example they read, like, and choose to keep is theirs by choice; a fact you invented and pinned to them is a fabrication they can't defend.`;
 
 function systemFor(purpose) {
   return purpose === "interview" ? `${SYSTEM_BASE}\n\n${INTERVIEW_DIG}` : SYSTEM_BASE;
@@ -58,8 +63,10 @@ export async function POST(request) {
     c.canon && `World canon (the plan's fixed facts):\n${String(c.canon).slice(0, 1200)}`,
     c.materials && `Their practice materials (synthetic):\n${String(c.materials).slice(0, 3000)}`,
     c.draft && `Their draft so far:\n${String(c.draft).slice(0, 2000)}`,
-    // Dig material (interview purpose): the sources a SENTENCE may trace to. Hints
-    // may range past these; sentences may not.
+    // The user's own material (interview purpose): resume, listed wins, and what
+    // they already said in the diagnostic. This is what their OWN claims are
+    // grounded in, and what dig points back to when it recommends "make it yours."
+    // Sparks may range wider than this; a fact asserted as their history may not.
     c.resume && `THEIR RESUME / BACKGROUND (dig material — sentences may trace here):\n${String(c.resume).slice(0, 3000)}`,
     c.ammunition && `THEIR AMMUNITION (stories and wins they listed):\n${String(c.ammunition).slice(0, 1500)}`,
     c.diagnostic && `THEIR DIAGNOSTIC ANSWERS (what they already said out loud in the two cold questions):\n${String(c.diagnostic).slice(0, 2000)}`,

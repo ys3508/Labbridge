@@ -68,6 +68,34 @@ of their own material, plus a structure to organize it.
 
 ### The two rules that keep dig honest
 
+> **SUPERSEDED (Jul 18) → [`revise/2026-07-18-dig-spark-stance.md`](2026-07-18-dig-spark-stance.md).**
+> Rules 1 & 2 below (shipped in `886fe43`) are reversed. Sissi ruled the "SENTENCES
+> must trace to the user's own material / a hint must not carry its own answer"
+> prohibition **wrong**: banning example-sparks left the freeze user — the exact
+> user dig exists for — staring at a blank screen. The replacement is a **stance,
+> not a lock**:
+>
+> - **Dig offers sparks freely** — examples, other people's answers, suggested
+>   motivations, STAR frames with material in slots — marked as sparks, not "yours
+>   to recite."
+> - **It recommends provenance, once and plainly** (a borrowed answer breaks under
+>   a push — you know the words, not the joints), but **never blocks**. Banking a
+>   borrowed line is the user's right; locking it would only *hide* the cost.
+> - **The push is the enforcer, not a rule about what dig may offer.** A recited
+>   line meets the real room's follow-up here, in practice, first. The coach notices
+>   recitation *at the push*, never by policing dig.
+> - **The one hard line that survives:** dig must never *assert an unclaimed fact as
+>   the user's own history* ("you cut turnaround 6wk→9d" when they never said it).
+>   Offer-as-spark is always fine; assert-as-their-fact is never fine — the test is
+>   *who owns the sentence*. Suggested motivations are fine **as questions** the user
+>   claims or rejects, never narrated into their record as stated fact.
+>
+> Two guards this obliges: the gentle tone dial must not soften/skip the push for a
+> borrowing user (the push is now the *only* thing between a recited answer and a
+> room collapse), and the "make it yours — here's why" recommendation must be
+> visible once at banking time. The rules below are kept as the historical record of
+> what was reversed and why.
+
 **Rule 1 — HINTS come from anywhere. SENTENCES come from them.**
 
 These are different objects and the earlier draft of this rule wrongly banned both:
@@ -415,10 +443,15 @@ re-litigation of this — the reason it lost is contamination, and the reason is
 ## What CC/Codex must NOT do
 
 - **Do not build a `model` beat** or any pre-answer example. It is cut. See fork 6.
-- **Do not let the assistant produce a sayable sentence in dig that has no provenance.**
-  Hints may come from anywhere; sentences must trace to the user's own material. This rule
-  must reach the assistant's PROMPT, not just the dig UI — the conversation is the back door.
-- **Do not let a hint carry its own answer.** Hints are questions, not suggestions.
+- **Do not let dig assert an unclaimed fact into the user's notes/cheatsheet as their own
+  history.** Sparks are free — examples, suggested motivations, STAR frames may be offered to
+  prompt the user's own answer (see [`2026-07-18-dig-spark-stance.md`](2026-07-18-dig-spark-stance.md),
+  which supersedes the old "sentences must trace" ban). What stays banned is narrating an
+  *unstated fact as theirs* ("you cut turnaround 6wk→9d" when they never said it). Offer as a
+  spark = fine; assert as their fact = never.
+- **Do not let the gentle tone dial soften or skip the push for a borrowing user.** Once
+  banking a borrowed line is legal, the push is the only signal that it's fragile — removing
+  it hands them a weak answer *and* hides the weakness.
 - **Do not persist audio anywhere.** In-session, in-memory, gone on tab close, and the UI
   says so.
 - **Do not default to Full sentences.** Keywords is the default in both dig and

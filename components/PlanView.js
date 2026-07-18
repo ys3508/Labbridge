@@ -4339,7 +4339,8 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
             ...(() => {
               // Dig material for the interview assistant (drill spec): the tone
               // dial, their resume, and what they already said out loud in the two
-              // diagnostic questions. Sentences dig offers must trace to these.
+              // diagnostic questions — what their own claims are grounded in and
+              // what dig points back to when it recommends making a spark theirs.
               try {
                 const last = JSON.parse(localStorage.getItem("lb_intake_last") || "{}");
                 const tone = last?.intake?.tone || "";

@@ -64,4 +64,14 @@ const coachPrompt = fs.readFileSync("app/api/coach/route.js", "utf8");
 if (/AXIS SEPARATION/.test(coachPrompt) && /never lower the SUBSTANCE/i.test(coachPrompt)) ok("coach prompt keeps the spoken-answer axis-separation rule");
 else fail("coach prompt lost the axis-separation rule");
 
+// Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
+// dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and
+// keeps the one hard line (never assert an unclaimed fact as the user's history),
+// and must NOT carry the reversed "sentences must trace to their material" ban.
+const assistPrompt = fs.readFileSync("app/api/assist/route.js", "utf8");
+if (/spark stance/i.test(assistPrompt) && /NEVER ASSERT AN UNCLAIMED FACT/i.test(assistPrompt)) ok("assist prompt keeps the dig spark stance + the one hard line");
+else fail("assist prompt lost the dig spark stance or the one hard line");
+if (!/SENTENCES must come from THEM/i.test(assistPrompt) && !/must trace to something they actually/i.test(assistPrompt)) ok("assist prompt dropped the superseded 'sentences must trace' ban");
+else fail("assist prompt still carries the superseded 'sentences must trace' ban");
+
 process.exit(failures ? 1 : 0);

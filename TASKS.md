@@ -108,6 +108,11 @@ implemented; see JOURNEY.md for the story.)*
       beats killed, enforced in code), coach axis separation (fork 4, + `fixtures/
       coach-axis-l2.json` + zero-API lock), dig honesty (assistant Rules 1 & 2 in the
       prompt) + dig plumbing (resume + diagnostic answers into assist context).
+      **Dig honesty REVERSED Jul 18** → the spark stance (`revise/2026-07-18-dig-spark-stance.md`):
+      the old "sentences must trace" ban blocked the freeze user, replaced with offer-freely /
+      recommend-provenance / enforce-nothing-but-the-push; one hard line kept (never assert an
+      unclaimed fact as the user's history); zero-API lock now tests the new line. Dig UI +
+      storybank still parked.
       **Remaining — the speak-runner build (one focused session):** convert interview
       artifact/coach beats from typed draft box to the live speak loop; mid-recording
       text-interrupt push (one per take); multi-turn `/api/coach` (currently grades one
