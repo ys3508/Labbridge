@@ -161,7 +161,7 @@ function saveDiagnosticBaseline(key, answer, review, delivery) {
   } catch {}
 }
 
-export default function DiagnosticFlow({ intake, onDone, onSkip }) {
+export default function DiagnosticFlow({ intake, onDone, onSkip, onBack, q2Reset }) {
   const [results, setResults] = useState({}); // {q1:{answer,review}, q2:{...}}
   const [hoping, setHoping] = useState("");
   const bundle = intake?.intake || {};
@@ -216,6 +216,11 @@ export default function DiagnosticFlow({ intake, onDone, onSkip }) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-5 fade-up">
+      {onBack && (
+        <button type="button" onClick={onBack} className="text-sm font-medium text-ink-soft hover:text-ink">
+          ← Back to interview details
+        </button>
+      )}
       <div className="rounded-xl border border-brand-100 bg-brand-50/50 px-4 py-3">
         <p className="max-w-prose text-sm leading-relaxed text-ink">{contract}</p>
       </div>
@@ -250,6 +255,16 @@ export default function DiagnosticFlow({ intake, onDone, onSkip }) {
             className="mt-2 w-full rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none"
           />
         </label>
+      )}
+
+      {q2Reset && (
+        // At the point of change, in the loss register (Sissi): a statement, not
+        // an apology, deterrent, or dialog. The prior answer was to the old Q2.
+        <p className="max-w-prose px-1 text-xs leading-relaxed text-ink-faint fade-up">
+          {bundle.tone === "gentle"
+            ? "The job description changed, so the second question changed with it — your earlier answer was to the version before."
+            : "The job description changed, so the second question changed with it. Your earlier answer was to the old one."}
+        </p>
       )}
 
       <DiagnosticQuestion

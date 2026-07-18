@@ -30,7 +30,11 @@ export default function Page() {
   const [stage, setStage] = useState("landing"); // landing | interview | diagnostic | triage | form | review | done
   const [intakeBundle, setIntakeBundle] = useState(null);
   const [interviewMeta, setInterviewMeta] = useState(null);
+  const [interviewDraft, setInterviewDraft] = useState(null);
   const [diagnosticState, setDiagnosticState] = useState(null);
+  // Set when a return-to-intake edit re-derived Q2: the diagnostic acknowledges,
+  // once and plainly, that a prior answer was to the question that changed.
+  const [q2Reset, setQ2Reset] = useState(false);
 
   // Mock mode is for offline UI work. Reopen the generated workspace directly
   // after refresh so local progress/draft state can be verified without API.
@@ -100,7 +104,7 @@ export default function Page() {
 
   // Interview door → structured intake block in the steering notes (zero payload
   // schema change; the generation prompt reads the labeled sections).
-  const enterInterview = (fields, intake) => {
+  const enterInterview = (fields, intake, draft, meta) => {
     const b = intake || {};
     const block = [
       "INTERVIEW INTAKE",
@@ -119,6 +123,8 @@ export default function Page() {
       .join("\n");
     setIntakeBundle(b);
     setInterviewMeta(fields);
+    setInterviewDraft(draft || null);
+    setQ2Reset(Boolean(meta?.q2Changed));
     setDiagnosticState(null);
     setForm((f) => ({
       ...f,
@@ -229,6 +235,8 @@ export default function Page() {
           onBackground={setPart("background")}
           onContinue={enterInterview}
           onBack={() => setStage("landing")}
+          initial={interviewDraft}
+          priorIntake={intakeBundle}
         />
       </Shell>
     );
@@ -241,6 +249,8 @@ export default function Page() {
           intake={{ intake: intakeBundle }}
           onDone={(summaryText, results) => finishDiagnostic(summaryText, results)}
           onSkip={() => finishDiagnostic("")}
+          onBack={() => setStage("interview")}
+          q2Reset={q2Reset}
         />
       </Shell>
     );

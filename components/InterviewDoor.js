@@ -46,18 +46,25 @@ function GroupHeader({ children }) {
 
 const EMPTY_INTERVIEWER = { name: "", about: "", url: "", urlStatus: null };
 
-export default function InterviewDoor({ background, onBackground, onContinue, onBack }) {
-  const [jd, setJd] = useState("");
-  const [company, setCompany] = useState("");
-  const [website, setWebsite] = useState("");
-  const [role, setRole] = useState("");
-  const [seniority, setSeniority] = useState("");
-  const [round, setRound] = useState("");
-  const [interviewerKind, setInterviewerKind] = useState("");
-  const [format, setFormat] = useState("");
-  const [challenge, setChallenge] = useState("");
-  const [interviewers, setInterviewers] = useState([{ ...EMPTY_INTERVIEWER }]);
-  const [date, setDate] = useState("");
+export default function InterviewDoor({ background, onBackground, onContinue, onBack, initial, priorIntake }) {
+  // Returning from the diagnostic re-mounts this component, so every field seeds
+  // from the last draft the flow held (resume rides on the parent `background`
+  // prop and needs no seeding). `initial` also carries the jd/resume snapshot the
+  // current intake was derived from, so go() can tell whether Q2 must be re-derived.
+  const init = initial || {};
+  const [jd, setJd] = useState(init.jd || "");
+  const [company, setCompany] = useState(init.company || "");
+  const [website, setWebsite] = useState(init.website || "");
+  const [role, setRole] = useState(init.role || "");
+  const [seniority, setSeniority] = useState(init.seniority || "");
+  const [round, setRound] = useState(init.round || "");
+  const [interviewerKind, setInterviewerKind] = useState(init.interviewerKind || "");
+  const [format, setFormat] = useState(init.format || "");
+  const [challenge, setChallenge] = useState(init.challenge || "");
+  const [interviewers, setInterviewers] = useState(
+    Array.isArray(init.interviewers) && init.interviewers.length ? init.interviewers : [{ ...EMPTY_INTERVIEWER }]
+  );
+  const [date, setDate] = useState(init.date || "");
   const [busy, setBusy] = useState(false);
 
   const canContinue = jd.trim().length > 40 || role.trim();
@@ -88,41 +95,66 @@ export default function InterviewDoor({ background, onBackground, onContinue, on
 
   const go = async () => {
     setBusy(true);
+    const resume = background?.resume || "";
+    // Re-derive Q2 only on a material change to the JD or resume (the two inputs
+    // Q2 is built from). Returning and continuing with those unchanged reuses the
+    // existing intake — no second paid /api/intake call. The payload is identical
+    // to before; only the decision to skip a redundant call is new.
+    const jdSame = jd.trim() === (init.jd || "").trim();
+    const resumeSame = resume.trim() === (init.resume || "").trim();
     let intake = null;
-    try {
-      const res = await fetch("/api/intake", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          jd,
-          challenge,
-          round,
-          interviewer_kind: interviewerKind,
-          format,
-          seniority,
-          resume: background?.resume || "",
-        }),
-      });
-      intake = await res.json();
-      if (intake?.error) intake = null;
-    } catch {
-      intake = null;
+    if (priorIntake && jdSame && resumeSame) {
+      intake = priorIntake;
+    } else {
+      try {
+        const res = await fetch("/api/intake", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            jd,
+            challenge,
+            round,
+            interviewer_kind: interviewerKind,
+            format,
+            seniority,
+            resume,
+          }),
+        });
+        intake = await res.json();
+        if (intake?.error) intake = null;
+      } catch {
+        intake = null;
+      }
     }
     const interviewerText = interviewers
       .filter((iv) => iv.name.trim() || iv.about.trim())
       .map((iv) => `${iv.name || "Interviewer"}: ${iv.about}`.trim())
       .join("\n");
+    // Did the second question actually change? Only then is a diagnostic answer
+    // already given against the old Q2 stale (Sissi: discard it, and say so).
+    const q2Changed = Boolean(priorIntake && intake && intake.q2 && intake.q2 !== priorIntake.q2);
     try {
+      const prev = JSON.parse(localStorage.getItem("lb_intake_last") || "{}");
+      // Preserve any prior diagnostic answers (unchanged return keeps valid work);
+      // drop only the Q2 answer + its skip flag when Q2 itself has changed.
+      let diagnostic = prev.diagnostic;
+      if (q2Changed && diagnostic) {
+        diagnostic = Object.fromEntries(
+          Object.entries(diagnostic).filter(([k]) => k !== "q2" && k !== "q2Skipped")
+        );
+      }
       localStorage.setItem(
         "lb_intake_last",
         // resume rides along so dig (the interview assistant) can trace SENTENCES
         // to their real background — hints range wider, sentences must trace here.
-        JSON.stringify({ intake, company, website, interviewers: interviewerText, resume: background?.resume || "", at: Date.now() })
+        JSON.stringify({ ...prev, intake, company, website, interviewers: interviewerText, resume, diagnostic, at: Date.now() })
       );
     } catch {}
     onContinue(
       { jd, company, website, role, seniority, round, interviewerKind, format, challenge, interviewers: interviewerText, date },
-      intake
+      intake,
+      { jd, company, website, role, seniority, round, interviewerKind, format, challenge, interviewers, date, resume },
+      { q2Changed }
     );
     setBusy(false);
   };
