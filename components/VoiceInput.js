@@ -5,6 +5,15 @@ import { useEffect, useRef, useState } from "react";
 const FILLERS = /\b(um+|uh+|erm+|like|you know|i mean|sort of|kind of)\b/gi;
 const FALSE_STARTS = /\b(sorry|let me start|let me restart|wait|actually)\b/gi;
 
+// Silence thresholds (ms). ADR-0005 §5: 10s is the shipped freeze default and
+// "the number most likely to be wrong" — a named constant, not a literal, so it
+// stays findable and tunable. The rest are the start-of-answer nudge ramp.
+const FREEZE_MS = 10000; // mid-answer dead air → the tone-dialed lifeline
+const PAUSE_MS = 6000; // a long pause enters the delivery read
+const NUDGE_GENTLE_MS = 6000; // start-of-answer: first gentle prompt (gentle tone)
+const NUDGE_MS = 8000; // start-of-answer: first prompt (neutral tone)
+const OPTIONS_MS = 19000; // start-of-answer: offer starter phrase / type / skip
+
 function words(text) {
   const latin = text.toLowerCase().match(/[a-z0-9]+(?:['-][a-z0-9]+)?/gi) || [];
   const cjk = text.match(/[\u3400-\u9fff]/g) || [];
@@ -128,14 +137,14 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
       const now = Date.now();
       const silentFor = now - lastSpeechAtRef.current;
       const noWordsYet = !words(transcriptRef.current) && !interim.trim();
-      if (silentFor > 6000 && pauseArmedRef.current) {
+      if (silentFor > PAUSE_MS && pauseArmedRef.current) {
         pauseCountRef.current += 1;
         pauseArmedRef.current = false;
       }
-      // Freeze-on-mic (the decided rule: wait 10s, then a lifeline — no
+      // Freeze-on-mic (the decided rule: wait FREEZE_MS, then a lifeline — no
       // auto-stop, no countdown, no reaction before the threshold). Mid-answer
       // only: start-of-answer silence has its own gentler ramp below.
-      if (!noWordsYet && silentFor >= 10000 && freezeArmedRef.current) {
+      if (!noWordsYet && silentFor >= FREEZE_MS && freezeArmedRef.current) {
         freezeCountRef.current += 1;
         freezeArmedRef.current = false;
         setLifeline(true);
@@ -145,9 +154,9 @@ export default function VoiceInput({ value, onChange, onMetricsChange, onSkipQue
         freezeArmedRef.current = true;
         setLifeline(false);
       }
-      if (noWordsYet && silentFor > (tone === "gentle" ? 6000 : 8000) && silentFor < 19000) {
+      if (noWordsYet && silentFor > (tone === "gentle" ? NUDGE_GENTLE_MS : NUDGE_MS) && silentFor < OPTIONS_MS) {
         setNudge(tone === "gentle" ? "Take your time. One plain sentence is enough." : "Take your time. One sentence is a fine start.");
-      } else if (noWordsYet && silentFor >= 19000) {
+      } else if (noWordsYet && silentFor >= OPTIONS_MS) {
         setNudge(
           onSkipQuestion
             ? "You can use the starter phrase, switch to typing, or skip this one."

@@ -51,10 +51,16 @@ export default function TriageView({ diagnosticSummary, diagnosticResults, intak
 
   useEffect(() => {
     try {
+      // Only a USER-CORRECTED order is restored across revisits. A non-overridden
+      // saved order is just a cache of a deterministic compute — restoring it
+      // would shadow a fresh diagnostic read (e.g. the user went Back, re-answered
+      // a question under the same interview meta, and returned). Recompute in that
+      // case; preserve only what the user deliberately changed. ("We interpret;
+      // you correct" — the correction is what persists, not our first read.)
       const saved = JSON.parse(localStorage.getItem(storageKey) || "null");
-      if (Array.isArray(saved?.priority) && saved.priority.length) {
+      if (saved?.userOverride && Array.isArray(saved.priority) && saved.priority.length) {
         setPriority(saved.priority);
-        setOverrode(Boolean(saved.userOverride));
+        setOverrode(true);
         return;
       }
     } catch {}

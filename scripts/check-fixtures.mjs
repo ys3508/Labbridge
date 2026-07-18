@@ -74,4 +74,15 @@ else fail("assist prompt lost the dig spark stance or the one hard line");
 if (!/SENTENCES must come from THEM/i.test(assistPrompt) && !/must trace to something they actually/i.test(assistPrompt)) ok("assist prompt dropped the superseded 'sentences must trace' ban");
 else fail("assist prompt still carries the superseded 'sentences must trace' ban");
 
+// ADR-0005 (freeze on mic). Two zero-API locks so a CLOSED gate cannot re-open
+// into prose: 10s is a NAMED constant (§5 — "the number most likely to be
+// wrong"), and the freeze lifeline — the ADR's own named reference test case for
+// tone-dial coverage of static strings — keeps BOTH a gentle and a neutral
+// register. If a freeze-path string ever loses its dial coverage, this fails.
+const voiceSrc = fs.readFileSync("components/VoiceInput.js", "utf8");
+if (/FREEZE_MS\s*=\s*10000/.test(voiceSrc)) ok("freeze threshold is a named 10s constant (ADR-0005 §5)");
+else fail("freeze threshold is not a named 10s constant (ADR-0005 §5)");
+if (/No rush/.test(voiceSrc) && /Pick the thread back up/.test(voiceSrc)) ok("freeze lifeline keeps both gentle and neutral registers (ADR-0005 dial coverage)");
+else fail("freeze lifeline lost a tone register (ADR-0005 dial coverage)");
+
 process.exit(failures ? 1 : 0);
