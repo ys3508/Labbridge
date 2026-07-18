@@ -1,6 +1,9 @@
 # 2026-07-18 · CC update — drill build (honesty half) + merge backlog cleared
 
-**Author:** Claude Code (CC) · **Branch:** `claude/voice-freeze-honesty` (pushed) · **Base:** `main` @ `c0fac5b`
+**Author:** Claude Code (CC) · **Branch:** `claude/voice-freeze-honesty` · **`main` = branch = `28a21c0`** (all in sync, pushed)
+
+> Updated later in the session: the branch was merged to `main`, and the stale
+> `codex/voice-input-honesty` branch was deleted after salvaging its Q2 gate. See §4–5.
 
 ---
 
@@ -18,17 +21,24 @@
 ### 3. Closed the drill spec
 - Folded **every Jul-18 ruling** into `revise/2026-07-17-drill-grammar-spec.md` (new "Jul-18 addendum") with reasoning + BUILT/REMAINING/GATED status. It's now a zero-open-fork handoff. Updated `TASKS.md` and `JOURNEY.md` to match.
 
-**Commits (on `claude/voice-freeze-honesty`, all pushed):** `6833e76` voice honesty · `eef53cc` drill spec · `08f98b1` merge main (drill base) · `2f9897a` fork6 + axis · `886fe43` dig honesty · `cca0d8e` close spec.
+**Commits (on `claude/voice-freeze-honesty`, all pushed):** `6833e76` voice honesty · `eef53cc` drill spec · `08f98b1` merge main (drill base) · `2f9897a` fork6 + axis · `886fe43` dig honesty · `cca0d8e` close spec · `cbf4f1b` this handoff.
+
+### 4. Landed the branch on `main`
+- Fast-forwarded `claude/voice-freeze-honesty` into `main` and pushed. This finished the merge order: the whole Jul-17/18 arc that had been stranded on the branch — diagnostic hardening, Triage (`TriageView.js` + `lib/triage.js`), the voice recorder + freeze honesty (`VoiceInput.js`), the `decisions/` ADR ledger, and today's drill work — is now on `origin/main`. `main` and the branch both sit at `28a21c0`; the speak-runner now builds on `main`, not branch-on-branch.
+
+### 5. Deleted the stale `codex/voice-input-honesty` branch (with a salvage)
+- Claude chat flagged it as absorbed. **Mostly true:** its voice-honesty *code* (typed-pacing, freeze) was superseded by CC's recorder-aware version now on `main` — Codex built it typed-only "because there's no recorder on main," and landing both would collide. **But not fully:** its spec also carried the **Q2-relevance live gate** — a still-open validation protocol not captured anywhere on `main`. Salvaged it to `revise/q2-relevance-gate-spec.md` (referenced from TASKS.md), then deleted the branch **local + remote**. Old tip `8e772c4` recorded in the salvage commit for recovery. Nothing lost.
 
 ---
 
 ## Notes for attention
 
 ### For Sissi (decisions)
-1. **One open decision:** merge `claude/voice-freeze-honesty` into `main` now, or hold it as a feature branch / PR while the speak-runner is built on top? The branch is in a shippable state — everything committed is complete and verified; the speak-runner simply hasn't started. I pushed the branch but did **not** touch shared `main` beyond the map.
-2. **`codex/voice-input-honesty` is now redundant.** This branch's voice-honesty work supersedes it (its own spec says so: "on merge, this one governs"). Your merge order named it as a separate step 2 — it's already absorbed here. Safe to ignore/delete that branch.
+1. ~~**One open decision:** merge the branch into `main`.~~ **DONE** — merged; `main` = `28a21c0`, pushed. Speak-runner builds on `main` now.
+2. ~~**`codex/voice-input-honesty` is redundant.**~~ **DONE** — deleted (local + remote) after salvaging its Q2-gate protocol to `revise/q2-relevance-gate-spec.md`. Its code was superseded by CC's recorder-aware version; nothing lost. Recovery tip: `8e772c4`.
 3. **`ammunition` is not a live data field.** It was folded into the challenge/diagnostic; only comments reference it. So "add resume/ammunition/diagnostic answers to dig context" wired resume + diagnostic answers (real, persisted) but not ammunition (no source). Flag if you expected a standalone ammunition field.
-4. Minor: the map commit `c0fac5b` is authored under `ryan0000731@gmail.com`, not your usual email — attribution only, nothing broken.
+4. **The Q2-relevance live gate is still yours to run** (~5 intake calls) — protocol now on `main` at `revise/q2-relevance-gate-spec.md`. The diagnostic isn't "shipped" until it passes.
+5. Minor: the map commit `c0fac5b` is authored under `ryan0000731@gmail.com`, not your usual email — attribution only, nothing broken.
 
 ### For Codex (build)
 1. **The cost probe is the gate.** Measure the **full loop** — two takes + push + grade + one condense-tap — itemized, with real token counts. The 3–5¢ single-take number isn't the unit. With **STT = browser Web Speech (decided)**, transcription is ~free, so the probe sizes push + feedback only. Meter-vs-bundle UI waits on this number. **Do not start Session B until it lands.**
@@ -59,7 +69,8 @@
 - [ ] **Cost probe** (Codex) — the full-loop measurement above. Meter-vs-bundle UI decision follows.
 
 ### Housekeeping / decisions
-- [ ] Sissi: decide merge of `claude/voice-freeze-honesty` → `main` (or PR).
-- [ ] Sissi: delete/ignore the now-superseded `codex/voice-input-honesty` branch.
+- [x] Sissi: merge `claude/voice-freeze-honesty` → `main`. **Done** (`28a21c0`).
+- [x] Sissi: delete the superseded `codex/voice-input-honesty` branch. **Done** (Q2 gate salvaged first).
+- [ ] Sissi: run the **Q2-relevance live gate** (`revise/q2-relevance-gate-spec.md`, ~5 intake calls) before calling the diagnostic shipped.
 - [ ] Claude chat: decide whether to annotate/close **G6** in `OPEN.md` given v1's fixed push.
-- [ ] Carry-over (pre-existing, not drill): interview baseline **deletion path** (ADR-0006 debt); Q2-relevance live gate before calling the diagnostic fully shipped.
+- [ ] Carry-over (pre-existing, not drill): interview baseline **deletion path** (ADR-0006 debt).
