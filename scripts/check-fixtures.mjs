@@ -23,6 +23,14 @@ import {
   getGrading,
   tierOf,
 } from "../lib/storybank.js";
+import {
+  addNote,
+  assertDrillNotesDeleteCoverage,
+  createDrillNotesStore,
+  deleteNote,
+  deletePlanNotes,
+  getNotes,
+} from "../lib/drillNotes.js";
 
 let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
@@ -118,6 +126,8 @@ else fail("speak panel lost the one-push-per-take guard");
 const mockSrc = fs.readFileSync("lib/mockResponses.js", "utf8");
 if (/\/api\/push/.test(mockSrc)) ok("demo mode mocks /api/push (no paid-call leak)");
 else fail("demo mode does not mock /api/push — paid-call leak");
+if (/\/api\/condense/.test(mockSrc)) ok("demo mode mocks /api/condense (no paid-call leak)");
+else fail("demo mode does not mock /api/condense — paid-call leak");
 if (/speakSignal\?\.turns\?\.length \? \{ turns: speakSignal\.turns \}/.test(planViewSrc)) ok("Score beat ships the exchange turns to the coach");
 else fail("Score beat does not ship exchange turns");
 
@@ -137,6 +147,54 @@ if (/Nothing to build from yet — answer the hint first\./.test(planViewSrc) &&
 else fail("dig strip lost the empty guard or the Say-this-in-English tap");
 if (/buildDigNotesContext/.test(planViewSrc)) ok("dig strip and assistant share one cross-question notes formatter");
 else fail("cross-question notes formatter missing");
+
+// Tap-to-notes (drill Phase 5). Zero-API locks: the notes store is plan-scoped
+// and delete-covered; the condense route has the free empty guard before the
+// model path, keeps the never-invent rule, and degrades to an empty note set.
+const notesStore = createDrillNotesStore();
+const firstNote = addNote(
+  { planKey: "plan-alpha", taskIndex: 1, text: "I defined the cohort with E11 diagnosis codes and enrollment dates.", source: "condense" },
+  { store: notesStore, timestamp: "2026-07-18T01:00:00.000Z" }
+);
+addNote(
+  { planKey: "plan-alpha", taskIndex: 2, text: "I would explain limitations before showing counts.", source: "condense" },
+  { store: notesStore, timestamp: "2026-07-18T01:01:00.000Z" }
+);
+addNote(
+  { planKey: "plan-beta", taskIndex: 1, text: "This belongs to a different plan.", source: "condense" },
+  { store: notesStore, timestamp: "2026-07-18T01:02:00.000Z" }
+);
+if (getNotes("plan-alpha", {}, { store: notesStore }).length === 2 && getNotes("plan-alpha", { taskIndex: 1 }, { store: notesStore })[0]?.id === firstNote.id) ok("drillNotes round-trips plan-scoped notes in order");
+else fail("drillNotes did not round-trip plan-scoped notes");
+deleteNote("plan-alpha", firstNote.id, { store: notesStore });
+if (getNotes("plan-alpha", {}, { store: notesStore }).length === 1) ok("drillNotes deletes one note by id");
+else fail("drillNotes did not delete one note by id");
+deletePlanNotes("plan-alpha", { store: notesStore });
+if (!getNotes("plan-alpha", {}, { store: notesStore }).length && getNotes("plan-beta", {}, { store: notesStore }).length === 1) ok("drillNotes deletePlanNotes cascades only the target plan");
+else fail("drillNotes deletePlanNotes did not stay plan-scoped");
+if (assertDrillNotesDeleteCoverage().ok) ok("drillNotes writers all declare deleters (ADR-0006 debt #4)");
+else fail("drillNotes writer/deleter coverage is incomplete");
+const condenseRoute = fs.readFileSync("app/api/condense/route.js", "utf8");
+if (/if \(!text\) return Response\.json\(\{ error: "Nothing to condense\." \}, \{ status: 400 \}\)/.test(condenseRoute) && condenseRoute.indexOf("if (!text)") < condenseRoute.indexOf("client.messages.create")) ok("condense route has a free empty-text 400 guard before the model call");
+else fail("condense route lost the free empty-text guard");
+if (/NEVER invent a bullet/.test(condenseRoute) && /return \[\]/.test(condenseRoute)) ok("condense prompt keeps the never-invent/empty-substance rule");
+else fail("condense prompt lost the never-invent rule");
+if (/bullets: \[\], degraded: true/.test(condenseRoute)) ok("condense route degrades to empty bullets instead of fabricated notes");
+else fail("condense route lost its honest degraded fallback");
+
+// Cheatsheet and cost note (drill Phases 7-8). The cheatsheet is pure assembly:
+// it renders only passed notes/claims and exports Markdown; the cost note is a
+// static bundle disclosure, not a running meter.
+const cheatsheetSrc = fs.readFileSync("components/Cheatsheet.js", "utf8");
+if (!/fetch\s*\(/.test(cheatsheetSrc) && !/mockResponses/.test(cheatsheetSrc)) ok("Cheatsheet is pure render: no fetch and no mockResponses dependency");
+else fail("Cheatsheet is not pure render");
+if (/Nothing banked here yet\./.test(cheatsheetSrc) && /data:text\/markdown/.test(cheatsheetSrc)) ok("Cheatsheet has honest empty sections and Markdown export");
+else fail("Cheatsheet lost its empty-state or Markdown export");
+const costNoteSrc = fs.readFileSync("components/DrillCostNote.js", "utf8");
+if (/about a cent/.test(costNoteSrc) && /not metered per take/.test(costNoteSrc)) ok("DrillCostNote discloses the bundle-cost posture");
+else fail("DrillCostNote lost the bundle-cost disclosure");
+if (!/running total/i.test(costNoteSrc) && !/per-drill/i.test(costNoteSrc) && !/current cost/i.test(costNoteSrc)) ok("DrillCostNote has no per-drill running total");
+else fail("DrillCostNote introduced a per-drill running total");
 
 // Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
 // dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and

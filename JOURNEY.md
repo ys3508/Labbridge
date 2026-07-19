@@ -495,6 +495,9 @@ make-it-yours line), lint clean, 52 zero-API checks green, zero console errors. 
 tap-to-notes wiring (5), banking gate (6), cheatsheet (7) — Codex's seams for 5/7 landed
 on codex/drill-notes-cheatsheet awaiting CC review.
 
+**Codex slice: tap-to-notes data, cheatsheet, and bundle cost note.**
+Codex built the pieces around CC's speak-runner lane without wiring them into `PlanView`: a new store-injectable `lib/drillNotes.js` for plan-scoped notes (`addNote`, `getNotes`, `deleteNote`, `deletePlanNotes`) with ADR-0006 writer/deleter coverage; a guarded `/api/condense` route that 400s empty text before any model call, asks Haiku for 1-3 own-content bullets, and degrades to `{ bullets: [], degraded: true }` rather than fabricating a note; a demo-mode `/api/condense` mock to pre-close the paid-call leak class; a pure `Cheatsheet` component that renders only passed notes/claims with Markdown export and an honest empty state; and a static `DrillCostNote` carrying the cost-probe decision (about a cent per full loop, bundled practice, no live meter). Zero paid calls this session; the locks cover notes round-trip/delete cascade, condense guard/never-invent/degraded fallback, demo mock presence, cheatsheet purity, and no cost running total. CC still owns the tap UI, storybank join, and PlanView wiring.
+
 ---
 
 ## Where it stands
