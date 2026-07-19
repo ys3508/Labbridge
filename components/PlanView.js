@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Note } from "./ui";
-import VoiceInput from "./VoiceInput";
+import VoiceInput, { formatDeliveryMetrics } from "./VoiceInput";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 import { looksLikeUrl } from "@/lib/stubs";
 
@@ -2638,6 +2638,7 @@ function buildMoments({
           concept={concept}
           moduleIndex={moduleIndex}
           onDiscuss={onDiscuss}
+          speakSignal={speakSignal}
         />
       </div>
     ),
@@ -3276,7 +3277,7 @@ function FreeTextCheck({ comprehension, task, step, moduleIndex, purpose }) {
 // against the task's own criteria + red flags. Button-triggered only (never
 // auto-fires — each review is a real, if tiny, API spend); the last review is
 // kept per task so a refresh doesn't re-bill.
-function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, concept, moduleIndex, onDiscuss }) {
+function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, concept, moduleIndex, onDiscuss, speakSignal }) {
   const storeKey = `lb_review_${moduleIndex}`;
   const [result, setResult] = useState(() => {
     try {
@@ -3310,7 +3311,17 @@ function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, con
             ...redFlags,
             ...((concept?.traps?.length ? concept.traps : [concept?.misconceptionToAvoid]).filter(Boolean)),
           ],
-          context: step.context || "",
+          // Drill (Phase 2): the speak loop's delivery signal rides the same
+          // context channel the diagnostic uses — mode-scoped and delivery-only,
+          // so a typed answer is never critiqued for a speed nobody measured.
+          context: [
+            step.context || "",
+            purpose === "interview" && speakSignal?.metrics
+              ? `REHEARSAL DELIVERY METRICS (use only for delivery judgments; judge substance from the transcript alone. If input=typed, pacing was never measured — never critique a speed you did not observe):\n${formatDeliveryMetrics(speakSignal.metrics, speakSignal.takes || [])}`
+              : "",
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
           purpose: purpose || "starting_role",
           tone: (() => {
             try {

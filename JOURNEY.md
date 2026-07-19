@@ -430,6 +430,26 @@ purposes verified untouched: starting-role still gets the typed box + template b
 voice toggle. Fork 6 re-verified live (Question → Rapid fire, no Answer/Hear-it beats). Lint
 clean, 36 zero-API checks green, zero console errors across both personas.
 
+**Speak-runner Phase 2: the coach learns to grade an exchange, not just a draft.**
+`/api/coach` graded one static string; the drill needs it to grade take → push → re-speak.
+The change is strictly additive: an optional `turns` payload renders as a REHEARSAL EXCHANGE
+block (answers labeled before/after the push) with two new system rules — judge the WHOLE
+exchange (criteria may draw evidence from any answer), and the post-push answer carries the
+**survival read**: SURVIVED (held the claim with reasons, or adjusted honestly and said what
+changed their mind) vs FOLDED (retracted without new information), where a fold is a composure
+signal that lowers substance only if the retraction contradicts the speaker's own evidence.
+When `turns` is absent, the single-draft contract is byte-intact — the diagnostic and typed-
+draft callers send the same payload and get the same prompt, locked zero-API. The Phase-1
+delivery signal also found its consumer: the Score beat now sends REHEARSAL DELIVERY METRICS
+through the same context channel the diagnostic uses, mode-scoped ("if input=typed, pacing was
+never measured — never critique a speed you did not observe") and delivery-only per axis
+separation. Verified: empty body still 400s free; one paid Haiku call (~1-2¢) drove the
+exchange branch live — the review judged both answers, called the push survived "with honest
+adjustment... adds nuance rather than folding," and kept verdicts on-axis. Lint clean, 41
+zero-API checks green (5 new locks: turns payload, single-draft contract, exchange/survival
+rule, metrics delivery-only, Score-beat channel). Phase 3 wires the push UI that produces
+real turns.
+
 ---
 
 ## Where it stands

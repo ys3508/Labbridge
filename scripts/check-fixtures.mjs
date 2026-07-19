@@ -84,6 +84,23 @@ const coachPrompt = fs.readFileSync("app/api/coach/route.js", "utf8");
 if (/AXIS SEPARATION/.test(coachPrompt) && /never lower the SUBSTANCE/i.test(coachPrompt)) ok("coach prompt keeps the spoken-answer axis-separation rule");
 else fail("coach prompt lost the axis-separation rule");
 
+// Multi-turn coach (drill Phase 2). Locks: the route parses an optional `turns`
+// payload and renders the rehearsal exchange; the single-draft contract stays
+// byte-intact for existing callers (diagnostic, typed drafts); the exchange rule
+// judges the whole exchange with the survival read on the post-push answer; and
+// the drill's delivery metrics stay delivery-only (axis separation's channel).
+if (/body\?\.turns/.test(coachPrompt) && /THE REHEARSAL EXCHANGE/.test(coachPrompt)) ok("coach route accepts the multi-turn rehearsal payload");
+else fail("coach route lost the multi-turn rehearsal payload");
+if (/THE DRAFT:/.test(coachPrompt) && /Nothing to review — the draft is empty\./.test(coachPrompt)) ok("coach route keeps the single-draft contract for existing callers");
+else fail("coach route broke the single-draft contract");
+if (/REHEARSAL EXCHANGE: when the input contains one/.test(coachPrompt) && /SURVIVED the push/.test(coachPrompt) && /FOLDED/.test(coachPrompt)) ok("coach prompt judges the whole exchange with the survival read");
+else fail("coach prompt lost the exchange/survival rule");
+if (/REHEARSAL DELIVERY METRICS/.test(coachPrompt) && /ONLY for delivery judgments/.test(coachPrompt)) ok("coach prompt keeps rehearsal metrics delivery-only");
+else fail("coach prompt lost the rehearsal-metrics delivery-only rule");
+const planViewSrc = fs.readFileSync("components/PlanView.js", "utf8");
+if (/REHEARSAL DELIVERY METRICS/.test(planViewSrc) && /never critique a speed you did not observe/.test(planViewSrc)) ok("drill Score beat sends delivery metrics mode-scoped");
+else fail("drill Score beat lost the mode-scoped delivery-metrics channel");
+
 // Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
 // dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and
 // keeps the one hard line (never assert an unclaimed fact as the user's history),

@@ -29,6 +29,8 @@ Rules:
 - If the task is INTERVIEW REHEARSAL (the deliverable is an answer to an interviewer's question), judge it as the interviewer would: would this answer land in the room? Note where they'd push back, and whether it survives the push.
 - If the task is an INTERVIEW DIAGNOSTIC and includes DIAGNOSTIC DELIVERY METRICS in context, use those metrics ONLY for the delivery criterion. Judge substance from the confirmed transcript alone.
 - SPOKEN-ANSWER AXIS SEPARATION (critical for second-language and nervous speakers): grammar, accent, word choice, fluency, disfluency, filler, and pace are DELIVERY signals ONLY — they may never lower the SUBSTANCE verdict. Judge substance as if the transcript were first cleaned into fluent English: does the reasoning hold, is the evidence there, does the structure answer what was asked? Someone who knows the answer but says it in halting or ungrammatical English is strong-substance / weak-delivery — NOT weak-substance. Grading a language limitation as a knowledge gap tells a person they don't know something they know; that is the one error this must never make.
+- REHEARSAL EXCHANGE: when the input contains one (an answer, an interviewer's push, and the answer after the push), judge the WHOLE exchange, not only the last message — criteria verdicts may draw evidence from any answer in it. The answer after the push carries the survival read: say in overall whether the answer SURVIVED the push (held its claim with reasons, or adjusted honestly and said what changed their mind) or FOLDED (retracted or hedged away without new information). A fold is a composure signal; it lowers a substance verdict only when the retraction contradicts evidence the speaker themselves gave. Axis separation applies to every answer in the exchange.
+- REHEARSAL DELIVERY METRICS in context: use them ONLY for delivery judgments — judge substance from the transcripts alone. If input=typed, pacing was never measured: never critique a speed you did not observe.
 - If the draft is only a template or placeholder bullets with nothing filled in, say exactly that in overall, mark criteria accordingly, and make nextEdits about doing the work — never pretend effort you don't see.`;
 
 const S = { type: "string" };
@@ -64,6 +66,14 @@ export async function POST(request) {
   }
 
   const draft = (body?.draft || "").toString().trim();
+  // Multi-turn rehearsal exchange (drill Phase 2): take → push → re-speak.
+  // Optional and additive — when absent, the single-draft contract below is
+  // untouched (the diagnostic and typed-draft callers send no `turns`).
+  const turns = (Array.isArray(body?.turns) ? body.turns : [])
+    .filter((t) => t && typeof t.text === "string" && t.text.trim())
+    .map((t) => ({ role: t.role === "push" ? "push" : "answer", text: t.text.toString().slice(0, 8000) }))
+    .slice(0, 6);
+  const hasExchange = turns.some((t) => t.role === "answer");
   const criteria = Array.isArray(body?.criteria) ? body.criteria.filter(Boolean).map(String) : [];
   const redFlags = Array.isArray(body?.redFlags) ? body.redFlags.filter(Boolean).map(String) : [];
   const steps = Array.isArray(body?.steps) ? body.steps.filter(Boolean).map(String) : [];
@@ -76,7 +86,7 @@ export async function POST(request) {
   const purpose = (body?.purpose || "starting_role").toString();
   const tone = (body?.tone || "").toString();
 
-  if (!draft) return Response.json({ error: "Nothing to review — the draft is empty." }, { status: 400 });
+  if (!draft && !hasExchange) return Response.json({ error: "Nothing to review — the draft is empty." }, { status: 400 });
   if (!process.env.ANTHROPIC_API_KEY) return Response.json({ error: "No API key." }, { status: 500 });
 
   const parts = [
@@ -94,7 +104,20 @@ export async function POST(request) {
     canon && `World canon (the plan's fixed facts — a draft contradicting these is wrong):\n${canon.slice(0, 1200)}`,
     materials &&
       `THE PRACTICE MATERIALS the draft was written against (use these to verify empirical claims — counts, dates, spans, codes; a claim the materials contradict is wrong):\n${materials.slice(0, 4000)}`,
-    `THE DRAFT:\n"""\n${draft.slice(0, 8000)}\n"""`,
+    hasExchange
+      ? `THE REHEARSAL EXCHANGE (judge the whole exchange; the answer after the push carries the survival read):\n${(() => {
+          let pushed = false;
+          return turns
+            .map((t) => {
+              if (t.role === "push") {
+                pushed = true;
+                return `INTERVIEWER PUSH: """\n${t.text}\n"""`;
+              }
+              return `${pushed ? "ANSWER (after the push)" : "ANSWER"}: """\n${t.text}\n"""`;
+            })
+            .join("\n\n");
+        })()}`
+      : `THE DRAFT:\n"""\n${draft.slice(0, 8000)}\n"""`,
   ].filter(Boolean);
 
   try {
