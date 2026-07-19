@@ -498,6 +498,33 @@ on codex/drill-notes-cheatsheet awaiting CC review.
 **Codex slice: tap-to-notes data, cheatsheet, and bundle cost note.**
 Codex built the pieces around CC's speak-runner lane without wiring them into `PlanView`: a new store-injectable `lib/drillNotes.js` for plan-scoped notes (`addNote`, `getNotes`, `deleteNote`, `deletePlanNotes`) with ADR-0006 writer/deleter coverage; a guarded `/api/condense` route that 400s empty text before any model call, asks Haiku for 1-3 own-content bullets, and degrades to `{ bullets: [], degraded: true }` rather than fabricating a note; a demo-mode `/api/condense` mock to pre-close the paid-call leak class; a pure `Cheatsheet` component that renders only passed notes/claims with Markdown export and an honest empty state; and a static `DrillCostNote` carrying the cost-probe decision (about a cent per full loop, bundled practice, no live meter). Zero paid calls this session; the locks cover notes round-trip/delete cascade, condense guard/never-invent/degraded fallback, demo mock presence, cheatsheet purity, and no cost running total. CC still owns the tap UI, storybank join, and PlanView wiring.
 
+**Speak-runner phases 5-8: the loop closes — keep, bank, cheatsheet, and the honest cent.**
+CC reviewed Codex's seams (merge `215b61f` — condense's free 400 + never-invent + degraded-to-
+empty verdict all held; the Cheatsheet is genuinely pure, no fetch, honest empty states; one
+improvement noted: a missing API key degrades condense to empty bullets instead of a 500, so the
+keyless demo deploy stays honest) and wired everything into the drill. **Tap-to-notes (5):**
+"Keep as notes" condenses the answer + push response into 1-3 bullets the user KEEPS — discrete,
+individually deletable (every writer a deleter), listed in the dig strip as "Kept for the
+cheatsheet," and folded into cross-question retrieval so material kept on Q1 surfaces when
+digging Q4. An empty condense says "Nothing to condense yet — say more first," never a
+fabricated note. **Banking gate (6, ruling A):** bank on EXISTENCE — a full take + a push
+response + the explicit tap; the button stays disabled until all three are real, and interview
+done-marking now keys on BANKED, not draft existence (auto-done on a draft would be doneAsIf).
+The tap is the storybank confirmation: banking writes a said-aloud (tier 3) plan-stamped event
+with the coach's review attached as grading (S2/S3 joined), plus a survived-pushback (tier 4)
+event ONLY when the coach's own verdict says the push was survived — the badge is
+verdict-backed, never existence-backed, and the demo run proved the negative case (banked, no
+badge, because the canned review carries no survival read). The spark-stance obligation lands
+where it was owed: the make-it-yours line is visible once, at banking time. **Cheatsheet (7):**
+mounted on the interview workspace home under the map — pure assembly of kept bullets per
+question, honest "Nothing banked here yet" for the other four, Markdown export; claims join
+when the storybank UI lands (they carry no question index yet — noted in review). **Cost note
+(8):** the probe's verdict on the drill surface — about a cent a loop, bundled, never metered
+per take. Verified in demo end-to-end at zero cost: keep → 1 note in the drill store; bank →
+1 claim + 1 event + 1 grading in the storybank; complete → "1 of 5 answers banked" moved by
+the gate; 8 new wiring locks; 71 zero-API checks green; lint clean; no console errors. What
+remains of the build is exactly one thing: Phase 0, the trust-copy wire — gated on Sissi.
+
 ---
 
 ## Where it stands

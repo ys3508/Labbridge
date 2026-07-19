@@ -196,6 +196,27 @@ else fail("DrillCostNote lost the bundle-cost disclosure");
 if (!/running total/i.test(costNoteSrc) && !/per-drill/i.test(costNoteSrc) && !/current cost/i.test(costNoteSrc)) ok("DrillCostNote has no per-drill running total");
 else fail("DrillCostNote introduced a per-drill running total");
 
+// Phases 5-8 WIRING (CC integration of the reviewed Codex seams). Locks: the
+// keep-tap has an honest empty result; the banking gate is ruling A verbatim
+// (take + push response + explicit tap) and interview done-marking keys on
+// banked, not draft existence; the badge renders only on the coach's own
+// survival verdict; the make-it-yours recommendation is visible at banking time
+// (spark-stance obligation); and the cheatsheet + cost note are actually mounted.
+if (/Keep as notes/.test(planViewSrc) && /Nothing to condense yet — say more first\./.test(planViewSrc)) ok("keep-tap wired with an honest empty-condense result");
+else fail("keep-tap missing or lost its honest empty result");
+if (/\(draft \|\| ""\)\.trim\(\) && \(exchange\?\.pushText \|\| ""\) && \(exchange\?\.pushResponse \|\| ""\)\.trim\(\)/.test(planViewSrc)) ok("banking gate is ruling A: full take + push response + explicit tap");
+else fail("banking gate lost the ruling-A condition");
+if (/purpose === "interview" \? banked\[i\] : \(drafts\[i\] \|\| ""\)\.trim\(\)/.test(planViewSrc)) ok("interview done-marking keys on banked, not draft existence");
+else fail("interview done-marking is not gated on banked");
+if (/taskBanked\.survived &&/.test(planViewSrc) && /\/surviv\/i\.test\(review\.overall/.test(planViewSrc)) ok("the survived badge is verdict-backed, never existence-backed");
+else fail("the survived badge is not verdict-backed");
+if (/make it yours before the room hears it/.test(planViewSrc)) ok("make-it-yours recommendation visible at banking time (spark stance)");
+else fail("make-it-yours recommendation missing at banking time");
+if (/<Cheatsheet/.test(planViewSrc) && /<DrillCostNote/.test(planViewSrc)) ok("cheatsheet and cost note are mounted in the workspace");
+else fail("cheatsheet or cost note not mounted");
+if (/bankClaim\(\{/.test(planViewSrc) && /SOURCES\.SAID_ALOUD/.test(planViewSrc) && /SOURCES\.SURVIVED_PUSHBACK/.test(planViewSrc)) ok("banking writes storybank events (said-aloud; survived only with the verdict)");
+else fail("banking does not write storybank events");
+
 // Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
 // dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and
 // keeps the one hard line (never assert an unclaimed fact as the user's history),

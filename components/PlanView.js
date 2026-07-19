@@ -3,8 +3,12 @@
 import { useEffect, useRef, useState } from "react";
 import { Note } from "./ui";
 import VoiceInput, { formatDeliveryMetrics } from "./VoiceInput";
+import Cheatsheet from "./Cheatsheet";
+import DrillCostNote from "./DrillCostNote";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 import { looksLikeUrl } from "@/lib/stubs";
+import { addNote, getNotes, deleteNote } from "@/lib/drillNotes";
+import { bankClaim, SOURCES, TIERS } from "@/lib/storybank";
 
 const post = (url, body) =>
   fetch(url, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) })
@@ -31,11 +35,18 @@ export default function PlanView({ form, isBeginner, onBack }) {
   // Toolbox notes: thinking space, separate from the Draft (the deliverable).
   const [notes, setNotes] = useState({});
   const [openTool, setOpenTool] = useState(null);
+  // Banking gate (drill ruling A): bank on EXISTENCE — a full take + a push
+  // response + an explicit tap. Weak-but-honest work banks; the badge (quality)
+  // is earned separately, verdict-backed. Interview done-marking keys on this,
+  // not on mere draft existence.
+  const [banked, setBanked] = useState({});
   useEffect(() => {
     if (!plan?.learningSequence) return;
     try {
       const raw = localStorage.getItem(scopedPlanKey("lb_notes", plan.learningSequence));
       if (raw) setNotes(JSON.parse(raw));
+      const rawBanked = localStorage.getItem(scopedPlanKey("lb_banked", plan.learningSequence));
+      if (rawBanked) setBanked(JSON.parse(rawBanked));
     } catch {}
   }, [plan]);
   const setTaskNotes = (i, text) =>
@@ -43,6 +54,14 @@ export default function PlanView({ form, isBeginner, onBack }) {
       const next = { ...prev, [i]: text };
       try {
         localStorage.setItem(scopedPlanKey("lb_notes", plan.learningSequence), JSON.stringify(next));
+      } catch {}
+      return next;
+    });
+  const setTaskBanked = (i, info) =>
+    setBanked((prev) => {
+      const next = { ...prev, [i]: info };
+      try {
+        localStorage.setItem(scopedPlanKey("lb_banked", plan.learningSequence), JSON.stringify(next));
       } catch {}
       return next;
     });
@@ -608,7 +627,10 @@ export default function PlanView({ form, isBeginner, onBack }) {
     setWelcomeBack(null);
     // Earned-state only: moving on is always allowed, but the done-ledger (sidebar
     // ✓, briefing gap chips) records a task only when its draft actually exists.
-    if ((drafts[i] || "").trim()) markDone(i);
+    // Interview (drill ruling A): "done" = BANKED — a full take + a push response
+    // + the explicit tap — not mere draft existence. Auto-done on a draft would
+    // be doneAsIf; the gate requires the work to be real, not good.
+    if (purpose === "interview" ? banked[i] : (drafts[i] || "").trim()) markDone(i);
     if (i < modules.length - 1) {
       setActiveIndex(i + 1);
       setTaskMoment(i + 1, 0);
@@ -790,6 +812,19 @@ export default function PlanView({ form, isBeginner, onBack }) {
               onToggleTrim={toggleTrim}
             />
           )}
+          {purpose === "interview" && !focused && (
+            // Notes → cheatsheet (drill Phase 7): pure assembly of the kept
+            // bullets, per question. Nothing rendered the user didn't produce or
+            // keep; empty sections say so honestly. Claims join when the
+            // storybank UI lands (they don't carry a question index yet).
+            <div className="mt-4 rounded-xl border border-slate-200 bg-white/80 p-4">
+              <Cheatsheet
+                questions={modules.map((m) => m.task?.title || m.topic)}
+                notes={plan?.learningSequence ? getNotes(scopedPlanKey("lb_drill", plan.learningSequence)) : []}
+                claims={[]}
+              />
+            </div>
+          )}
         </>
           )}
         </header>
@@ -869,6 +904,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
                   prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
                   notes={notes}
                   onNotes={setTaskNotes}
+                  taskBanked={banked[activeIndex] || null}
+                  onBank={(info) => setTaskBanked(activeIndex, info)}
                 />
               )
             )}
@@ -1820,6 +1857,8 @@ function Module({
   onDiscuss,
   notes,
   onNotes,
+  taskBanked,
+  onBank,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1890,6 +1929,8 @@ function Module({
         onDiscuss={onDiscuss}
         notes={notes}
         onNotes={onNotes}
+        taskBanked={taskBanked}
+        onBank={onBank}
       />
     </section>
   );
@@ -1987,6 +2028,8 @@ function MomentFlow({
   onDiscuss,
   notes,
   onNotes,
+  taskBanked,
+  onBank,
 }) {
   const [choice, setChoice] = useState(null);
   // Drill speak loop: the latest confirmed take's delivery signal ({metrics,
@@ -2035,6 +2078,8 @@ function MomentFlow({
     setExchange,
     notes,
     onNotes,
+    taskBanked,
+    onBank,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -2168,6 +2213,8 @@ function buildMoments({
   setExchange,
   notes,
   onNotes,
+  taskBanked,
+  onBank,
 }) {
   const beatId = beatIdentity(purpose);
   const isCurious = purpose === "curious";
@@ -2572,6 +2619,7 @@ function buildMoments({
           // the panel (VoiceInput), so no one is locked out.
           <SpeakPanel
             step={step}
+            plan={plan}
             moduleIndex={moduleIndex}
             draft={draft}
             onDraftChange={onDraftChange}
@@ -2581,6 +2629,8 @@ function buildMoments({
             setExchange={setExchange}
             notes={notes}
             onNotes={onNotes}
+            taskBanked={taskBanked}
+            onBank={onBank}
           />
         ) : (
           <>
@@ -2814,10 +2864,27 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
 // notes from questions 1..N-1 — the system knows what's reusable; the user
 // can't judge that at note-time. One formatter, used by the dig strip's tap and
 // the assistant's context alike.
-function buildDigNotesContext(notes = {}, moduleIndex = 0) {
-  return Object.entries(notes)
-    .filter(([i, text]) => Number(i) <= moduleIndex && (text || "").trim())
-    .map(([i, text]) => `Q${Number(i) + 1}${Number(i) === moduleIndex ? " (this question)" : ""} notes:\n${String(text).trim().slice(0, 800)}`)
+function buildDigNotesContext(notes = {}, moduleIndex = 0, kept = []) {
+  const keptByTask = {};
+  for (const n of kept) {
+    if (Number(n?.taskIndex) <= moduleIndex && (n?.text || "").trim()) {
+      keptByTask[n.taskIndex] = [...(keptByTask[n.taskIndex] || []), n.text.trim()];
+    }
+  }
+  const indices = [...new Set([
+    ...Object.keys(notes).map(Number),
+    ...Object.keys(keptByTask).map(Number),
+  ])]
+    .filter((i) => i <= moduleIndex)
+    .sort((a, b) => a - b);
+  return indices
+    .map((i) => {
+      const blob = (notes[i] || "").trim();
+      const keptLines = (keptByTask[i] || []).map((t) => `- ${t}`).join("\n");
+      const body = [blob.slice(0, 800), keptLines].filter(Boolean).join("\n");
+      return body ? `Q${i + 1}${i === moduleIndex ? " (this question)" : ""} notes:\n${body}` : "";
+    })
+    .filter(Boolean)
     .join("\n\n");
 }
 
@@ -2837,7 +2904,7 @@ function digModeStored() {
 // (Keywords / Full sentences), never by user capability — a toggle must not be
 // a confession. Empty material never gets filled: a line with nothing in it
 // gets told so, plainly (verify-and-drop applied to prose).
-function DigStrip({ notes, onNotes, moduleIndex, task }) {
+function DigStrip({ notes, onNotes, moduleIndex, task, kept = [], onDeleteKept }) {
   const [digMode, setDigMode] = useState(digModeStored);
   const [taps, setTaps] = useState({}); // lineIndex -> {busy, result}
   const myNotes = (notes || {})[moduleIndex] || "";
@@ -2884,7 +2951,7 @@ function DigStrip({ notes, onNotes, moduleIndex, task }) {
         tone: intake?.intake?.tone || "",
         resume: intake?.resume || "",
         diagnostic,
-        notes: buildDigNotesContext(notes, moduleIndex),
+        notes: buildDigNotesContext(notes, moduleIndex, kept),
         digMode: "full", // the tap IS the per-item full-sentence ask, regardless of the browse mode
         taskTitle: task?.title || "",
       },
@@ -2967,6 +3034,31 @@ function DigStrip({ notes, onNotes, moduleIndex, task }) {
           )}
         </ul>
       )}
+      {kept.filter((n) => n.taskIndex === moduleIndex).length > 0 && (
+        // Kept notes (tap-to-notes, Phase 5): AI-condensed bullets the user chose
+        // to keep. Discrete + individually deletable (ADR-0006: every writer has
+        // a deleter), and they ride to the cheatsheet.
+        <div className="mt-2">
+          <p className="t-label text-ink-faint">Kept for the cheatsheet</p>
+          <ul className="mt-1 space-y-1">
+            {kept
+              .filter((n) => n.taskIndex === moduleIndex)
+              .map((n) => (
+                <li key={n.id} className="flex items-start justify-between gap-2 rounded-lg bg-white px-2.5 py-1.5 text-xs leading-relaxed text-ink ring-1 ring-slate-200">
+                  <span className="min-w-0">{n.text}</span>
+                  <button
+                    type="button"
+                    onClick={() => onDeleteKept?.(n.id)}
+                    aria-label="Delete this note"
+                    className="shrink-0 text-ink-faint hover:text-rose-600"
+                  >
+                    ✕
+                  </button>
+                </li>
+              ))}
+          </ul>
+        </div>
+      )}
     </div>
   );
 }
@@ -2985,13 +3077,22 @@ function DigStrip({ notes, onNotes, moduleIndex, task }) {
 // gets caught — the spark stance enforces nothing but the push. Delivery signal
 // + the exchange turns ride out via onSignal ({metrics, takes, turns}) —
 // session-only, per the live copy's promise (persistence waits for the trust copy).
-function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, exchange, setExchange, notes, onNotes }) {
+function SpeakPanel({ step, plan, moduleIndex, draft, onDraftChange, task, onSignal, exchange, setExchange, notes, onNotes, taskBanked, onBank }) {
   const file = deliverableName(step, moduleIndex);
   const words = wordCount(draft);
   const [voiceSignal, setVoiceSignal] = useState(null); // take VoiceInput's {metrics, takes}
   const [pushBusy, setPushBusy] = useState(false);
   const [pushError, setPushError] = useState("");
   const [responseSignal, setResponseSignal] = useState(null); // response VoiceInput's signal
+  const [condenseBusy, setCondenseBusy] = useState(false);
+  const [condenseNote, setCondenseNote] = useState("");
+  const [keptTick, setKeptTick] = useState(0); // bump to re-read kept notes after add/delete
+  // Kept notes (tap-to-notes) + banked claims are plan-scoped; the caller-owned
+  // key derivation the drillNotes/storybank libs require.
+  const drillKey = plan?.learningSequence ? scopedPlanKey("lb_drill", plan.learningSequence) : "";
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const kept = drillKey ? getNotes(drillKey) : []; // re-read each render; keptTick forces one
+  void keptTick;
   // The exchange itself (pushText/pushResponse) lives in the moments shell so it
   // survives beat navigation — a panel remount must not offer a second push.
   const pushText = exchange?.pushText || "";
@@ -3037,6 +3138,67 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, e
     setPushBusy(false);
   };
 
+  // Tap-to-notes (Phase 5): condense the answer (+ push response) into 1-3
+  // bullets the user KEEPS — discrete, deletable, cheatsheet-bound. An empty
+  // condense result is honest ("nothing to condense"), never a fabricated note.
+  const keepAsNotes = async () => {
+    if (condenseBusy || !(draft || "").trim() || !drillKey) return;
+    setCondenseBusy(true);
+    setCondenseNote("");
+    const text = [draft, pushResponse].filter((s) => (s || "").trim()).join("\n\n");
+    const data = await post("/api/condense", { text, question: task.managerRequest || task.title || "" });
+    const bullets = (Array.isArray(data?.bullets) ? data.bullets : []).map(String).filter(Boolean);
+    if (bullets.length) {
+      bullets.forEach((b) => addNote({ planKey: drillKey, taskIndex: moduleIndex, text: b, source: "condense" }));
+      setKeptTick((t) => t + 1);
+    } else {
+      setCondenseNote("Nothing to condense yet — say more first.");
+    }
+    setCondenseBusy(false);
+  };
+
+  const deleteKept = (id) => {
+    if (!drillKey) return;
+    deleteNote(drillKey, id);
+    setKeptTick((t) => t + 1);
+  };
+
+  // Banking gate (Phase 6, ruling A): bank on EXISTENCE — a full take + a push
+  // response + this explicit tap. The gate requires the work to be REAL, not
+  // good: weak-but-honest work still banks. The badge (quality) is earned
+  // separately and only when the coach's own verdict says the push was survived.
+  const canBank = Boolean((draft || "").trim() && (exchange?.pushText || "") && (exchange?.pushResponse || "").trim());
+  const bankNow = () => {
+    if (!canBank || taskBanked) return;
+    let review = null;
+    try {
+      review = JSON.parse(localStorage.getItem(`lb_review_${moduleIndex}`) || "null");
+    } catch {}
+    const survived = Boolean(review && /surviv/i.test(review.overall || ""));
+    try {
+      // The explicit tap IS the confirmation (storybank S2: confirmation gates
+      // entry, never tier). Grading rides the plan-stamped event (S3).
+      const banked = bankClaim({
+        text: draft,
+        confirmed: true,
+        source: SOURCES.SAID_ALOUD,
+        tier: TIERS.SAID_ALOUD,
+        plan_id: drillKey,
+        ...(review ? { grading: review } : {}),
+      });
+      if (survived) {
+        bankClaim({
+          claim_id: banked.claim.id,
+          text: draft,
+          source: SOURCES.SURVIVED_PUSHBACK,
+          tier: TIERS.SURVIVED_PUSHBACK,
+          plan_id: drillKey,
+        });
+      }
+    } catch {}
+    onBank?.({ at: Date.now(), survived });
+  };
+
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
@@ -3052,7 +3214,7 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, e
           </p>
         )}
         {/* dig precedes speak in the drill grammar: gather material, then say it */}
-        <DigStrip notes={notes} onNotes={onNotes} moduleIndex={moduleIndex} task={task} />
+        <DigStrip notes={notes} onNotes={onNotes} moduleIndex={moduleIndex} task={task} kept={kept} onDeleteKept={deleteKept} />
         <VoiceInput
           value={draft || ""}
           onChange={onDraftChange}
@@ -3104,6 +3266,57 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, e
             )}
           </div>
         )}
+        {(draft || "").trim() && (
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={keepAsNotes}
+              disabled={condenseBusy}
+              className="rounded-lg border border-slate-200 bg-white px-3 py-2 text-xs font-medium text-ink-soft hover:border-brand-300 hover:text-ink disabled:opacity-60"
+            >
+              {condenseBusy ? "Condensing…" : "Keep as notes"}
+            </button>
+            {condenseNote && <span className="text-xs text-ink-faint">{condenseNote}</span>}
+          </div>
+        )}
+        {(draft || "").trim() && (
+          <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/60 px-3 py-2.5">
+            {taskBanked ? (
+              <div>
+                <p className="text-sm font-medium text-emerald-700">✓ Banked — this answer is yours now.</p>
+                {taskBanked.survived && (
+                  // Verdict-backed only: this line renders when the coach's own
+                  // read said the push was survived — never on existence alone.
+                  <p className="mt-0.5 text-xs text-emerald-700">Survived the push — the coach's read backs it.</p>
+                )}
+              </div>
+            ) : (
+              <div>
+                <button
+                  type="button"
+                  onClick={bankNow}
+                  disabled={!canBank}
+                  className="rounded-lg bg-brand-500 px-4 py-2 text-xs font-semibold text-white hover:bg-brand-600 disabled:opacity-50"
+                >
+                  Bank this answer
+                </button>
+                <p className="mt-1.5 text-xs leading-relaxed text-ink-faint">
+                  {canBank
+                    ? "Banking keeps this answer in your bank — rough is fine; real is the bar."
+                    : "Banking needs a full take and your response to the push — that's what makes it real."}
+                </p>
+                {/* Spark-stance obligation: the make-it-yours recommendation is
+                    visible once, at banking time — recommended, never enforced. */}
+                <p className="mt-0.5 text-xs leading-relaxed text-ink-faint">
+                  If any line here started as a spark, make it yours before the room hears it.
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+        <div className="mt-3">
+          <DrillCostNote />
+        </div>
       </div>
     </div>
   );
@@ -4734,7 +4947,11 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
                   resume: last?.resume || "",
                   diagnostic,
                   digMode: digModeStored(),
-                  notes: buildDigNotesContext(notes, moduleIndex),
+                  notes: buildDigNotesContext(
+                    notes,
+                    moduleIndex,
+                    plan?.learningSequence ? getNotes(scopedPlanKey("lb_drill", plan.learningSequence)) : []
+                  ),
                 };
               } catch {
                 return { tone: "" };
