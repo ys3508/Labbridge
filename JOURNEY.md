@@ -450,6 +450,27 @@ zero-API checks green (5 new locks: turns payload, single-draft contract, exchan
 rule, metrics delivery-only, Score-beat channel). Phase 3 wires the push UI that produces
 real turns.
 
+**Speak-runner Phase 3: the push is real — one per take, and it can't be re-rolled.**
+The drill's pressure beat: after a confirmed take, "Face the push — one per take" fetches ONE
+interviewer pushback from a new `/api/push` (Haiku, ~1¢), rendered as a text interrupt with a
+second voice/type panel for the response; the exchange (answer → push → response) rides to the
+Score beat, which grades the whole thing (Phase 2's contract). The push prompt pushes on the
+weakest load-bearing claim of THEIR actual words and carries the generalized hard line — it may
+question the candidate's claims, never manufacture new ones — locked zero-API alongside the
+one-shot/no-escalation rule (G6 stays out of v1). If the model fails, a static fallback push
+fires (`degraded: true`) — a generic push is still a real push; the drill never goes dead.
+Demo mode got a canned `/api/push` BEFORE the button existed, because unmocked routes pass
+through to paid calls (#58's leak class, pre-closed this time). The live-verify caught a real
+loophole: the panel held the push in local state, so navigating Bank it → Score → back
+unmounted the panel, forgot the push, and offered a fresh one for the same take — a
+one-per-take violation and a soft escalation hole. Fixed by lifting the exchange to the
+moments shell (survives beat navigation; a new task is still a new exchange) with merge-
+semantics on the signal so a remount's null metrics can't clobber a real take's. Verified:
+live push generation quoted the answer's actual inclusion criteria back and pushed on
+recency bias (1 paid call ~1¢); empty answer 400s free; demo walks the full loop canned;
+push survives navigation with no second offer; lint clean, 47 zero-API checks green, zero
+console errors. Remaining in the track: dig UI, tap-to-notes, banking gate, cheatsheet (4-7).
+
 ---
 
 ## Where it stands

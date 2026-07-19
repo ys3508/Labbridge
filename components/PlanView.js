@@ -1980,11 +1980,18 @@ function MomentFlow({
   onDiscuss,
 }) {
   const [choice, setChoice] = useState(null);
-  // Drill speak loop: the latest confirmed take's delivery signal ({metrics, takes}).
-  // SESSION-ONLY by promise — the live copy says takes/metrics are kept "for this
-  // session only"; persistence arrives with the trust copy + storybank, not before
-  // (the seam rule). Captured here so the Score beat can read what Rehearse produced.
+  // Drill speak loop: the latest confirmed take's delivery signal ({metrics,
+  // takes, turns}). SESSION-ONLY by promise — the live copy says takes/metrics
+  // are kept "for this session only"; persistence arrives with the trust copy +
+  // storybank, not before (the seam rule). Captured here so the Score beat can
+  // read what Rehearse produced. Updates MERGE so a panel remount (beat
+  // navigation) can't clobber metrics that a real take already produced.
   const [speakSignal, setSpeakSignal] = useState(null);
+  const mergeSpeakSignal = (next) => setSpeakSignal((prev) => ({ ...(prev || {}), ...(next || {}) }));
+  // The exchange (push + response) lives HERE, not in the panel — the panel
+  // unmounts on beat navigation, and a forgotten push would let the user request
+  // a fresh one for the same take (a one-per-take loophole).
+  const [exchange, setExchange] = useState({ pushText: "", pushResponse: "" });
   const checkSet = new Set(checks || []);
   const moments = buildMoments({
     step,
@@ -2014,7 +2021,9 @@ function MomentFlow({
     purpose,
     onDiscuss,
     speakSignal,
-    setSpeakSignal,
+    setSpeakSignal: mergeSpeakSignal,
+    exchange,
+    setExchange,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -2022,6 +2031,7 @@ function MomentFlow({
   useEffect(() => {
     setChoice(null);
     setSpeakSignal(null);
+    setExchange({ pushText: "", pushResponse: "" }); // a new task is a new exchange
   }, [moduleIndex]);
 
   const goNext = () => {
@@ -2143,6 +2153,8 @@ function buildMoments({
   onDiscuss,
   speakSignal,
   setSpeakSignal,
+  exchange,
+  setExchange,
 }) {
   const beatId = beatIdentity(purpose);
   const isCurious = purpose === "curious";
@@ -2552,6 +2564,8 @@ function buildMoments({
             onDraftChange={onDraftChange}
             task={task}
             onSignal={setSpeakSignal}
+            exchange={exchange}
+            setExchange={setExchange}
           />
         ) : (
           <>
@@ -2781,23 +2795,72 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
   );
 }
 
-// The drill speak loop (interview artifact beat): speak → read it back → confirm.
-// Replaces the typed draft box per the drill grammar's decided fork. Reuses
-// VoiceInput wholesale — freeze lifeline, typed fallback, no-audio promise, and
-// take metrics all come from the one implementation the diagnostic already
-// verified. The confirmed transcript IS the answer-bank entry: it flows out
-// through onDraftChange into drafts[i], so done-marking, the folder, and export
-// work unchanged. Delivery signal rides out via onSignal ({metrics, takes}) —
+// The drill speak loop (interview artifact beat): speak → read it back → face
+// the push → respond → confirm. Replaces the typed draft box per the drill
+// grammar's decided fork. Reuses VoiceInput wholesale — freeze lifeline, typed
+// fallback, no-audio promise, and take metrics all come from the one
+// implementation the diagnostic already verified. The confirmed transcript IS
+// the answer-bank entry: it flows out through onDraftChange into drafts[i], so
+// done-marking, the folder, and export work unchanged.
+//
+// The push (Phase 3): exactly ONE per take, fixed-and-dumb in v1 — no adaptive
+// escalation (G6, open). Requested explicitly, shown as a text interrupt, and
+// never regenerated for the same exchange. The push is where a borrowed answer
+// gets caught — the spark stance enforces nothing but the push. Delivery signal
+// + the exchange turns ride out via onSignal ({metrics, takes, turns}) —
 // session-only, per the live copy's promise (persistence waits for the trust copy).
-function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal }) {
+function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, exchange, setExchange }) {
   const file = deliverableName(step, moduleIndex);
   const words = wordCount(draft);
+  const [voiceSignal, setVoiceSignal] = useState(null); // take VoiceInput's {metrics, takes}
+  const [pushBusy, setPushBusy] = useState(false);
+  const [pushError, setPushError] = useState("");
+  const [responseSignal, setResponseSignal] = useState(null); // response VoiceInput's signal
+  // The exchange itself (pushText/pushResponse) lives in the moments shell so it
+  // survives beat navigation — a panel remount must not offer a second push.
+  const pushText = exchange?.pushText || "";
+  const pushResponse = exchange?.pushResponse || "";
+  const setPushResponse = (text) => setExchange((e) => ({ ...e, pushResponse: text }));
   // The interviewer's question re-anchors the freeze lifeline; tone dials its
   // register — same source the coach already reads.
   let tone = "";
   try {
     tone = JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
   } catch {}
+
+  // Emit the combined drill signal: latest delivery metrics + the exchange turns
+  // (answer → push → response) once a push exists. The Score beat grades the
+  // whole exchange; without a push it grades the single answer as before. Only a
+  // metrics-bearing signal is forwarded, so a fresh mount's null can't clobber
+  // metrics a real take already produced (the shell merges updates).
+  useEffect(() => {
+    const sig = [responseSignal, voiceSignal].find((s) => s?.metrics) || null;
+    const answer = (draft || "").trim();
+    const turns =
+      pushText && answer
+        ? [
+            { role: "answer", text: answer },
+            { role: "push", text: pushText },
+            ...(pushResponse.trim() ? [{ role: "answer", text: pushResponse.trim() }] : []),
+          ]
+        : null;
+    if (sig || turns) onSignal?.({ ...(sig || {}), ...(turns ? { turns } : {}) });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [voiceSignal, responseSignal, pushText, pushResponse, draft]);
+
+  const facePush = async () => {
+    if (pushBusy || pushText || !(draft || "").trim()) return; // one per take, never regenerated
+    setPushBusy(true);
+    setPushError("");
+    const data = await post("/api/push", {
+      question: task.managerRequest || task.title || "",
+      answer: draft,
+    });
+    if (data?.push) setExchange((e) => ({ ...e, pushText: data.push }));
+    else setPushError("The push couldn't load — try again.");
+    setPushBusy(false);
+  };
+
   return (
     <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
@@ -2815,7 +2878,7 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal })
         <VoiceInput
           value={draft || ""}
           onChange={onDraftChange}
-          onMetricsChange={onSignal}
+          onMetricsChange={setVoiceSignal}
           tone={tone}
           question={task.managerRequest || task.title || ""}
         />
@@ -2826,6 +2889,42 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal })
             Read it back the way the room just heard it. If a line doesn't sound
             like you, fix it above before the Score.
           </p>
+        )}
+        {(draft || "").trim() && !pushText && (
+          <div className="mt-3">
+            <button
+              type="button"
+              onClick={facePush}
+              disabled={pushBusy}
+              className="rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-800 hover:border-amber-400 disabled:opacity-60"
+            >
+              {pushBusy ? "The interviewer is thinking…" : "Face the push — one per take"}
+            </button>
+            <p className="mt-1 text-xs leading-relaxed text-ink-faint">
+              A real interviewer pushes back. One push, then you respond — out loud or typed.
+            </p>
+            {pushError && <p className="mt-1 text-xs text-rose-600">{pushError}</p>}
+          </div>
+        )}
+        {pushText && (
+          <div className="mt-3 space-y-2">
+            <div className="rounded-lg border-l-4 border-amber-400 bg-amber-50 px-3 py-2">
+              <p className="t-label text-amber-800">Interviewer push</p>
+              <p className="mt-1 text-sm leading-relaxed text-ink">{pushText}</p>
+            </div>
+            <VoiceInput
+              value={pushResponse}
+              onChange={setPushResponse}
+              onMetricsChange={setResponseSignal}
+              tone={tone}
+              question={pushText}
+            />
+            {pushResponse.trim() && (
+              <p className="text-xs leading-relaxed text-ink-soft">
+                The Score reads the whole exchange — your answer, the push, and how you held up.
+              </p>
+            )}
+          </div>
         )}
       </div>
     </div>
@@ -3300,6 +3399,10 @@ function CoachReview({ draft, task, step, plan, purpose, criteria, redFlags, con
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           draft,
+          // Drill (Phase 3): when the speak loop produced an exchange (answer →
+          // push → response), the coach grades the whole exchange — the post-push
+          // answer carries the survival read.
+          ...(purpose === "interview" && speakSignal?.turns?.length ? { turns: speakSignal.turns } : {}),
           taskTitle: task.title || step.topic || "",
           deliverable: task.deliverable || "",
           doneWhen: task.doneWhen || "",

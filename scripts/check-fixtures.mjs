@@ -101,6 +101,26 @@ const planViewSrc = fs.readFileSync("components/PlanView.js", "utf8");
 if (/REHEARSAL DELIVERY METRICS/.test(planViewSrc) && /never critique a speed you did not observe/.test(planViewSrc)) ok("drill Score beat sends delivery metrics mode-scoped");
 else fail("drill Score beat lost the mode-scoped delivery-metrics channel");
 
+// The push (drill Phase 3). Locks: the push route keeps the no-invented-facts
+// hard line (the spark stance's one hard line, generalized to the interviewer's
+// voice) and a working fallback; the panel enforces ONE push per take in code;
+// demo mode has a canned push so the drill can't leak a paid call (#58's class);
+// and the Score beat actually ships the exchange to the coach.
+const pushRoute = fs.readFileSync("app/api/push/route.js", "utf8");
+if (/NEVER invent facts/.test(pushRoute) && /manufacturing new claims is forbidden/i.test(pushRoute)) ok("push prompt keeps the no-invented-facts hard line");
+else fail("push prompt lost the no-invented-facts hard line");
+if (/FALLBACK_PUSH/.test(pushRoute) && /degraded: true/.test(pushRoute)) ok("push route degrades to a static push, not a dead drill");
+else fail("push route lost its honest fallback");
+if (/exactly ONE pushback/.test(pushRoute) && /No escalation/.test(pushRoute)) ok("push prompt is one-shot, no escalation (G6 stays out of v1)");
+else fail("push prompt lost the one-shot/no-escalation rule");
+if (/pushBusy \|\| pushText/.test(planViewSrc)) ok("speak panel enforces one push per take in code");
+else fail("speak panel lost the one-push-per-take guard");
+const mockSrc = fs.readFileSync("lib/mockResponses.js", "utf8");
+if (/\/api\/push/.test(mockSrc)) ok("demo mode mocks /api/push (no paid-call leak)");
+else fail("demo mode does not mock /api/push — paid-call leak");
+if (/speakSignal\?\.turns\?\.length \? \{ turns: speakSignal\.turns \}/.test(planViewSrc)) ok("Score beat ships the exchange turns to the coach");
+else fail("Score beat does not ship exchange turns");
+
 // Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
 // dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and
 // keeps the one hard line (never assert an unclaimed fact as the user's history),
