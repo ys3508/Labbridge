@@ -7,18 +7,24 @@ that spec and its Jul-18 addendum. Where this doc and the grammar spec disagree 
 dig honesty, **this doc is right**: the "sentences must trace" rule was reversed to
 the spark stance (`revise/2026-07-18-dig-spark-stance.md`, `bb23341`).
 
-Scope = the interview `speak` loop only. Not the mock runner, not the walk-in card,
+Scope (**Path A**, Sissi 2026-07-18) = the interview `speak` loop **plus** storybank
+persistence + the provenance-event model, built in the same effort so the trust copy's
+items 2 / 4 / 7 are true-in-code before it ships. Not the mock runner, not the walk-in card,
 not the post-interview loop.
 
 ---
 
-## The one gate
+## Gates — both cleared; one ship-coupling remains
 
-**The cost probe must land before build starts.** The grammar spec: *"do not start
-Session B until it lands."* Codex measures the full loop; the number decides **only**
-Phase 8 (meter-vs-bundle UI). Phases 1–7 are unblocked by the number itself but
-should not begin until the probe confirms the loop is affordable at all. If the
-probe returns and the loop is affordable, build 1→7 in order; wire 8 last.
+- **Cost probe — LANDED.** `8c22f3b` / `revise/2026-07-18-drill-cost-probe.md`: 0.76–0.85¢
+  per full loop, ~0.08¢ spread → **bundle**, not a live meter. The grammar spec's hard
+  *"do not start Session B until it lands"* gate is cleared, and Phase 8 is pre-decided.
+- **Trust-copy register — APPROVED (Neutral).** Gentle deleted; the copy content is settled
+  (`revise/2026-07-18-trust-copy-draft.md`).
+- **Remaining coupling — a ship-gate, not a start-gate.** By the seam rule the trust copy
+  cannot *ship* until items **2** (retained takes), **4** (per-user story bank), and **7**
+  (plan-scoped grading) are true-in-code. Path A builds those here — so the build can START
+  now; the copy WIRES LAST (Phase 0), once the storybank track has made 2 / 4 / 7 real.
 
 ## Non-negotiables carried into every phase (reviewer checks these first)
 
@@ -40,19 +46,23 @@ probe returns and the loop is affordable, build 1→7 in order; wire 8 last.
 
 ---
 
-## Phase 0 — Trust copy landed (blocking; awaiting Sissi)
+## Phase 0 — Trust copy wired (ships LAST, gates the release)
 
-**Why first.** This build makes three copy clauses true-in-code for the first time:
-multiple takes retained, pauses scored, deletion no longer total. The standing save
-line becomes false the moment the loop ships. Per the seam rule, no clause may be
-true-in-copy before it's true-in-code — so the approved copy lands in the same build.
+**Position.** Listed first because it's the release gate, but it **wires last in code**: it
+may only land once the speak-runner track (item 2, retained takes) and the storybank track
+(items 4 + 7) have made its clauses true. Register is **approved (Neutral)** — no content
+decision remains; this phase is now purely the wiring + the seam check.
 
 **Acceptance**
-- [ ] The approved register from `revise/2026-07-18-trust-copy-draft.md` is wired into the
-      diagnostic/drill trust line (takes plural, pause marks, deletion, unchanged no-audio promise).
-- [ ] No clause asserts a capability a later phase hasn't shipped yet.
+- [ ] The approved **Neutral** copy from `revise/2026-07-18-trust-copy-draft.md` is wired into
+      the diagnostic/drill trust line (takes plural, pause marks, plan-scoped grading, not-total
+      deletion, unchanged no-audio promise), replacing the `DiagnosticFlow.js` standing line and
+      folding in the `VoiceInput.js` retake note.
+- [ ] **Every clause is true-in-code at wire time** — retained takes (Phase 1/6), per-user story
+      bank (S1–S2), plan-scoped grading (S3), real per-plan delete (S4). No clause asserts a
+      capability not yet shipped.
 
-**Gate:** Sissi picks the register. Do not paraphrase or invent copy.
+**Gate:** wires only after Phases 1–7 and S1–S4 are green. Do not paraphrase or invent copy.
 
 ---
 
@@ -189,16 +199,45 @@ The story bank emerges from behavior — the cross-references *are* the story-ba
 
 ---
 
-## Phase 8 — Meter-vs-bundle cost UI (GATED on the probe)
+## Phase 8 — Cost UI (probe landed → BUNDLE)
 
-**Goal.** Show the drill's cost honestly, in whichever form the probe's number supports.
+**Goal.** Show the drill's cost honestly. The probe (`8c22f3b`) settled this: ~0.08¢ spread
+across answer lengths is bundle territory, not meter territory.
 
 **Acceptance**
-- [ ] Cost surface matches the probe's read: a live **meter** if per-loop cost is variable,
-      a fixed **bundle** if it's stable (Codex's cost-probe note makes this call with data).
+- [ ] Cost is disclosed once as an **aggregate bundle**, not a per-drill price tag on each action.
 - [ ] No paid call fires without the user's explicit action (the existing spend-armor pattern).
 
-**Gate:** blocked until `revise/2026-07-18-drill-cost-probe.md` lands.
+---
+
+## Storybank track (Path A) — build in parallel with 1–7; gates Phase 0
+
+Design records: `revise/2026-07-18-storybank-design.md` +
+`revise/2026-07-18-storybank-provenance-events.md` + `decisions/ADR-0006-data-deletion.md`.
+Do not re-derive the model — implement those. This track makes trust-copy items 4 and 7 true.
+
+### S1 — Provenance-event model + persistence
+- [ ] `ProvenanceEvent { claim_id, tier, plan_id (nullable), source, timestamp }` as an
+      **append-only** log; no event is ever mutated (corrections are new events).
+- [ ] Claim tier = **max(tier) over surviving events**, always computed, never stored.
+- [ ] `lifted-from-resume` → `plan_id` null (per-user); `lifted-from-jd` + tiers 2–4 → plan-stamped.
+
+### S2 — Confirmation-gated banking (per-user)
+- [ ] Claims enter the bank only via confirmation (gates entry, never tier — unchanged from design §3).
+- [ ] The bank is **per-user** and self-updating across plans; item 4's copy becomes true here.
+
+### S3 — Grading on the event (item 7)
+- [ ] An answer's assessment (delivery scores + substance grading) attaches to the
+      **plan-stamped provenance event**, not the claim (decision recorded in the provenance spec).
+- [ ] Grading shares the event's lifecycle — purged on plan delete; never follows a claim into the bank.
+
+### S4 — Delete path (ADR-0006 + the delete-path debt)
+- [ ] Plan delete deletes its events; claims with **zero surviving events** delete (real,
+      per-plan, reaching retakes/grading).
+- [ ] **Every writer has a deleter, CI-enforced** (OPEN.md debt #4) — or A quietly decays to B.
+- [ ] Resume (per-user) has its own separate delete path (item 5's copy stays true).
+- [ ] *Open, non-blocking:* re-seeding re-offer on resume replace (OPEN.md "Storybank re-offer")
+      — the builder should know it's undecided; it does not block this track.
 
 ---
 
@@ -214,9 +253,20 @@ The story bank emerges from behavior — the cross-references *are* the story-ba
    verdict-backed (Phase 6).
 6. **Zero-API locks** exist for the multi-turn coach shape and any new guard, so the rules
    can't silently vanish.
+7. **Delete path is real and CI-enforced** (S4) — every writer has a deleter; plan delete
+   reaches events, grading, and retakes. The trust copy's delete clauses are true.
+8. **Trust copy wired LAST** and asserts nothing not-yet-true — every clause has a shipped
+   feature behind it (Phase 0 gate).
 
 ## Build order, one line
 
-`0 trust copy → 1 speak loop → 2 multi-turn coach → 3 push → 4 dig UI → 5 tap-to-notes →
-6 banking gate → 7 cheatsheet → 8 cost UI (gated)`. Phases 4–7 can overlap once 1–3 land;
-1→2→3 is a hard chain.
+Two tracks, joined by the trust copy:
+- **Speak-runner:** `1 speak loop → 2 multi-turn coach → 3 push → 4 dig UI → 5 tap-to-notes →
+  6 banking gate → 7 cheatsheet` (`1→2→3` hard chain; `4–7` overlap once `1–3` land).
+- **Storybank (Path A):** `S1 provenance model → S2 banking → S3 grading-on-event → S4 delete path`
+  (parallel to the speak-runner).
+- **Join:** `8 cost UI (bundle)` any time; then **`0 trust copy` wires LAST**, only once
+  Phase 6 (retained takes) + S2/S3 (bank + grading) + S4 (delete) are all green.
+
+**Scope note:** Path A is two features, not "one focused session." Consider splitting the
+handoff into a speak-runner PR and a storybank PR that meet at the trust-copy wire.

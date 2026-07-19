@@ -394,6 +394,19 @@ the seam surface where drift becomes an invisible trust bug; Neutral ships. New 
 storage clause. Still gating: the copy ships with drill retained-takes + storybank persistence and
 cannot ship until storybank has a surface for item 4 to point at. No green light. Docs/draft-copy only.
 
+**Q (Sissi): "Path A — bundle storybank into the drill build."**
+The trust copy discloses retained takes, a per-user story bank, and plan-scoped grading — none of
+which exist in code yet, so by the seam rule the copy can't ship until they do. Fork: (A) build the
+storybank + provenance-event model alongside the speak-runner so the copy ships whole, or (B) ship a
+session-only drill v1 that keeps the current copy honest and defers storybank. Sissi chose **A**. The
+build spec now carries two parallel tracks — the speak-runner (`1→7`) and a storybank track (`S1`
+provenance-event model → `S2` confirmation-gated banking → `S3` grading-on-event → `S4` real per-plan
+delete, CI-enforced per ADR-0006 + the delete-path debt) — joined by the trust copy, which **wires
+LAST**, only once items 2/4/7 are true-in-code. Both hard gates are down (cost probe → bundle;
+register → Neutral); what remains before a builder starts is Sissi's explicit green light and the
+build/review split. Flagged in the spec: Path A is two features, worth splitting into a speak-runner
+PR and a storybank PR that meet at the trust-copy wire.
+
 ---
 
 ## Where it stands
