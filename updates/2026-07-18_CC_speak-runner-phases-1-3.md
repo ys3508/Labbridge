@@ -78,3 +78,60 @@ Dev server running on :3100 (left up deliberately for Sissi's gate runs / demo w
    with Sissi's explicit ship call.
 7. Untracked and not mine: `revise/q2-gate-jd-fixtures.md` (Sissi's),
    `updates/2026-07-18-receipt-split-trust-copy.md` (appeared mid-session, author unknown).
+
+---
+
+# ADDENDUM (same day, later) — phases 4–8 shipped; the build is DONE except Phase 0
+
+Tip at addendum time: **`8632dd5`** on `main` = `origin/main` = `claude/voice-freeze-honesty`.
+Items 1–5 of the to-do above are **done**; item 6 (Phase 0) is the only remaining work.
+
+## What shipped since the handoff above
+
+- **`fc55dce` Phase 4 — dig UI.** Dig strip on Bank it: per-task notes ("collect, don't
+  compose"), Keywords/Full-sentences toggle (output-shape labels, default Keywords,
+  STAR-assembled only in Full — ruling D), per-line "Say this in English" tap (ruling B)
+  with the client-side empty guard ("Nothing to build from yet — answer the hint first,"
+  zero spend), cross-question retrieval via one shared formatter in both the tap and the
+  assistant conversation (ruling C). Live tap verified (~1¢): clean first-person sentence
+  from their note + resume, nothing invented.
+- **`79deb8a` (Codex) reviewed + merged `215b61f`.** Condense route (free 400,
+  never-invent, degrades to empty — and a missing API key degrades instead of 500s, so the
+  keyless demo stays honest), pure Cheatsheet, DrillCostNote, drillNotes lib with full
+  writer/deleter coverage. Passed product-rule review.
+- **`8632dd5` Phases 5–8 wiring.** Keep-as-notes (condensed bullets: discrete, deletable,
+  cheatsheet-bound, folded into cross-question retrieval; honest empty result). Banking
+  gate (ruling A verbatim: full take + push response + explicit tap; interview done-marking
+  keys on BANKED, not draft existence). The tap is the storybank confirmation: said-aloud
+  tier-3 plan-stamped event + the coach review as grading (S2/S3 joined); survived-pushback
+  tier-4 event and its badge ONLY on the coach's own survival verdict. Make-it-yours line
+  visible at banking time (the spark-stance reversal's obligation). Cheatsheet mounted on
+  the interview home (kept bullets per question, honest empties, .md export; claims join
+  when the storybank UI lands — they carry no question index yet). Cost note mounted
+  (bundle, never metered). Demo-verified end to end at zero cost; 71 zero-API checks.
+
+## Session totals
+
+~4¢ live spend (one exchange grade, one push generation, one dig sentence, one earlier
+coach exchange). 71 zero-API locks green. Zero console errors across every demo walk.
+
+## The one remaining piece — Phase 0 (trust-copy wire), gated on Sissi
+
+One final change doing two things TOGETHER (the seam rule cuts both ways):
+1. **Persist retained takes** — today deliberately session-only because the live copy
+   promises "this session only"; flipping persistence before the copy breaks the promise
+   in the other direction.
+2. **Wire the approved Neutral copy** into DiagnosticFlow/VoiceInput, replacing the
+   standing line and folding in the retake note.
+
+Pre-ship clause audit required. One known flag: the copy says *"you can delete a plan's
+data whenever you want"* — `deletePlan` exists in the storybank lib, but a **user-facing
+delete door** may not (ADR-0006's three doors were deliberately deferred). Either the door
+ships in Phase 0 or the clause is rephrased; do not ship the clause false. Sissi's explicit
+ship call starts this.
+
+## For Codex
+
+Nothing blocked on you. If you pick anything up: the map-side receipt guard work is gated
+on G8/G9 (OPEN.md), and the claims→cheatsheet join needs a question index on provenance
+events or a mapping — propose in revise/, don't build into lib/storybank.js unprompted.
