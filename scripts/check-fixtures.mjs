@@ -121,6 +121,23 @@ else fail("demo mode does not mock /api/push — paid-call leak");
 if (/speakSignal\?\.turns\?\.length \? \{ turns: speakSignal\.turns \}/.test(planViewSrc)) ok("Score beat ships the exchange turns to the coach");
 else fail("Score beat does not ship exchange turns");
 
+// Dig UI (drill Phase 4, rulings B/C/D). Locks: the assist route carries both
+// output-shape instructions (keywords = unassembled; full = assembled, nothing
+// invented at either level) and the cross-question notes line; the toggle is
+// labeled by OUTPUT SHAPE, defaults to keywords, and the per-tap empty guard's
+// exact honest line exists — a bullet with no substance is told so, not filled.
+const assistSrc = fs.readFileSync("app/api/assist/route.js", "utf8");
+if (/DIG OUTPUT SHAPE: Full sentences/.test(assistSrc) && /DIG OUTPUT SHAPE: Keywords/.test(assistSrc) && /nothing invented at either encoding level/i.test(assistSrc)) ok("assist prompt carries both dig output shapes, provenance-gated");
+else fail("assist prompt lost a dig output-shape instruction");
+if (/THEIR NOTES \(this and earlier questions/.test(assistSrc)) ok("assist context supports cross-question note retrieval (ruling C)");
+else fail("assist context lost cross-question note retrieval");
+if (/"Keywords"/.test(planViewSrc) && /"Full sentences"/.test(planViewSrc) && /=== "full" \? "full" : "keywords"/.test(planViewSrc)) ok("dig toggle is output-shape labeled and defaults to keywords");
+else fail("dig toggle lost its output-shape labels or keywords default");
+if (/Nothing to build from yet — answer the hint first\./.test(planViewSrc) && /Say this in English/.test(planViewSrc)) ok("dig strip keeps the per-tap empty guard + the per-item tap (ruling B)");
+else fail("dig strip lost the empty guard or the Say-this-in-English tap");
+if (/buildDigNotesContext/.test(planViewSrc)) ok("dig strip and assistant share one cross-question notes formatter");
+else fail("cross-question notes formatter missing");
+
 // Dig spark stance (revise/2026-07-18-dig-spark-stance.md — supersedes 886fe43's
 // dig Rules 1 & 2). Zero-API lock: the interview-dig prompt now OFFERS sparks and
 // keeps the one hard line (never assert an unclaimed fact as the user's history),

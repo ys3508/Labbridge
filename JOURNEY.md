@@ -471,6 +471,30 @@ recency bias (1 paid call ~1¢); empty answer 400s free; demo walks the full loo
 push survives navigation with no second offer; lint clean, 47 zero-API checks green, zero
 console errors. Remaining in the track: dig UI, tap-to-notes, banking gate, cheatsheet (4-7).
 
+**Speak-runner Phase 4: dig has a face — collect, don't compose.**
+The dig UI lands on the Bank it beat as a strip above the mic: the per-task notes pane
+(gather fragments, never required to compose — the accommodation for the user with no
+confidence), the **Keywords / Full sentences** toggle (labeled by OUTPUT SHAPE, never by
+capability — a toggle must not be a confession; default Keywords, and STAR-from-resume
+arrives *assembled* only in Full-sentences mode, ruling D), and the per-line **"Say this in
+English"** tap (ruling B — built for second-language users, who have the content and lack
+the English). Each tap builds ONE first-person sentence from that note plus their own
+material — live-verified: «vaccination project turnaround 6 weeks to 9 days county health
+dept» came back as "I led a vaccination-records project at the county health department
+that cut report turnaround from six weeks down to nine days," no preamble, nothing
+invented (1 paid call ~1¢). The per-tap empty guard is honest and free: a line with no
+substance gets "Nothing to build from yet — answer the hint first." client-side, before any
+spend — verify-and-drop applied to prose. **Cross-question retrieval (ruling C)** ships as
+one shared formatter: dig on question N passes notes from questions 1..N-1 into the assist
+context, in both the tap and the split-pane conversation — the system knows what's
+reusable; the user can't judge that at note-time. The conversation obeys the same toggle
+(one control, both surfaces). The sentence result carries the banking-time register:
+"Built from your note — make it yours before the room hears it," with Add-to-notes as the
+explicit keep. Verified in demo (guard fires without a call; canned reply renders with the
+make-it-yours line), lint clean, 52 zero-API checks green, zero console errors. Remaining:
+tap-to-notes wiring (5), banking gate (6), cheatsheet (7) — Codex's seams for 5/7 landed
+on codex/drill-notes-cheatsheet awaiting CC review.
+
 ---
 
 ## Where it stands

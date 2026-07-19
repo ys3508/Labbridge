@@ -70,6 +70,18 @@ export async function POST(request) {
     c.resume && `THEIR RESUME / BACKGROUND (dig material — sentences may trace here):\n${String(c.resume).slice(0, 3000)}`,
     c.ammunition && `THEIR AMMUNITION (stories and wins they listed):\n${String(c.ammunition).slice(0, 1500)}`,
     c.diagnostic && `THEIR DIAGNOSTIC ANSWERS (what they already said out loud in the two cold questions):\n${String(c.diagnostic).slice(0, 2000)}`,
+    // Cross-question retrieval (drill ruling C): digging on question N may
+    // reference the material they collected on questions 1..N-1 — the system
+    // knows what's reusable; the user can't judge that at note-time.
+    c.notes && `THEIR NOTES (this and earlier questions — dig may reference and reuse material from any of them):\n${String(c.notes).slice(0, 2500)}`,
+    // The output-shape toggle (drill ruling D): same material, two encoding
+    // levels. The gate is provenance, not length — and STAR-from-resume arrives
+    // ASSEMBLED only in full-sentence mode.
+    c.digMode === "full"
+      ? `DIG OUTPUT SHAPE: Full sentences. You may assemble complete first-person sentences from their material — including an assembled STAR from their resume. Still sparks (marked as offered, theirs to keep or reject), still the one hard line: nothing invented at either encoding level. If there is no material to build from, say so plainly — never fill the gap.`
+      : c.digMode === "keywords"
+        ? `DIG OUTPUT SHAPE: Keywords. Offer material UNASSEMBLED — keyword fragments, STAR slots, short frames ("turnaround: 6wk → 9d — that's your Result"). Do not hand assembled first-person sentences; the user flips to Full sentences for that.`
+        : "",
   ]
     .filter(Boolean)
     .join("\n\n");

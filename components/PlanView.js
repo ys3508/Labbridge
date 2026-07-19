@@ -867,6 +867,8 @@ export default function PlanView({ form, isBeginner, onBack }) {
                     setAssistantOpen(true);
                   }}
                   prevArtifact={activeIndex > 0 ? deliverableName(modules[activeIndex - 1], activeIndex - 1) : ""}
+                  notes={notes}
+                  onNotes={setTaskNotes}
                 />
               )
             )}
@@ -888,6 +890,7 @@ export default function PlanView({ form, isBeginner, onBack }) {
           plan={plan}
           draft={drafts[activeIndex] || ""}
           purpose={purpose}
+          notes={notes}
         />
       )}
       <Toolbox
@@ -1815,6 +1818,8 @@ function Module({
   allDrafts,
   purpose,
   onDiscuss,
+  notes,
+  onNotes,
 }) {
   const t = step.task || {};
   const c = step.concept || {};
@@ -1883,6 +1888,8 @@ function Module({
         allDrafts={allDrafts}
         purpose={purpose}
         onDiscuss={onDiscuss}
+        notes={notes}
+        onNotes={onNotes}
       />
     </section>
   );
@@ -1978,6 +1985,8 @@ function MomentFlow({
   allDrafts,
   purpose,
   onDiscuss,
+  notes,
+  onNotes,
 }) {
   const [choice, setChoice] = useState(null);
   // Drill speak loop: the latest confirmed take's delivery signal ({metrics,
@@ -2024,6 +2033,8 @@ function MomentFlow({
     setSpeakSignal: mergeSpeakSignal,
     exchange,
     setExchange,
+    notes,
+    onNotes,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
@@ -2155,6 +2166,8 @@ function buildMoments({
   setSpeakSignal,
   exchange,
   setExchange,
+  notes,
+  onNotes,
 }) {
   const beatId = beatIdentity(purpose);
   const isCurious = purpose === "curious";
@@ -2566,6 +2579,8 @@ function buildMoments({
             onSignal={setSpeakSignal}
             exchange={exchange}
             setExchange={setExchange}
+            notes={notes}
+            onNotes={onNotes}
           />
         ) : (
           <>
@@ -2795,6 +2810,167 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
   );
 }
 
+// Cross-question retrieval (drill ruling C): dig on question N may reference
+// notes from questions 1..N-1 — the system knows what's reusable; the user
+// can't judge that at note-time. One formatter, used by the dig strip's tap and
+// the assistant's context alike.
+function buildDigNotesContext(notes = {}, moduleIndex = 0) {
+  return Object.entries(notes)
+    .filter(([i, text]) => Number(i) <= moduleIndex && (text || "").trim())
+    .map(([i, text]) => `Q${Number(i) + 1}${Number(i) === moduleIndex ? " (this question)" : ""} notes:\n${String(text).trim().slice(0, 800)}`)
+    .join("\n\n");
+}
+
+function digModeStored() {
+  try {
+    return localStorage.getItem("lb_dig_mode") === "full" ? "full" : "keywords";
+  } catch {
+    return "keywords";
+  }
+}
+
+// The dig strip (drill Phase 4): collect, don't compose. The notes pane is the
+// accommodation for the user with no confidence — they gather material here,
+// and each line can be rendered into ONE fluent first-person sentence on tap
+// ("Say this in English", ruling B — built for second-language users, who HAVE
+// the content and lack the English). The toggle is labeled by OUTPUT SHAPE
+// (Keywords / Full sentences), never by user capability — a toggle must not be
+// a confession. Empty material never gets filled: a line with nothing in it
+// gets told so, plainly (verify-and-drop applied to prose).
+function DigStrip({ notes, onNotes, moduleIndex, task }) {
+  const [digMode, setDigMode] = useState(digModeStored);
+  const [taps, setTaps] = useState({}); // lineIndex -> {busy, result}
+  const myNotes = (notes || {})[moduleIndex] || "";
+  const lines = myNotes.split("\n").map((l) => l.trim());
+
+  const setMode = (m) => {
+    setDigMode(m);
+    try {
+      localStorage.setItem("lb_dig_mode", m);
+    } catch {}
+  };
+
+  const EMPTY_GUARD = "Nothing to build from yet — answer the hint first.";
+
+  const sayInEnglish = async (lineIndex) => {
+    const line = lines[lineIndex] || "";
+    if (taps[lineIndex]?.busy) return;
+    // Per-tap empty-material guard (ruling B): a bullet with no substance gets
+    // told so — never a filled gap, and never a spent call.
+    if ((line.match(/\S+/g) || []).length < 3) {
+      setTaps((t) => ({ ...t, [lineIndex]: { result: EMPTY_GUARD } }));
+      return;
+    }
+    setTaps((t) => ({ ...t, [lineIndex]: { busy: true } }));
+    let intake = {};
+    try {
+      intake = JSON.parse(localStorage.getItem("lb_intake_last") || "{}");
+    } catch {}
+    const dg = intake?.diagnostic || {};
+    const diagnostic = ["q1", "q2"]
+      .map((k) => (dg[k]?.answer || "").trim())
+      .filter(Boolean)
+      .map((a, i) => `Q${i + 1}: ${a}`)
+      .join("\n\n");
+    const data = await post("/api/assist", {
+      messages: [
+        {
+          role: "user",
+          content: `Say this in English — one fluent, first-person sentence I could say in the room, built ONLY from this note of mine and my own material: «${line}». Reply with ONLY the sentence, no preamble. If the note carries no real material to build from, reply exactly: ${EMPTY_GUARD}`,
+        },
+      ],
+      context: {
+        purpose: "interview",
+        tone: intake?.intake?.tone || "",
+        resume: intake?.resume || "",
+        diagnostic,
+        notes: buildDigNotesContext(notes, moduleIndex),
+        digMode: "full", // the tap IS the per-item full-sentence ask, regardless of the browse mode
+        taskTitle: task?.title || "",
+      },
+    });
+    setTaps((t) => ({
+      ...t,
+      [lineIndex]: { result: (data?.reply || "").trim() || "The assistant couldn't answer — try again." },
+    }));
+  };
+
+  const addToNotes = (lineIndex) => {
+    const sentence = taps[lineIndex]?.result || "";
+    if (!sentence || sentence === EMPTY_GUARD) return;
+    onNotes?.(moduleIndex, `${myNotes}\n${sentence}`.trim());
+    setTaps((t) => ({ ...t, [lineIndex]: {} }));
+  };
+
+  return (
+    <div className="mt-3 rounded-lg border border-slate-200 bg-slate-50/60 p-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="t-label text-ink-faint">Dig — your material for this question</p>
+        <div className="inline-flex rounded-lg bg-white p-0.5 ring-1 ring-slate-200">
+          {[
+            ["keywords", "Keywords"],
+            ["full", "Full sentences"],
+          ].map(([m, label]) => (
+            <button
+              key={m}
+              type="button"
+              onClick={() => setMode(m)}
+              className={`rounded-md px-2.5 py-1 text-[11px] font-semibold ${digMode === m ? "bg-brand-600 text-white" : "text-ink-soft hover:text-ink"}`}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+      </div>
+      <p className="mt-1 text-xs leading-relaxed text-ink-faint">
+        Collect, don't compose — jot what you've got, one line per thing. The assistant (✳) digs with
+        you; each line can become a sentence you'd actually say.
+      </p>
+      <textarea
+        value={myNotes}
+        onChange={(e) => onNotes?.(moduleIndex, e.target.value)}
+        rows={3}
+        placeholder="The project, the number, the save — fragments are fine."
+        className="mt-2 w-full resize-y rounded-lg border border-slate-200 bg-white px-3 py-2 t-body text-ink focus:border-brand-300 focus:outline-none"
+      />
+      {lines.some((l) => l) && (
+        <ul className="mt-2 space-y-1.5">
+          {lines.map((line, k) =>
+            line ? (
+              <li key={k} className="text-xs leading-relaxed">
+                <div className="flex items-start justify-between gap-2">
+                  <span className="min-w-0 text-ink-soft">{shorten(line, 90)}</span>
+                  <button
+                    type="button"
+                    onClick={() => sayInEnglish(k)}
+                    disabled={taps[k]?.busy}
+                    className="shrink-0 font-medium text-brand-700 hover:underline disabled:opacity-50"
+                  >
+                    {taps[k]?.busy ? "Building…" : "Say this in English"}
+                  </button>
+                </div>
+                {taps[k]?.result && (
+                  <div className={`mt-1 rounded-lg px-2.5 py-1.5 ${taps[k].result === EMPTY_GUARD ? "bg-slate-100 text-ink-faint" : "bg-brand-50 text-ink"}`}>
+                    {taps[k].result}
+                    {taps[k].result !== EMPTY_GUARD && (
+                      <span className="mt-0.5 block text-[11px] text-ink-faint">
+                        Built from your note — make it yours before the room hears it.{" "}
+                        <button type="button" onClick={() => addToNotes(k)} className="font-medium text-brand-700 hover:underline">
+                          Add to notes
+                        </button>
+                      </span>
+                    )}
+                  </div>
+                )}
+              </li>
+            ) : null
+          )}
+        </ul>
+      )}
+    </div>
+  );
+}
+
 // The drill speak loop (interview artifact beat): speak → read it back → face
 // the push → respond → confirm. Replaces the typed draft box per the drill
 // grammar's decided fork. Reuses VoiceInput wholesale — freeze lifeline, typed
@@ -2809,7 +2985,7 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
 // gets caught — the spark stance enforces nothing but the push. Delivery signal
 // + the exchange turns ride out via onSignal ({metrics, takes, turns}) —
 // session-only, per the live copy's promise (persistence waits for the trust copy).
-function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, exchange, setExchange }) {
+function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, exchange, setExchange, notes, onNotes }) {
   const file = deliverableName(step, moduleIndex);
   const words = wordCount(draft);
   const [voiceSignal, setVoiceSignal] = useState(null); // take VoiceInput's {metrics, takes}
@@ -2875,6 +3051,8 @@ function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal, e
             {task.managerRequest}
           </p>
         )}
+        {/* dig precedes speak in the drill grammar: gather material, then say it */}
+        <DigStrip notes={notes} onNotes={onNotes} moduleIndex={moduleIndex} task={task} />
         <VoiceInput
           value={draft || ""}
           onChange={onDraftChange}
@@ -4479,7 +4657,7 @@ function momentSnapshotText(step, key) {
 // The whole value is CONTEXT INJECTION: every message automatically carries the
 // current beat, the task, the materials, and the draft, and the reply must
 // anchor back to the page (honesty rules inherited from the plan contract).
-function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, purpose, seed, onSeedConsumed }) {
+function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, purpose, seed, onSeedConsumed, notes }) {
   const storeKey = scopedPlanKey(`lb_chat_${moduleIndex}`, plan?.learningSequence || []);
   const [messages, setMessages] = useState(() => {
     try {
@@ -4548,7 +4726,16 @@ function AssistantPanel({ onClose, module, moduleIndex, beatKey, plan, draft, pu
                   .filter(Boolean)
                   .map((a, i) => `Q${i + 1}: ${a}`)
                   .join("\n\n");
-                return { tone, resume: last?.resume || "", diagnostic };
+                // Dig UI (Phase 4): the conversation obeys the same output-shape
+                // toggle as the dig strip, and may retrieve notes from earlier
+                // questions (ruling C — the system knows what's reusable).
+                return {
+                  tone,
+                  resume: last?.resume || "",
+                  diagnostic,
+                  digMode: digModeStored(),
+                  notes: buildDigNotesContext(notes, moduleIndex),
+                };
               } catch {
                 return { tone: "" };
               }
