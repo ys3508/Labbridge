@@ -10,6 +10,19 @@ import {
   shouldReuseFingerprint,
   stableFingerprint,
 } from "../lib/textFingerprint.js";
+import {
+  SOURCES,
+  TIERS,
+  assertStorybankDeleteCoverage,
+  attachGrading,
+  bankClaim,
+  createStorybankStore,
+  deletePlan,
+  deleteResume,
+  getClaims,
+  getGrading,
+  tierOf,
+} from "../lib/storybank.js";
 
 let failures = 0;
 const fail = (msg) => { console.error("✗", msg); failures++; };
@@ -158,6 +171,95 @@ if (receiptMatchesSource({ receipt: "Own quality of earnings diligence for spons
 else fail("receipt guard rejected a correct contiguous JD prefix");
 if (!receiptMatchesSource({ receipt: "Own quality of earnings diligence for sponsor-backed deals Evaluate working capital peg assumptions", sourceText: jdReceiptSource })) ok("receipt guard rejects stitched non-adjacent JD lines");
 else fail("receipt guard accepted a stitched receipt");
+
+// Storybank Path A data layer: provenance is an append-only event log; tier is a
+// computed fold over surviving events; grading attaches to plan-stamped events
+// and dies with those events. ADR-0006 debt #4: every writer has a deleter.
+const storyStore = createStorybankStore();
+let unconfirmedBlocked = false;
+try {
+  bankClaim({ text: "Built a 115-unit franchisee model", source: SOURCES.RESUME, confirmed: false }, { store: storyStore, timestamp: "2026-07-18T00:00:00.000Z" });
+} catch {
+  unconfirmedBlocked = true;
+}
+if (unconfirmedBlocked) ok("storybank gates new claim entry on user confirmation");
+else fail("storybank allowed an unconfirmed claim into the bank");
+
+const resumeBank = bankClaim(
+  {
+    text: "Built a 115-unit franchisee model",
+    evidence: "resume bullet",
+    source: SOURCES.RESUME,
+    confirmed: true,
+    resumeText: "Built a 115-unit franchisee model.",
+  },
+  { store: storyStore, timestamp: "2026-07-18T00:01:00.000Z" }
+);
+bankClaim(
+  {
+    claim_id: resumeBank.claim.id,
+    text: resumeBank.claim.text,
+    source: SOURCES.SAID_ALOUD,
+    tier: TIERS.SAID_ALOUD,
+    plan_id: "plan-a",
+  },
+  { store: storyStore, timestamp: "2026-07-18T00:02:00.000Z" }
+);
+const survived = bankClaim(
+  {
+    claim_id: resumeBank.claim.id,
+    text: resumeBank.claim.text,
+    source: SOURCES.SURVIVED_PUSHBACK,
+    tier: TIERS.SURVIVED_PUSHBACK,
+    plan_id: "plan-b",
+  },
+  { store: storyStore, timestamp: "2026-07-18T00:03:00.000Z" }
+);
+if (tierOf(resumeBank.claim.id, { store: storyStore }) === 4) ok("storybank tier is max over surviving provenance events");
+else fail("storybank tier is not computed as max over events");
+deletePlan("plan-b", { store: storyStore });
+if (tierOf(resumeBank.claim.id, { store: storyStore }) === 3) ok("storybank tier recomputes downward after deleting a plan's event");
+else fail("storybank tier did not recompute after plan delete");
+
+const planOnlyStore = createStorybankStore();
+const planOnly = bankClaim(
+  {
+    text: "Handled a difficult sponsor diligence push",
+    source: SOURCES.SAID_ALOUD,
+    tier: TIERS.SAID_ALOUD,
+    plan_id: "plan-delete",
+    confirmed: true,
+  },
+  { store: planOnlyStore, timestamp: "2026-07-18T00:04:00.000Z" }
+);
+attachGrading(
+  planOnly.event,
+  { delivery: { pace: "steady" }, substance: { status: "met" } },
+  { store: planOnlyStore, timestamp: "2026-07-18T00:05:00.000Z" }
+);
+if (getGrading(planOnly.event, { store: planOnlyStore })?.assessment?.substance?.status === "met") ok("storybank grading attaches to a plan-stamped event");
+else fail("storybank grading did not attach to the event");
+deletePlan("plan-delete", { store: planOnlyStore });
+if (!getClaims({}, { store: planOnlyStore }).length) ok("storybank plan delete cascades zero-event claims");
+else fail("storybank plan delete left a zero-event claim behind");
+if (!getGrading(planOnly.event, { store: planOnlyStore })) ok("storybank plan delete purges grading attached to its event");
+else fail("storybank plan delete left grading behind");
+
+const resumeStore = createStorybankStore();
+bankClaim(
+  {
+    text: "Prepared investment committee materials",
+    source: SOURCES.RESUME,
+    confirmed: true,
+    resumeText: "Prepared investment committee materials.",
+  },
+  { store: resumeStore, timestamp: "2026-07-18T00:06:00.000Z" }
+);
+deleteResume({ store: resumeStore });
+if (!getClaims({}, { store: resumeStore }).length) ok("storybank resume delete removes null-plan resume events and cascades claims");
+else fail("storybank resume delete left resume-lifted claims behind");
+if (assertStorybankDeleteCoverage().ok) ok("storybank writers all declare deleters (ADR-0006 debt #4)");
+else fail("storybank writer/deleter coverage is incomplete");
 
 // G7 — Q1 tone default closes as NEUTRAL (ADR-0007: tone dials on evidence, not
 // arrival). The no-signal case is the intake router's fallback tone; lock it to
