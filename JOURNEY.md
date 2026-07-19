@@ -410,6 +410,26 @@ register → Neutral); what remains before a builder starts is Sissi's explicit 
 build/review split. Flagged in the spec: Path A is two features, worth splitting into a speak-runner
 PR and a storybank PR that meet at the trust-copy wire.
 
+**Q (Sissi): "Go" — Phase 1 of the speak-runner: the drill speaks.**
+The interview artifact beat ("Bank it") no longer offers a typed draft box — it mounts the
+live speak loop, built as `SpeakPanel` wrapping the one `VoiceInput` implementation the
+diagnostic already verified, so the freeze lifeline, typed fallback, no-audio promise, and
+take metrics arrive for free instead of being re-implemented. The confirmed transcript IS
+the answer-bank entry: it flows out through the existing `onDraftChange` into `drafts[i]`,
+so done-marking, the folder, the export, and the Score beat's "empty draft" guard all work
+unchanged — verified live in demo mode (typed answer → "Saved · 19 words" → Score sees it →
+survived a full page reload from plan-scoped localStorage). No template button on the speak
+panel, deliberately: scaffolding injected into a transcript box would be graded as words the
+user said, with metrics attached — dig supplies material; the transcript stays theirs. The
+replay + self-read beat is the transcript read back deliberately (no TTS exists — fork 6
+killed "hear it"), with an explicit read-it-back line once a take is confirmed. Delivery
+signal ({metrics, takes}) lifts to the moments shell as SESSION-ONLY state — the live copy
+promises "this session only," and persistence arrives with the trust copy + storybank, not
+before (the seam rule) — parked where Phase 2's multi-turn coach will read it. Non-interview
+purposes verified untouched: starting-role still gets the typed box + template button, no
+voice toggle. Fork 6 re-verified live (Question → Rapid fire, no Answer/Hear-it beats). Lint
+clean, 36 zero-API checks green, zero console errors across both personas.
+
 ---
 
 ## Where it stands

@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Note } from "./ui";
+import VoiceInput from "./VoiceInput";
 import { DEPTH_OPTIONS, PURPOSE_OPTIONS, WEB_AUGMENT } from "@/lib/constants";
 import { looksLikeUrl } from "@/lib/stubs";
 
@@ -1979,6 +1980,11 @@ function MomentFlow({
   onDiscuss,
 }) {
   const [choice, setChoice] = useState(null);
+  // Drill speak loop: the latest confirmed take's delivery signal ({metrics, takes}).
+  // SESSION-ONLY by promise — the live copy says takes/metrics are kept "for this
+  // session only"; persistence arrives with the trust copy + storybank, not before
+  // (the seam rule). Captured here so the Score beat can read what Rehearse produced.
+  const [speakSignal, setSpeakSignal] = useState(null);
   const checkSet = new Set(checks || []);
   const moments = buildMoments({
     step,
@@ -2007,12 +2013,15 @@ function MomentFlow({
     allDrafts,
     purpose,
     onDiscuss,
+    speakSignal,
+    setSpeakSignal,
   });
   const moment = Math.min(momentIndex || 0, Math.max(0, moments.length - 1));
   const current = moments[moment] || moments[0];
 
   useEffect(() => {
     setChoice(null);
+    setSpeakSignal(null);
   }, [moduleIndex]);
 
   const goNext = () => {
@@ -2132,6 +2141,8 @@ function buildMoments({
   allDrafts,
   purpose,
   onDiscuss,
+  speakSignal,
+  setSpeakSignal,
 }) {
   const beatId = beatIdentity(purpose);
   const isCurious = purpose === "curious";
@@ -2520,28 +2531,49 @@ function buildMoments({
   if (!isCurious || task.steps?.length) moments.push({
     key: "artifact",
     label: beatId.artifact[0],
-    title: purpose === "interview" ? "Write your answer, in your words." : purpose === "career_move" ? "Log the evidence." : "Write your draft.",
+    title: purpose === "interview" ? "Say your answer, in your words." : purpose === "career_move" ? "Log the evidence." : "Write your draft.",
     objective: beatId.artifact[1],
-    kicker: "This is where it becomes yours — part of your final project.",
+    kicker: purpose === "interview"
+      ? "The room hears an answer, not an essay — what you bank here is what you said."
+      : "This is where it becomes yours — part of your final project.",
     body: (
       <div className="space-y-3">
-        {!(draft || "").trim() && (
-          <button
-            type="button"
-            onClick={() => {
-              // Prefer the plan's OWN generated template (from the materials) over
-              // the code-built skeleton — the keyword detector guesses; the
-              // generated template IS the deliverable's shape. (Review item.)
-              const mats = getCachedMaterials(plan, moduleIndex) || [];
-              const tpl = mats.find((m) => /template/i.test(m.filename || ""));
-              onDraftChange(tpl?.content?.trim() ? tpl.content : draftTemplate(task, artifact));
-            }}
-            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 hover:border-brand-400"
-          >
-            {templateButtonLabel(task)}
-          </button>
+        {purpose === "interview" ? (
+          // The drill grammar's decided fork: the typed draft box is replaced by
+          // the live speak loop (speak → read it back → confirm). No template
+          // button here — scaffolding injected into a transcript box would be
+          // graded as words they said, with metrics attached; dig supplies
+          // material, the transcript stays theirs. Typed fallback lives inside
+          // the panel (VoiceInput), so no one is locked out.
+          <SpeakPanel
+            step={step}
+            moduleIndex={moduleIndex}
+            draft={draft}
+            onDraftChange={onDraftChange}
+            task={task}
+            onSignal={setSpeakSignal}
+          />
+        ) : (
+          <>
+            {!(draft || "").trim() && (
+              <button
+                type="button"
+                onClick={() => {
+                  // Prefer the plan's OWN generated template (from the materials) over
+                  // the code-built skeleton — the keyword detector guesses; the
+                  // generated template IS the deliverable's shape. (Review item.)
+                  const mats = getCachedMaterials(plan, moduleIndex) || [];
+                  const tpl = mats.find((m) => /template/i.test(m.filename || ""));
+                  onDraftChange(tpl?.content?.trim() ? tpl.content : draftTemplate(task, artifact));
+                }}
+                className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-2 text-xs font-medium text-brand-700 hover:border-brand-400"
+              >
+                {templateButtonLabel(task)}
+              </button>
+            )}
+            <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
+          </>
         )}
-        <WorkspacePanel step={step} moduleIndex={moduleIndex} draft={draft} onDraftChange={onDraftChange} />
         <DraftLinter draft={draft} plan={plan} moduleIndex={moduleIndex} task={task} />
         <TaskMaterials step={step} task={task} plan={plan} moduleIndex={moduleIndex} draft={draft} autoStart />
         {task.doneWhen && (
@@ -2744,6 +2776,57 @@ function WorkspacePanel({ step, moduleIndex, draft, onDraftChange }) {
           className="w-full resize-y border-0 bg-white px-3 py-2 t-body text-ink focus:outline-none focus:ring-0"
         />
       </label>
+    </div>
+  );
+}
+
+// The drill speak loop (interview artifact beat): speak → read it back → confirm.
+// Replaces the typed draft box per the drill grammar's decided fork. Reuses
+// VoiceInput wholesale — freeze lifeline, typed fallback, no-audio promise, and
+// take metrics all come from the one implementation the diagnostic already
+// verified. The confirmed transcript IS the answer-bank entry: it flows out
+// through onDraftChange into drafts[i], so done-marking, the folder, and export
+// work unchanged. Delivery signal rides out via onSignal ({metrics, takes}) —
+// session-only, per the live copy's promise (persistence waits for the trust copy).
+function SpeakPanel({ step, moduleIndex, draft, onDraftChange, task, onSignal }) {
+  const file = deliverableName(step, moduleIndex);
+  const words = wordCount(draft);
+  // The interviewer's question re-anchors the freeze lifeline; tone dials its
+  // register — same source the coach already reads.
+  let tone = "";
+  try {
+    tone = JSON.parse(localStorage.getItem("lb_intake_last") || "{}")?.intake?.tone || "";
+  } catch {}
+  return (
+    <div className="overflow-hidden rounded-lg border border-slate-200 bg-white">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 bg-slate-50 px-3 py-2">
+        <p className="t-mono min-w-0 break-all text-xs font-medium text-ink">{file}</p>
+        <p className="shrink-0 text-xs text-ink-faint">
+          {words ? `Saved · ${words} word${words === 1 ? "" : "s"}` : "Not started"}
+        </p>
+      </div>
+      <div className="px-3 pb-3">
+        {task.managerRequest && (
+          <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-sm leading-relaxed text-ink">
+            {task.managerRequest}
+          </p>
+        )}
+        <VoiceInput
+          value={draft || ""}
+          onChange={onDraftChange}
+          onMetricsChange={onSignal}
+          tone={tone}
+          question={task.managerRequest || task.title || ""}
+        />
+        {(draft || "").trim() && (
+          // The replay + self-read beat: no TTS exists (fork 6 killed "hear it"),
+          // so the replay is the transcript itself, read back deliberately.
+          <p className="mt-2 text-xs leading-relaxed text-ink-soft">
+            Read it back the way the room just heard it. If a line doesn't sound
+            like you, fix it above before the Score.
+          </p>
+        )}
+      </div>
     </div>
   );
 }
